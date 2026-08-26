@@ -6,7 +6,7 @@ RORICA TEXTILE CO., LTD. 進銷存模組的**流程原型（Prototype）**，用
 
 ## 線上試用
 
-（部署後補上網址）
+**https://said-airabbi.github.io/rorica-aierp/**
 
 第一次打開建議照著下方「導覽路線」走一遍，較容易看懂整體流程。
 
