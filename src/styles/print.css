@@ -22,13 +22,57 @@
 
 #print-root.pr-preview {
   display: block;
-  padding: 24px 0 48px;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 0 48px;
   background: #e9e9e4;
+}
+
+/* 預覽工具列：說明這是什麼，並提供列印與關閉；列印時不輸出 */
+.pr-preview-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  padding: 12px 20px;
+  margin-bottom: 24px;
+}
+
+.pr-preview-bar-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.pr-preview-bar-text strong {
+  font-size: 14px;
+  color: var(--foreground);
 }
 
 @media print {
   #root {
     display: none !important;
+  }
+  .pr-preview-bar {
+    display: none !important;
+  }
+  /* 預覽狀態下仍可直接列印：還原為一般文件流，固定定位會導致只印得出第一頁 */
+  #print-root.pr-preview {
+    position: static;
+    overflow: visible;
+    background: #fff;
+    padding: 0;
   }
   #print-root {
     display: block !important;
