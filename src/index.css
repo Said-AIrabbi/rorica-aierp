@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@import "./styles/print.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+
+  /* 品牌色（來自官網實際擷取） */
+  --brand: #7dc067;
+  --brand-dark: #5c9a49;
+  --accent-blue: #297aa3;
+  --accent-tan: #d8bdab;
+
+  /* shadcn/ui 標準語意變數，對應品牌色系 */
+  --background: #faf9f5;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: #eef2ea;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f1f1ec;
+  --muted-foreground: #6b7075;
+  --accent: var(--accent-tan);
+  --accent-foreground: #1a1a1a;
+  --destructive: #6e3838;
+  --destructive-foreground: #ffffff;
+  --success: #5f6b42;
+  --success-foreground: #ffffff;
+  --warning: #b8863b;
+  --warning-foreground: #ffffff;
+  --border: #e3e5dc;
+  --input: #e3e5dc;
+  --ring: var(--brand);
+}
+
+@theme inline {
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-tan: var(--accent-tan);
+
+  /* README 命名別名，方便沿用文件中的 ink / surface 詞彙 */
+  --color-ink: var(--foreground);
+  --color-ink-body: var(--foreground);
+  --color-surface: var(--card);
+  --color-surface-muted: var(--background);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}

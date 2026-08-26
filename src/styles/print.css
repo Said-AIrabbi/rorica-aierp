@@ -1,0 +1,336 @@
+/* ==========================================================================
+   單據列印格式
+   列印時整個系統畫面隱藏，只輸出 #print-root 內的單據版面（見 PrintPortal）。
+   版面預覽模式（.pr-preview）則在畫面上以紙張外觀呈現，供設計確認。
+   ========================================================================== */
+
+/* A4 直式為所有紙本單據（表1～表6、表8）的預設紙張 */
+@page {
+  size: A4 portrait;
+  margin: 12mm 10mm;
+}
+
+/* 表7布疋條碼標籤：貼附於布捲上的標籤紙，非 A4 */
+@page pr-label {
+  size: 100mm 75mm;
+  margin: 4mm;
+}
+
+#print-root {
+  display: none;
+}
+
+#print-root.pr-preview {
+  display: block;
+  padding: 24px 0 48px;
+  background: #e9e9e4;
+}
+
+@media print {
+  #root {
+    display: none !important;
+  }
+  #print-root {
+    display: block !important;
+    background: transparent;
+    padding: 0;
+  }
+  html,
+  body {
+    background: #fff;
+  }
+}
+
+/* ---------- 紙張 ---------- */
+
+.pr-sheet {
+  box-sizing: border-box;
+  width: 190mm;
+  margin: 0 auto;
+  color: #000;
+  background: #fff;
+  font-family: var(--font-sans);
+  font-size: 10pt;
+  line-height: 1.45;
+}
+
+.pr-sheet + .pr-sheet {
+  break-before: page;
+}
+
+.pr-preview .pr-sheet {
+  padding: 12mm 10mm;
+  width: 210mm;
+  min-height: 297mm;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
+  margin-bottom: 24px;
+}
+
+.pr-label-sheet {
+  page: pr-label;
+  width: 92mm;
+  font-size: 8pt;
+}
+
+.pr-preview .pr-label-sheet {
+  width: 100mm;
+  min-height: 75mm;
+  padding: 4mm;
+}
+
+/* ---------- 抬頭 ---------- */
+
+.pr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12mm;
+  border-bottom: 1.5pt solid #000;
+  padding-bottom: 2mm;
+}
+
+.pr-head-company {
+  font-size: 13pt;
+  font-weight: 700;
+  letter-spacing: 0.5pt;
+}
+
+.pr-head-company-en {
+  font-size: 7.5pt;
+  letter-spacing: 0.5pt;
+}
+
+.pr-head-contact {
+  margin-top: 1mm;
+  font-size: 7.5pt;
+  color: #333;
+}
+
+.pr-head-right {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pr-head-title {
+  font-size: 16pt;
+  font-weight: 700;
+  letter-spacing: 3pt;
+}
+
+.pr-head-form-code {
+  font-size: 8pt;
+  letter-spacing: 1pt;
+}
+
+.pr-head-docno {
+  margin-top: 1mm;
+  font-family: ui-monospace, "Menlo", monospace;
+  font-size: 10pt;
+  font-weight: 600;
+}
+
+/* ---------- 表頭欄位 ---------- */
+
+.pr-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-left: 0.5pt solid #000;
+  border-top: 0.5pt solid #000;
+  margin-top: 3mm;
+}
+
+.pr-meta-cell {
+  border-right: 0.5pt solid #000;
+  border-bottom: 0.5pt solid #000;
+  padding: 1.2mm 2mm;
+  min-height: 8mm;
+}
+
+.pr-meta-cell.pr-span-2 {
+  grid-column: span 2;
+}
+
+.pr-meta-cell.pr-span-4 {
+  grid-column: span 4;
+}
+
+.pr-meta-label {
+  font-size: 7.5pt;
+  color: #444;
+}
+
+.pr-meta-value {
+  font-size: 10pt;
+  min-height: 4.5mm;
+}
+
+/* ---------- 區塊 ---------- */
+
+.pr-section {
+  margin-top: 4mm;
+  break-inside: avoid;
+}
+
+.pr-section-title {
+  font-size: 10pt;
+  font-weight: 700;
+  border-left: 2.5pt solid #000;
+  padding-left: 2mm;
+  margin-bottom: 1.5mm;
+}
+
+.pr-section-note {
+  font-size: 7.5pt;
+  color: #444;
+  margin-top: 1mm;
+}
+
+/* ---------- 明細表格 ---------- */
+
+.pr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.pr-table th,
+.pr-table td {
+  border: 0.5pt solid #000;
+  padding: 1.2mm 1.5mm;
+  vertical-align: top;
+}
+
+.pr-table th {
+  background: #ededed;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pr-table thead {
+  display: table-header-group;
+}
+
+.pr-table tr {
+  break-inside: avoid;
+}
+
+.pr-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pr-center {
+  text-align: center;
+}
+
+.pr-total-row td {
+  background: #f6f6f6;
+  font-weight: 600;
+}
+
+/* ---------- 貼色樣布區塊（表3專用） ---------- */
+
+.pr-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4mm;
+}
+
+.pr-swatch {
+  border: 0.5pt solid #000;
+  break-inside: avoid;
+}
+
+.pr-swatch-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 3mm;
+  border-bottom: 0.5pt solid #000;
+  padding: 1.2mm 2mm;
+  font-size: 9pt;
+}
+
+/* 供染整廠或皇加人工黏貼實體布樣的留白，畫面線稿不顯示，僅列印保留版面（PRD 決策64） */
+.pr-swatch-area {
+  height: 32mm;
+  padding: 1.5mm 2mm;
+  font-size: 7pt;
+  color: #999;
+}
+
+/* ---------- 簽名欄 ---------- */
+
+.pr-signatures {
+  display: grid;
+  gap: 0;
+  border-left: 0.5pt solid #000;
+  border-top: 0.5pt solid #000;
+  margin-top: 6mm;
+  break-inside: avoid;
+}
+
+.pr-signature-cell {
+  border-right: 0.5pt solid #000;
+  border-bottom: 0.5pt solid #000;
+  padding: 1.2mm 2mm 10mm;
+  font-size: 8pt;
+}
+
+/* ---------- 頁尾 ---------- */
+
+.pr-foot {
+  margin-top: 4mm;
+  border-top: 0.5pt solid #666;
+  padding-top: 1.5mm;
+  font-size: 7.5pt;
+  color: #444;
+  display: flex;
+  justify-content: space-between;
+  gap: 6mm;
+}
+
+/* ---------- 表7 標籤 ---------- */
+
+.pr-label {
+  border: 0.5pt solid #000;
+  padding: 2mm;
+  text-align: center;
+}
+
+.pr-label-code {
+  font-family: ui-monospace, "Menlo", monospace;
+  font-size: 9pt;
+  letter-spacing: 1.5pt;
+  margin-top: 0.5mm;
+}
+
+.pr-label-fields {
+  border-top: 0.5pt dashed #000;
+  border-bottom: 0.5pt dashed #000;
+  margin: 1.5mm 0;
+  padding: 1.5mm 0;
+  text-align: left;
+}
+
+.pr-label-name {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.pr-label-grid {
+  display: grid;
+  grid-template-columns: 14mm 1fr 10mm 1fr;
+  gap: 0.5mm 1.5mm;
+  margin-top: 1mm;
+  font-size: 7.5pt;
+}
+
+.pr-label-grid dt {
+  color: #444;
+}
+
+.pr-label-grid dd {
+  margin: 0;
+  font-weight: 600;
+}

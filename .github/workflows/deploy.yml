@@ -1,0 +1,50 @@
+# 推上 main 即自動 build 並部署到 GitHub Pages，客戶永遠看到最新版。
+# 啟用方式：GitHub repo → Settings → Pages → Source 選 "GitHub Actions"。
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # 允許在 Actions 頁面手動重跑部署
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署；新的推送取消排隊中的舊部署，但不中斷進行中的
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # 依 package-lock.json 安裝，確保 CI 與本機版本一致
+      - run: npm ci
+
+      - run: npm run lint
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
