@@ -52,7 +52,9 @@ export function PrintSheet({
           <div className="pr-head-contact">
             統一編號 {PRINT_COMPANY.taxId}　{PRINT_COMPANY.address}
             <br />
-            TEL {PRINT_COMPANY.phone}　FAX {PRINT_COMPANY.fax}
+            TEL {PRINT_COMPANY.phone}
+            {/* 傳真未提供時整段不印，避免紙上出現空的 FAX 欄位 */}
+            {PRINT_COMPANY.fax && `　FAX ${PRINT_COMPANY.fax}`}
           </div>
         </div>
         <div className="pr-head-right">
