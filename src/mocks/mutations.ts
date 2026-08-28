@@ -1481,6 +1481,30 @@ export function splitFabricLabel(id: string, firstLength: number): Promise<Fabri
   return delay(newLabels)
 }
 
+/**
+ * 標記布卷為瑕疵／報廢（布卷資料主檔的另一個終態）。
+ * 標記後該捲不可再被任何訂單挑選——可用庫存查詢只取「已建立」的布卷，
+ * 出貨結案時亦會擋下明細中含瑕疵捲的出貨單（見 completeShippingOrder）。
+ * 已完成／已終止／已標記過的布卷不再開放標記。
+ */
+export function markFabricLabelDefective(id: string, note: string): Promise<FabricLabel> {
+  const idx = fabricLabels.findIndex((l) => l.id === id)
+  if (idx === -1) throw new Error(`布卷條碼標籤 ${id} 不存在`)
+  const current = fabricLabels[idx]
+  if (current.status === '瑕疵／報廢') throw new Error('此布卷已標記為瑕疵／報廢')
+  if (current.status === '已完成' || current.status === '已終止') {
+    throw new Error('已完成或已終止的布卷不可標記為瑕疵／報廢')
+  }
+  const updated: FabricLabel = {
+    ...current,
+    status: '瑕疵／報廢',
+    defectedAt: dayjs().toISOString(),
+    defectNote: note.trim() || undefined,
+  }
+  fabricLabels[idx] = updated
+  return delay(updated)
+}
+
 // ---------- 表8 出貨單 ----------
 
 export type ShippingOrderItemInput = Omit<ShippingOrderItem, 'meter'>
@@ -1583,6 +1607,15 @@ export function setShippingOrderStatus(id: string, status: ShippingOrder['status
 export function completeShippingOrder(id: string): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+
+  // 瑕疵／報廢的布卷不可再被任何訂單挑選：明細若含此類捲號，擋下出貨並要求先改捲
+  const defective = shippingOrders[idx].items
+    .flatMap((item) => item.rollCodes)
+    .filter((code) => fabricLabels.some((l) => l.rollCode === code && l.status === '瑕疵／報廢'))
+  if (defective.length > 0) {
+    throw new Error(`布卷 ${defective.join('、')} 已標記為瑕疵／報廢，不可出貨，請先更換捲號`)
+  }
+
   const updated: ShippingOrder = { ...shippingOrders[idx], status: '已完成' }
   shippingOrders[idx] = updated
 

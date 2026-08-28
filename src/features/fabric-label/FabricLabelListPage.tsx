@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { AlertTriangle } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -23,7 +23,8 @@ export function FabricLabelListPage() {
   const columns = useMemo<ColumnDef<FabricLabel, unknown>[]>(
     () => [
       { accessorKey: 'rollCode', header: '布卷條碼（胚布編號-流水號）' },
-      { accessorKey: 'receiptId', header: '入庫單' },
+      { id: 'productId', header: '產品編號', accessorFn: (row) => row.productId ?? '-' },
+      { accessorKey: 'receiptId', header: '來源入庫單' },
       { accessorKey: 'productName', header: '皇加品名' },
       { id: 'composition', header: '成分', accessorFn: (row) => row.composition ?? '-' },
       { accessorKey: 'color', header: '顏色' },
@@ -43,14 +44,16 @@ export function FabricLabelListPage() {
   return (
     <div>
       <PageHeader
-        title="布卷條碼標籤"
-        formCode="表7"
-        description="每次沙布入庫時由表6並行產生，貼於布捲上。此頁僅為系統內部條碼追蹤紀錄，實體標籤格式非系統UI範圍。"
+        title="布卷資料主檔"
+        formCode="主檔"
+        description="倉庫裡實際存在的每一捲布，入庫確認時由表6並行產生。庫存查詢與接疋判斷實際查的就是這張主檔。"
       />
-      <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-brand/30 bg-brand/10 p-3 text-sm text-ink-body">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-dark" />
         <span>
-          非系統畫面：實際貼於布卷上的紙本標籤格式（品種名 / 顏色 / 幅寬 / 米數）不在系統UI範圍內，僅列印格式規則。此列表為系統內部追蹤紀錄。
+          <strong>布卷資料主檔</strong>一列＝倉庫裡實際存在的那一捲布（庫存帳性質，入庫時自動產生）；
+          <strong>商品資料主檔</strong>一列＝一個產品分支（型錄性質）。兩者關係為布卷參照商品，庫存比對只比對同一產品分支的布卷。
+          點進任一捲可檢視長度異動紀錄、分割布卷，並列印貼附於布捲的實體標籤（表7 列印格式）。
         </span>
       </div>
       <DataTable

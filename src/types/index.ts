@@ -541,7 +541,11 @@ export interface GoodsReceipt {
   purpose?: (typeof GOODS_RECEIPT_PURPOSES)[number]
 }
 
-export type FabricLabelStatus = '已建立' | '已使用' | '已完成' | '已終止'
+/**
+ * 布卷狀態：已建立→已使用（部分出貨，不可逆）→已完成（全部出貨，不可逆）；
+ * 「已終止」為分割後的原捲；「瑕疵／報廢」為另一個終態，標記後不可再被任何訂單挑選。
+ */
+export type FabricLabelStatus = '已建立' | '已使用' | '已完成' | '已終止' | '瑕疵／報廢'
 
 export interface FabricLabelLengthChange {
   at: string
@@ -568,6 +572,9 @@ export interface FabricLabel {
   unit: 'Yard' | 'Meter'
   status: FabricLabelStatus
   splitFromRollCode?: string
+  /** 標記為瑕疵／報廢的時間與原因；標記後該捲不可再被任何訂單挑選 */
+  defectedAt?: string
+  defectNote?: string
   lengthHistory?: FabricLabelLengthChange[]
 }
 

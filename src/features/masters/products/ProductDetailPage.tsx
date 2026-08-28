@@ -15,6 +15,7 @@ import { updateProduct, type ProductInput } from '@/mocks/mutations'
 import { formatDate, isColorStale } from '@/lib/dates'
 import { formatNumber, inchToCm, yardPriceToMeterPrice, yardWeightToMeterWeight } from '@/lib/units'
 import { PRODUCT_CATEGORIES, type Product } from '@/types'
+import { ProductStockCard } from './ProductStockCard'
 
 function toInput(product: Product): ProductInput {
   return {
@@ -355,6 +356,9 @@ export function ProductDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* 第五張卡：庫存（唯讀 UI 聚合，即時查詢布卷資料主檔） */}
+        <ProductStockCard product={product} />
       </div>
     </div>
   )

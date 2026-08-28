@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Scissors } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Scissors } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { splitFabricLabel } from '@/mocks/mutations'
+import { markFabricLabelDefective, splitFabricLabel } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, inchToCm, meterToYard, yardToMeter } from '@/lib/units'
 
@@ -35,6 +35,8 @@ export function FabricLabelDetailPage() {
 
   const [splitOpen, setSplitOpen] = useState(false)
   const [splitLength, setSplitLength] = useState('')
+  const [defectOpen, setDefectOpen] = useState(false)
+  const [defectNote, setDefectNote] = useState('')
 
   const splitMutation = useMutation({
     mutationFn: (length: number) => splitFabricLabel(id!, length),
@@ -44,6 +46,17 @@ export function FabricLabelDetailPage() {
       setSplitOpen(false)
       setSplitLength('')
       navigate(`/fabric-label/${newLabels[0].id}`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const defectMutation = useMutation({
+    mutationFn: (note: string) => markFabricLabelDefective(id!, note),
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({ queryKey: ['fabricLabels'] })
+      toast.success(`${updated.rollCode} 已標記為瑕疵／報廢，不再供任何訂單挑選`)
+      setDefectOpen(false)
+      setDefectNote('')
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -83,6 +96,12 @@ export function FabricLabelDetailPage() {
             {label.status === '已建立' && label.length > 0 && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setSplitOpen(true)}>
                 <Scissors className="mr-1 h-4 w-4" /> 分割布卷
+              </Button>
+            )}
+            {/* 瑕疵／報廢為布卷的另一個終態；已完成或已終止的布卷不再開放標記 */}
+            {(label.status === '已建立' || label.status === '已使用') && (
+              <Button size="sm" variant="outline" className="print:hidden" onClick={() => setDefectOpen(true)}>
+                <AlertTriangle className="mr-1 h-4 w-4" /> 標記瑕疵／報廢
               </Button>
             )}
           </>
@@ -126,6 +145,48 @@ export function FabricLabelDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={defectOpen} onOpenChange={setDefectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>標記瑕疵／報廢 {label.rollCode}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            標記後本捲進入終態，<strong>不可再被任何訂單挑選</strong>：可用庫存查詢不再取用，出貨單明細若含本捲亦會被擋下。
+            此動作不可復原，長度與異動紀錄皆完整保留供追溯。
+          </p>
+          <div className="space-y-1.5">
+            <Label>原因（選填）</Label>
+            <Input
+              value={defectNote}
+              onChange={(e) => setDefectNote(e.target.value)}
+              placeholder="如：色差過大、破洞、水漬"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDefectOpen(false)}>
+              取消
+            </Button>
+            <Button
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={defectMutation.isPending}
+              onClick={() => defectMutation.mutate(defectNote)}
+            >
+              {defectMutation.isPending ? '標記中...' : '確認標記'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {label.status === '瑕疵／報廢' && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            本捲已於 {formatDate(label.defectedAt)} 標記為瑕疵／報廢
+            {label.defectNote ? `（${label.defectNote}）` : ''}，不再供任何訂單挑選；紀錄保留供追溯。
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>

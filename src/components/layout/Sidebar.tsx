@@ -24,7 +24,6 @@ const documentNav = [
   { to: '/dye-order', label: '表4 染整單', icon: Layers },
   { to: '/secondary-processing', label: '表5 二次加工單', icon: Scissors },
   { to: '/goods-receipt', label: '表6 入庫單', icon: PackageCheck },
-  { to: '/fabric-label', label: '表7 布卷條碼標籤', icon: Tags },
   { to: '/shipping-order', label: '表8 出貨單', icon: Send },
 ]
 
@@ -33,6 +32,9 @@ const masterNav = [
   { to: '/masters/products', label: '產品主檔', icon: Package },
   { to: '/masters/vendors', label: '廠商主檔', icon: Boxes },
   { to: '/masters/accounts', label: '帳戶主檔', icon: PackageSearch },
+  // 表7非系統畫面／表單，而是列印在標籤紙上的實體標籤；系統這一頁管的是標籤背後的布卷資料，
+  // 依 PRD 第四章第 5 節列為第五張主檔（見 PRD 決策 61-1）
+  { to: '/fabric-label', label: '布卷資料主檔', icon: Tags },
 ]
 
 function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Home }) {

@@ -34,6 +34,7 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   已建立: 'neutral',
   已使用: 'info',
   已終止: 'error',
+  '瑕疵／報廢': 'error',
 
   // 表8 出貨單
   已確認出貨: 'success',
