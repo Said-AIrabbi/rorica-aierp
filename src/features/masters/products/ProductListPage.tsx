@@ -21,8 +21,7 @@ export function ProductListPage() {
 
   const columns = useMemo<ColumnDef<Product, unknown>[]>(
     () => [
-      { accessorKey: 'id', header: '產品編號' },
-      { accessorKey: 'sortNo', header: '產品序號（分支）' },
+      // 欄位順序依皇加指定：品名在前（日常查找的入口），系統編號其次，再帶出客戶與規格
       { accessorKey: 'productName', header: '皇加品名' },
       { accessorKey: 'customerProductName', header: '客戶品名' },
       {
@@ -30,6 +29,8 @@ export function ProductListPage() {
         header: '款式類別',
         accessorFn: (row) => getCategoryLabel(row.categoryCode),
       },
+      { accessorKey: 'id', header: '產品編號' },
+      { accessorKey: 'sortNo', header: '產品序號（分支）' },
       {
         id: 'customer',
         header: '所屬客戶',
