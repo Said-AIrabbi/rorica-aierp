@@ -39,6 +39,15 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   // 表8 出貨單
   已確認出貨: 'success',
 
+  // 表9 異常通知單
+  受理中: 'warning',
+  處理中: 'info',
+
+  // 表9 退回布卷複核
+  待複核: 'warning',
+  良品: 'success',
+  瑕疵: 'error',
+
   // 送樣流程回覆（表3色卡送樣確認、表4大貨樣確認送樣）
   通過: 'success',
   退回: 'error',

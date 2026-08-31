@@ -622,6 +622,11 @@ export interface ShippingOrder {
   /** 用途：人工選擇的分類欄位，比照入庫單做法 */
   purpose?: (typeof GOODS_RECEIPT_PURPOSES)[number]
   signatures?: ShippingOrderSignatures
+  /**
+   * 來源表9異常通知單：換貨不另開「換貨單」，而是「表9（勾選補貨換貨）＋新出貨單」兩個獨立動作，
+   * 新出貨單需記錄來源表9單號，供追溯換貨事件的完整脈絡（PRD 決策74）。
+   */
+  sourceAbnormalId?: string
 }
 
 // ---------- 表5 二次加工單 ----------
@@ -690,4 +695,113 @@ export interface SecondaryProcessingOrder {
   note?: string
   items: SecondaryProcessingItem[]
   packaging: SecondaryProcessingPackaging
+}
+
+// ---------- 表9 異常通知單（客訴／退貨，PRD 補充文件 2026/08/31） ----------
+
+/**
+ * 異常問題分類：兩階連動——先選大分類，再選其底下的細項（皇加 2026/08/31 提供）。
+ * 「其它」無細項、「交期問題」僅一項，故細項一律不可設為必填。
+ * 分類與自由文字的「異常問題」併存，非二擇一：分類供統計與向上游歸因，自由文字仍記事件經過。
+ */
+export const ABNORMAL_CATEGORIES = [
+  {
+    name: '布面問題',
+    items: [
+      '色點', '色花', '白斑', '髒污', '油污', '霉斑', '螞蟻斑', '勾紗', '結紗', '裂紗', '滑紗',
+      '破洞', '粗細紗', '擦傷', '水傷', '緯檔', '斷經', '折痕', '水波紋', '雞爪痕', '網孔異常',
+    ],
+  },
+  { name: '顏色問題', items: ['色差', '左右異色', '染色不均', '顏色不對'] },
+  { name: '手感問題', items: ['太軟', '太硬', '粗糙', '光澤度'] },
+  { name: '品質問題', items: ['品質不對', '布面效果不對', '緯斜', '幅寬', '薄厚度', '接疋', '磅重', '異味'] },
+  { name: '交期問題', items: ['DELAY'] },
+  { name: '其它', items: [] },
+] as const
+
+export type AbnormalCategoryName = (typeof ABNORMAL_CATEGORIES)[number]['name']
+
+export type AbnormalNoticeStatus = '受理中' | '處理中' | '已完成'
+
+/**
+ * 單據種類：
+ * - 客訴異常＝表9本體（對客戶）
+ * - 上游追討＝附單（對染整廠／供應商）。啟動點有兩種：客訴後回頭追討（掛在表9底下），
+ *   或皇加自行發現問題主動追討（此時沒有客訴、沒有母單），故附單不能只是表9內的欄位區塊。
+ *   欄位依客戶指示「暫時與表9相同」，上游廠商記於「扣款不退貨」區塊的「向廠商申請對象」。
+ */
+export type AbnormalNoticeKind = '客訴異常' | '上游追討'
+
+/** 處理方式：四個區塊各自獨立，可複選（PRD 決策73），未勾選者為 undefined */
+export interface AbnormalHandling {
+  /** 退貨：依實際碼數，非整捲或整張出貨單 */
+  returnGoods?: { yard: number; feeEstimate?: string }
+  /** 扣款不退貨：金額依異常程度（非全額），並記錄向哪家廠商申請 */
+  deduction?: { amount?: number; upstreamVendorId?: string }
+  /** 補貨換貨：不另開換貨單，改以「本單＋新出貨單」兩個獨立動作完成 */
+  replacement?: { yard: number; freightEstimate?: string; shippingOrderId?: string }
+  /** 其他補償：自由文字，如補空運費用 */
+  other?: { note: string }
+}
+
+export type ReturnedRollVerdict = '待複核' | '良品' | '瑕疵'
+
+/**
+ * 退回布卷：一律先進「退貨暫存倉」（僅倉庫實體分區，非布卷狀態，見 PRD 決策79），
+ * 人工複核判定後才決定原條碼復活（良品）或轉為瑕疵／報廢。
+ */
+export interface ReturnedRoll {
+  /** 原布卷條碼；客戶端遺失條碼、無法回溯時留空，複核為良品時改依接續流水號新建條碼 */
+  rollCode?: string
+  /** 退回碼數 */
+  yard: number
+  verdict: ReturnedRollVerdict
+  reviewedAt?: string
+  /** 原條碼遺失且複核為良品時，系統新建的條碼（此時該次退回視為新的入庫事件） */
+  newRollCode?: string
+  note?: string
+}
+
+export interface AbnormalNotice {
+  /** AB-YYYYMMDD-NNN（受理日）；附單為母單號＋子序號 -U{n}，自行發現者自產主號後同樣掛 -U1 */
+  id: string
+  kind: AbnormalNoticeKind
+  /** 附單所屬的表9；皇加自行發現而開立的附單沒有母單，此欄留空 */
+  parentAbnormalId?: string
+  status: AbnormalNoticeStatus
+  createdAt: string
+  /** 受理日期 */
+  noticeDate: string
+  /** 製表人：自動帶入登入帳號 */
+  createdByAccountId: string
+  customerId?: string
+  /** 生產編號：委外染整情境的追溯鍵，關聯回表4染單 */
+  productionCode?: string
+  dyeOrderId?: string
+  /**
+   * 關聯訂購單：純採購（無染整）沒有生產編號，改以表2訂購單為追溯鍵（PRD 決策78）。
+   * 與生產編號互斥，由來源出貨單的布卷來源決定帶哪一個，兩者不可皆空。
+   */
+  purchaseOrderId?: string
+  /** 原出貨單（表8）：出貨日期、品名、顏色、出貨數量皆由此唯讀帶入 */
+  shippingOrderId?: string
+  shipDate?: string
+  productName: string
+  productId?: string
+  color: string
+  shippedQty: number
+  unit: 'Yard' | 'Meter'
+  /** 異常數量：唯一需人工填寫的關聯來源欄位，可小於出貨數量（部分退） */
+  abnormalQty: number
+  categoryName?: AbnormalCategoryName
+  categoryItem?: string
+  issueNote: string
+  handling: AbnormalHandling
+  /** 同批未出貨庫存亦有異常時，連動標記為瑕疵／報廢的條碼 */
+  batchDefectRollCodes: string[]
+  returnedRolls?: ReturnedRoll[]
+  /** 生管回覆：文字欄位；主管（董事長）／業務／會計三欄為列印後手簽，系統上不輸入 */
+  productionReply?: string
+  processedAt?: string
+  completedAt?: string
 }

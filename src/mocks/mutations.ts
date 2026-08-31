@@ -10,10 +10,15 @@ import {
 import {
   buildSecondaryProcessingPackaging,
   defaultRollYard,
+  ABNORMAL_CLAIM_MONTHS,
   effectivePurchaseOrderStatus,
   isPackingNoticeFullyShipped,
+  isWithinAbnormalClaimWindow,
+  pendingAbnormalHandlings,
 } from '@/lib/workflow'
 import type {
+  AbnormalHandling,
+  AbnormalNotice,
   ActualReceiptComparison,
   Customer,
   DyeOrder,
@@ -30,6 +35,7 @@ import type {
   PurchaseOrderItem,
   SecondaryProcessingItem,
   SecondaryProcessingOrder,
+  ReturnedRoll,
   SplicingSuggestion,
   Vendor,
   ShippingOrder,
@@ -37,6 +43,7 @@ import type {
   StockReservation,
 } from '@/types'
 import {
+  abnormalNotices,
   accounts,
   customers,
   dyeOrders,
@@ -1872,4 +1879,345 @@ export function updateSecondaryProcessingVendor(
   const updated: SecondaryProcessingOrder = { ...secondaryProcessingOrders[idx], ...input }
   secondaryProcessingOrders[idx] = updated
   return delay(updated)
+}
+
+// ---------- 表9 異常通知單（客訴／退貨） ----------
+
+export interface AbnormalNoticeInput {
+  /** 單據種類：客訴異常＝表9本體；上游追討＝附單（欄位暫時與表9相同） */
+  kind: AbnormalNotice['kind']
+  /** 附單掛在哪張表9底下；皇加自行發現而主動追討時沒有母單，留空即可 */
+  parentAbnormalId?: string
+  /** 來源出貨單（表8）：品名、顏色、出貨數量、出貨日期皆由此帶入 */
+  shippingOrderId?: string
+  /** 出貨單有多筆明細時，指定是哪一筆出問題 */
+  shippingOrderItemIndex?: number
+  customerId?: string
+  abnormalQty: number
+  categoryName?: AbnormalNotice['categoryName']
+  categoryItem?: string
+  issueNote: string
+  handling: AbnormalHandling
+  /** 勾選「同批未出貨庫存亦有異常」時要一併標記為瑕疵／報廢的條碼 */
+  batchDefectRollCodes?: string[]
+}
+
+/**
+ * 追溯鍵：委外染整走「生產編號」關聯回表4染單；純採購（無染整）沒有生產編號，
+ * 改以表2訂購單為追溯鍵（PRD 決策78）。由來源出貨單的主號自動判斷帶哪一個，非使用者自選——
+ * 交給人選，純採購的單子照樣會被留成空白，等於沒有追溯鍵。
+ */
+function resolveAbnormalTrace(
+  parentId: string | undefined,
+): Pick<AbnormalNotice, 'productionCode' | 'dyeOrderId' | 'purchaseOrderId'> {
+  if (!parentId) return {}
+  const dyeOrder = dyeOrders.find((d) => d.parentId === parentId)
+  if (dyeOrder) {
+    return {
+      productionCode: `J${dayjs(dyeOrder.effectiveAt ?? dyeOrder.dueDate).format('YYMMDD')}C`,
+      dyeOrderId: dyeOrder.id,
+    }
+  }
+  return { purchaseOrderId: purchaseOrders.find((po) => po.parentId === parentId)?.id }
+}
+
+/** 表9主號：AB-YYYYMMDD-NNN，依受理當下日期產生，不繼承原出貨單的主號子序號 */
+function nextAbnormalId(at: dayjs.Dayjs): string {
+  const prefix = `AB-${at.format('YYYYMMDD')}`
+  const countToday = abnormalNotices.filter((n) => n.kind === '客訴異常' && n.id.startsWith(prefix)).length
+  return `${prefix}-${pad(countToday + 1)}`
+}
+
+export function createAbnormalNotice(input: AbnormalNoticeInput): Promise<AbnormalNotice> {
+  const now = dayjs()
+  const source = input.shippingOrderId ? shippingOrders.find((s) => s.id === input.shippingOrderId) : undefined
+  if (input.shippingOrderId && !source) throw new Error(`出貨單 ${input.shippingOrderId} 不存在`)
+  const item = source?.items[input.shippingOrderItemIndex ?? 0]
+
+  // 客戶簽收後 6 個月內方可提出客訴，逾期不受理；上游追討附單沒有客戶簽收這個起算點，不受此限
+  if (input.kind === '客訴異常' && !isWithinAbnormalClaimWindow(source?.shipDate, now.toISOString())) {
+    throw new Error(
+      `出貨日 ${dayjs(source?.shipDate).format('YYYY/MM/DD')} 已逾 ${ABNORMAL_CLAIM_MONTHS} 個月客訴受理期限，不受理`,
+    )
+  }
+  if (!(input.abnormalQty > 0)) throw new Error('異常數量需大於 0')
+  if (item && input.abnormalQty > item.yard) {
+    throw new Error(`異常數量不可大於原出貨數量 ${item.yard}`)
+  }
+
+  const parent = input.parentAbnormalId ? abnormalNotices.find((n) => n.id === input.parentAbnormalId) : undefined
+  if (input.parentAbnormalId && !parent) throw new Error(`異常通知單 ${input.parentAbnormalId} 不存在`)
+
+  let id: string
+  if (input.kind === '上游追討') {
+    // 附單編號沿用主號貫穿慣例：有母單取母單主號，皇加自行發現者自產獨立主號，兩者同樣掛 -U{n}
+    const base = parent ? parent.id : nextAbnormalId(now)
+    const siblings = abnormalNotices.filter((n) => n.kind === '上游追討' && n.id.startsWith(`${base}-U`)).length
+    id = `${base}-U${siblings + 1}`
+  } else {
+    id = nextAbnormalId(now)
+  }
+
+  const notice: AbnormalNotice = {
+    id,
+    kind: input.kind,
+    parentAbnormalId: parent?.id,
+    status: '受理中',
+    createdAt: now.toISOString(),
+    noticeDate: now.toISOString(),
+    createdByAccountId: (accounts.find((a) => a.roles.includes('業務')) ?? accounts[0]).id,
+    customerId: input.customerId ?? source?.customerId,
+    ...resolveAbnormalTrace(source?.parentId),
+    shippingOrderId: source?.id,
+    shipDate: source?.shipDate,
+    productName: item?.roricaProductName ?? '',
+    color: item?.color ?? '',
+    shippedQty: item?.yard ?? 0,
+    unit: 'Yard',
+    abnormalQty: input.abnormalQty,
+    categoryName: input.categoryName,
+    categoryItem: input.categoryItem,
+    issueNote: input.issueNote,
+    handling: input.handling,
+    batchDefectRollCodes: [],
+  }
+  abnormalNotices.unshift(notice)
+
+  if (input.batchDefectRollCodes && input.batchDefectRollCodes.length > 0) {
+    applyBatchDefectMarking(notice, input.batchDefectRollCodes)
+  }
+  return delay(notice)
+}
+
+function requireAbnormalNotice(id: string): number {
+  const idx = abnormalNotices.findIndex((n) => n.id === id)
+  if (idx === -1) throw new Error(`異常通知單 ${id} 不存在`)
+  return idx
+}
+
+/**
+ * 同批庫存連動標記：把同批未出貨的布卷一併標記為瑕疵／報廢，避免問題庫存繼續被挑選出貨。
+ * 已完成／已終止／已標記過的捲直接略過（不是錯誤，只是無從標記），實際標記到的才記回單上。
+ */
+function applyBatchDefectMarking(notice: AbnormalNotice, rollCodes: string[]): string[] {
+  const now = dayjs().toISOString()
+  const marked: string[] = []
+  rollCodes.forEach((rollCode) => {
+    const idx = fabricLabels.findIndex((l) => l.rollCode === rollCode)
+    if (idx === -1) return
+    const label = fabricLabels[idx]
+    if (label.status !== '已建立' && label.status !== '已使用') return
+    fabricLabels[idx] = {
+      ...label,
+      status: '瑕疵／報廢',
+      defectedAt: now,
+      defectNote: `同批庫存連動標記（${notice.id}）`,
+    }
+    marked.push(rollCode)
+  })
+  const noticeIdx = abnormalNotices.findIndex((n) => n.id === notice.id)
+  if (noticeIdx !== -1) {
+    const current = abnormalNotices[noticeIdx]
+    abnormalNotices[noticeIdx] = {
+      ...current,
+      batchDefectRollCodes: [...new Set([...current.batchDefectRollCodes, ...marked])],
+    }
+  }
+  return marked
+}
+
+export function markAbnormalBatchRolls(id: string, rollCodes: string[]): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  if (abnormalNotices[idx].status === '已完成') throw new Error('已完成的異常通知單不可再標記同批庫存')
+  const marked = applyBatchDefectMarking(abnormalNotices[idx], rollCodes)
+  if (marked.length === 0) throw new Error('選取的布卷皆已出貨完畢、已終止或已標記，無可標記的捲號')
+  return delay(abnormalNotices[requireAbnormalNotice(id)])
+}
+
+/** 生管回覆與處理方式（可複選）於「受理中」階段編輯 */
+export function updateAbnormalNoticeHandling(
+  id: string,
+  input: {
+    handling: AbnormalHandling
+    productionReply?: string
+    categoryName?: AbnormalNotice['categoryName']
+    categoryItem?: string
+  },
+): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  if (abnormalNotices[idx].status === '已完成') throw new Error('已完成的異常通知單不可修改')
+  abnormalNotices[idx] = {
+    ...abnormalNotices[idx],
+    handling: input.handling,
+    productionReply: input.productionReply,
+    categoryName: input.categoryName,
+    categoryItem: input.categoryItem,
+  }
+  return delay(abnormalNotices[idx])
+}
+
+/**
+ * 受理中→處理中：生管回覆並確認處理方式、經主管（董事長）／業務／會計三方簽核後，
+ * 系統才依處理方式分流。簽名為列印後手簽，系統上以生管回覆與處理方式是否齊備作為卡控。
+ */
+export function startAbnormalProcessing(id: string): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可進入處理中')
+  if (!notice.productionReply?.trim()) throw new Error('請先填寫生管回覆')
+  const { returnGoods, deduction, replacement, other } = notice.handling
+  if (!returnGoods && !deduction && !replacement && !other) throw new Error('請至少勾選一種處理方式')
+  abnormalNotices[idx] = { ...notice, status: '處理中', processedAt: dayjs().toISOString() }
+  return delay(abnormalNotices[idx])
+}
+
+/** 退貨路徑：倉管收貨進退貨暫存倉，逐筆登記退回的布卷（條碼遺失者可留空） */
+export function registerReturnedRoll(id: string, input: { rollCode?: string; yard: number }): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  if (notice.status !== '處理中') throw new Error('僅「處理中」的異常通知單可登記退回布卷')
+  if (!notice.handling.returnGoods) throw new Error('本單未勾選「退貨」處理方式')
+  if (!(input.yard > 0)) throw new Error('退回碼數需大於 0')
+  const returned: ReturnedRoll = { rollCode: input.rollCode?.trim() || undefined, yard: input.yard, verdict: '待複核' }
+  abnormalNotices[idx] = { ...notice, returnedRolls: [...(notice.returnedRolls ?? []), returned] }
+  return delay(abnormalNotices[idx])
+}
+
+/**
+ * 人工複核判定良品／瑕疵，決定退回布卷的條碼歸宿：
+ * - 良品：原條碼「復活」回到可用狀態（已使用／已完成的條碼因退貨回到可用，是對「不可逆」原則的正式例外），
+ *   長度加回退回碼數並記一筆異動紀錄；
+ * - 良品但條碼遺失（登記時未填條碼）：比照分割拆捲的接續流水號規則產生全新條碼，該次退回視為新的入庫事件；
+ * - 瑕疵：轉為瑕疵／報廢，不可再被任何訂單挑選（無原條碼者不進庫，僅留紀錄）。
+ */
+export function reviewReturnedRoll(
+  id: string,
+  index: number,
+  verdict: '良品' | '瑕疵',
+  note?: string,
+): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  const rolls = [...(notice.returnedRolls ?? [])]
+  const returned = rolls[index]
+  if (!returned) throw new Error('找不到該筆退回布卷紀錄')
+  if (returned.verdict !== '待複核') throw new Error('該筆退回布卷已複核完成')
+
+  const now = dayjs().toISOString()
+  let newRollCode: string | undefined
+
+  if (verdict === '良品') {
+    if (returned.rollCode) {
+      const labelIdx = fabricLabels.findIndex((l) => l.rollCode === returned.rollCode)
+      if (labelIdx === -1) throw new Error(`布卷條碼 ${returned.rollCode} 不存在`)
+      const label = fabricLabels[labelIdx]
+      if (label.status === '瑕疵／報廢') throw new Error('已標記為瑕疵／報廢的布卷不可復活')
+      if (label.status === '已終止') throw new Error('已分割終止的布卷不可復活，請改以遺失條碼方式新建')
+      const afterLength = Number((label.length + returned.yard).toFixed(2))
+      fabricLabels[labelIdx] = {
+        ...label,
+        length: afterLength,
+        status: '已建立',
+        lengthHistory: [
+          ...(label.lengthHistory ?? []),
+          { at: now, beforeLength: label.length, afterLength, reason: `退貨複核良品復活（${notice.id}）` },
+        ],
+      }
+    } else {
+      // 條碼遺失：改開新條碼，流水號接續同一胚布編號目前的最大號
+      const sample = fabricLabels.find(
+        (l) => (notice.productId && l.productId === notice.productId) || l.productName === notice.productName,
+      )
+      const prefix = sample ? rollCodePrefixAndSeq(sample.rollCode).prefix : `RTN${dayjs().format('YYMMDD')}`
+      const maxSeq = fabricLabels
+        .filter((l) => rollCodePrefixAndSeq(l.rollCode).prefix === prefix)
+        .reduce((max, l) => Math.max(max, rollCodePrefixAndSeq(l.rollCode).seq), 0)
+      newRollCode = `${prefix}-${pad(maxSeq + 1, 2)}`
+      fabricLabels.unshift({
+        id: `${notice.id}-R${index + 1}`,
+        receiptId: notice.id,
+        rollCode: newRollCode,
+        productName: notice.productName,
+        productId: notice.productId ?? sample?.productId,
+        composition: sample?.composition,
+        color: notice.color,
+        width: sample?.width ?? 0,
+        length: returned.yard,
+        unit: 'Yard',
+        status: '已建立',
+        lengthHistory: [
+          { at: now, beforeLength: 0, afterLength: returned.yard, reason: `退貨良品新建條碼（${notice.id}）` },
+        ],
+      })
+    }
+  } else if (returned.rollCode) {
+    const labelIdx = fabricLabels.findIndex((l) => l.rollCode === returned.rollCode)
+    if (labelIdx !== -1 && fabricLabels[labelIdx].status !== '瑕疵／報廢') {
+      fabricLabels[labelIdx] = {
+        ...fabricLabels[labelIdx],
+        status: '瑕疵／報廢',
+        defectedAt: now,
+        defectNote: note?.trim() || `退貨複核判定瑕疵（${notice.id}）`,
+      }
+    }
+  }
+
+  rolls[index] = { ...returned, verdict, reviewedAt: now, newRollCode, note: note?.trim() || undefined }
+  abnormalNotices[idx] = { ...notice, returnedRolls: rolls }
+  return delay(abnormalNotices[idx])
+}
+
+/**
+ * 補貨換貨：不另開「換貨單」，改以「本單＋新出貨單」兩個獨立動作完成，
+ * 新出貨單記錄來源表9單號供追溯換貨事件的完整脈絡。
+ */
+export function createReplacementShippingOrder(id: string): Promise<ShippingOrder> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  const replacement = notice.handling.replacement
+  if (!replacement) throw new Error('本單未勾選「補貨換貨」處理方式')
+  if (replacement.shippingOrderId) throw new Error(`已建立換貨出貨單 ${replacement.shippingOrderId}`)
+  const source = notice.shippingOrderId ? shippingOrders.find((s) => s.id === notice.shippingOrderId) : undefined
+  if (!source) throw new Error('找不到原出貨單，無法建立換貨出貨單')
+
+  const existingForParent = shippingOrders.filter((s) => s.parentId === source.parentId).length
+  const warehouseAccount = accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]
+  const order: ShippingOrder = {
+    id: `${source.parentId}-S${existingForParent + 1}`,
+    parentId: source.parentId,
+    customerId: source.customerId,
+    status: '草稿',
+    shipDate: dayjs().toISOString(),
+    isSampleOrder: false,
+    items: [
+      {
+        customerProductName: source.items[0]?.customerProductName,
+        roricaProductName: notice.productName,
+        color: notice.color,
+        rollCodes: [],
+        yard: replacement.yard,
+        meter: Number(yardToMeter(replacement.yard).toFixed(1)),
+        note: `換貨補出（來源 ${notice.id}）`,
+      },
+    ],
+    operatorAccountId: warehouseAccount.id,
+    sourceAbnormalId: notice.id,
+  }
+  shippingOrders.unshift(order)
+  abnormalNotices[idx] = {
+    ...notice,
+    handling: { ...notice.handling, replacement: { ...replacement, shippingOrderId: order.id } },
+  }
+  return delay(order)
+}
+
+/** 三條處理路徑全部完成，表9才可結案（逾 12 個月未結案僅提醒追蹤，不阻擋結案） */
+export function completeAbnormalNotice(id: string): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  if (notice.status !== '處理中') throw new Error('僅「處理中」的異常通知單可結案')
+  const pending = pendingAbnormalHandlings(notice)
+  if (pending.length > 0) throw new Error(`尚有處理方式未完成：${pending.join('；')}`)
+  abnormalNotices[idx] = { ...notice, status: '已完成', completedAt: dayjs().toISOString() }
+  return delay(abnormalNotices[idx])
 }

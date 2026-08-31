@@ -21,6 +21,9 @@ import { FabricLabelDetailPage } from '@/features/fabric-label/FabricLabelDetail
 import { ShippingOrderListPage } from '@/features/shipping-order/ShippingOrderListPage'
 import { ShippingOrderDetailPage } from '@/features/shipping-order/ShippingOrderDetailPage'
 import { ShippingOrderFormPage } from '@/features/shipping-order/ShippingOrderFormPage'
+import { AbnormalNoticeListPage } from '@/features/abnormal-notice/AbnormalNoticeListPage'
+import { AbnormalNoticeDetailPage } from '@/features/abnormal-notice/AbnormalNoticeDetailPage'
+import { AbnormalNoticeFormPage } from '@/features/abnormal-notice/AbnormalNoticeFormPage'
 import { SecondaryProcessingListPage } from '@/features/secondary-processing/SecondaryProcessingListPage'
 import { SecondaryProcessingFormPage } from '@/features/secondary-processing/SecondaryProcessingFormPage'
 import { SecondaryProcessingDetailPage } from '@/features/secondary-processing/SecondaryProcessingDetailPage'
@@ -70,6 +73,10 @@ export default function App() {
         <Route path="/secondary-processing" element={<SecondaryProcessingListPage />} />
         <Route path="/secondary-processing/new" element={<SecondaryProcessingFormPage />} />
         <Route path="/secondary-processing/:id" element={<SecondaryProcessingDetailPage />} />
+
+        <Route path="/abnormal-notice" element={<AbnormalNoticeListPage />} />
+        <Route path="/abnormal-notice/new" element={<AbnormalNoticeFormPage />} />
+        <Route path="/abnormal-notice/:id" element={<AbnormalNoticeDetailPage />} />
 
         <Route path="/masters/customers" element={<CustomerListPage />} />
         <Route path="/masters/customers/:id" element={<CustomerDetailPage />} />

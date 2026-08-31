@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
+  AlertTriangle,
   Boxes,
   Home,
   Layers,
@@ -25,6 +26,7 @@ const documentNav = [
   { to: '/secondary-processing', label: '表5 二次加工單', icon: Scissors },
   { to: '/goods-receipt', label: '表6 入庫單', icon: PackageCheck },
   { to: '/shipping-order', label: '表8 出貨單', icon: Send },
+  { to: '/abnormal-notice', label: '表9 異常通知單', icon: AlertTriangle },
 ]
 
 const masterNav = [

@@ -1,4 +1,5 @@
 import {
+  abnormalNotices,
   accounts,
   customers,
   dyeOrders,
@@ -29,6 +30,7 @@ export const api = {
   goodsReceipts: () => delay(goodsReceipts),
   fabricLabels: () => delay(fabricLabels),
   shippingOrders: () => delay(shippingOrders),
+  abnormalNotices: () => delay(abnormalNotices),
   stockReservations: () => delay(stockReservations),
   splicingSuggestions: () => delay(splicingSuggestions),
   customers: () => delay(customers),

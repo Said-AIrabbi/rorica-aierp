@@ -2,6 +2,7 @@ import dayjs from 'dayjs'
 import { addWorkdays } from '@/lib/dates'
 import { meterToYard } from '@/lib/units'
 import type {
+  AbnormalNotice,
   DyeOrder,
   GoodsReceipt,
   PackingNotice,
@@ -178,4 +179,57 @@ export function buildSecondaryProcessingPackaging(notice: PackingNotice): Second
     edgeCut: notice.edgeCut,
     allowSplicing: notice.allowSplicing,
   }
+}
+
+// ---------- 表9 異常通知單 ----------
+
+/** 客戶簽收後幾個月內可提出客訴，逾期不受理 */
+export const ABNORMAL_CLAIM_MONTHS = 6
+
+/** 客訴成案（表9受理）後須於幾個月內結案；逾期視為異常需另行追蹤，但不強制擋單 */
+export const ABNORMAL_CLOSE_MONTHS = 12
+
+/** 客訴受理期限：自原出貨（簽收）日起算 6 個月 */
+export function abnormalClaimDeadline(shipDate: string): dayjs.Dayjs {
+  return dayjs(shipDate).add(ABNORMAL_CLAIM_MONTHS, 'month')
+}
+
+/**
+ * 是否仍在可受理客訴的期間內。無出貨日期者（如皇加自行發現的上游追討附單）不受此限，
+ * 因為 6 個月是自「客戶簽收」起算，沒有簽收就沒有起算點。
+ */
+export function isWithinAbnormalClaimWindow(shipDate: string | undefined, at: string | Date = new Date()): boolean {
+  if (!shipDate) return true
+  return !dayjs(at).isAfter(abnormalClaimDeadline(shipDate))
+}
+
+/** 結案期限：自受理日起算 12 個月 */
+export function abnormalCloseDeadline(createdAt: string): dayjs.Dayjs {
+  return dayjs(createdAt).add(ABNORMAL_CLOSE_MONTHS, 'month')
+}
+
+/** 已成案但逾 12 個月仍未結案：畫面標示提醒追蹤原因，不阻擋操作 */
+export function isAbnormalCloseOverdue(notice: Pick<AbnormalNotice, 'status' | 'createdAt'>): boolean {
+  if (notice.status === '已完成') return false
+  return dayjs().isAfter(abnormalCloseDeadline(notice.createdAt))
+}
+
+/**
+ * 表9是否具備結案條件：所有「已勾選」的處理方式皆執行完畢才算已完成（PRD 決策73）。
+ * 回傳尚未完成的項目描述，空陣列即代表可結案。
+ */
+export function pendingAbnormalHandlings(notice: AbnormalNotice): string[] {
+  const pending: string[] = []
+  const { returnGoods, deduction, replacement, other } = notice.handling
+  if (returnGoods) {
+    const rolls = notice.returnedRolls ?? []
+    if (rolls.length === 0) pending.push('退貨：尚未登記退回布卷')
+    else if (rolls.some((r) => r.verdict === '待複核')) pending.push('退貨：仍有布卷待人工複核判定良品／瑕疵')
+  }
+  if (deduction && (deduction.amount == null || !deduction.upstreamVendorId)) {
+    pending.push('扣款不退貨：需填寫扣款金額與向廠商申請對象')
+  }
+  if (replacement && !replacement.shippingOrderId) pending.push('補貨換貨：尚未建立關聯的新出貨單')
+  if (other && !other.note.trim()) pending.push('其他補償：需填寫說明')
+  return pending
 }

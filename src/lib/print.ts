@@ -24,6 +24,8 @@ export const PRINT_TITLES = {
   fabricLabel: { formCode: '表7', title: '布疋條碼標籤' },
   shippingOrder: { formCode: '表8', title: '出貨單' },
   shippingSample: { formCode: '表8', title: '樣品單' },
+  abnormalNotice: { formCode: '表9', title: '異常通知單' },
+  upstreamClaim: { formCode: '表9 附單', title: '上游追討附單' },
   // 表1嘜頭：客戶尚未提供實際版面格式，待提供後再建立對應列印版面
 } as const
 
@@ -32,6 +34,12 @@ export const SHIPPING_SIGNATURE_LABELS = ['處理人', '倉管', '出貨', '業�
 
 /** 對外單據（送廠商簽回）的簽名欄：皇加承辦與廠商簽回各一 */
 export const VENDOR_SIGNATURE_LABELS = ['皇加承辦', '皇加主管', '廠商簽回（簽名／蓋章）'] as const
+
+/**
+ * 表9 異常通知單／其附單的簽核欄：四欄比照紙本。
+ * 「主管」即董事長；三個簽名欄實際為列印後手簽，系統上不輸入（生管回覆例外，為系統文字欄位）。
+ */
+export const ABNORMAL_SIGNATURE_LABELS = ['生管回覆', '主管簽名（董事長）', '業務簽名', '會計簽名'] as const
 
 /** 空值於紙本一律印為底線留白，避免印出「-」讓廠商誤以為是資料 */
 export function printValue(value: string | number | undefined | null, blank = ' '): string {

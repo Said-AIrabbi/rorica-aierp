@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
+  AlertTriangle,
   Info,
   Layers,
   Palette,
@@ -185,6 +186,16 @@ export function HomePage() {
           description="有庫存路徑或無庫存待入庫路徑，確認後觸發拆庫存"
           icon={Send}
           query={api.shippingOrders}
+          getStatus={(item) => item.status}
+        />
+        <DocCard
+          to="/abnormal-notice"
+          queryKey="abnormalNotices"
+          formCode="表9"
+          title="異常通知單"
+          description="客訴退貨／扣款／換貨，處理方式可複選；含上游追討附單"
+          icon={AlertTriangle}
+          query={api.abnormalNotices}
           getStatus={(item) => item.status}
         />
       </div>

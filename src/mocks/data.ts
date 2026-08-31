@@ -4,6 +4,7 @@ import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
 import { reservationExpiresAt } from '@/lib/inventory'
 import { buildSecondaryProcessingPackaging, defaultRollYard } from '@/lib/workflow'
 import type {
+  AbnormalNotice,
   Account,
   Customer,
   DyeOrder,
@@ -512,13 +513,25 @@ type GoodsReceiptRollConfidence = GoodsReceipt['rolls'][number]['ocrConfidence']
 
 const LABEL_STATUSES: FabricLabel['status'][] = ['已建立', '已使用', '已完成']
 
+/**
+ * 條碼流水號：格式為「胚布編號＋流水號」，同一個胚布編號的流水號必須全檔連續且唯一——
+ * 條碼是布卷的身分，出貨扣帳、退貨復活、瑕疵標記全部以條碼解析布卷，
+ * 若不同入庫單各自從 01 起編就會撞號，扣到別人的庫存。
+ */
+const rollSeqByPrefix = new Map<string, number>()
+function nextRollCode(prefix: string): string {
+  const seq = (rollSeqByPrefix.get(prefix) ?? 0) + 1
+  rollSeqByPrefix.set(prefix, seq)
+  return `${prefix}-${pad(seq, 2)}`
+}
+
 export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) =>
   gr.rolls.map((roll, i) => {
     const product = faker.helpers.arrayElement(products)
     return {
       id: `${gr.id}-L${roll.rollNo}`,
       receiptId: gr.id,
-      rollCode: `${product.greigeFabricCode}-${pad(Number(roll.rollNo) || i + 1, 2)}`,
+      rollCode: nextRollCode(product.greigeFabricCode ?? 'T0000000'),
       productName: product.productName,
       productId: product.id,
       composition: product.material,
@@ -683,6 +696,133 @@ goodsReceipts.forEach((receipt, i) => {
 // 將目前這次瀏覽分頁的異動快照存入 sessionStorage（分頁關閉即自動清除，
 // 不影響其他分頁或下次開啟時的預設模擬資料），頁面重新整理時優先還原此快照。
 
+
+// ---------- 表9 異常通知單（客訴／退貨，PRD 補充文件 2026/08/31） ----------
+// 客訴分兩條路徑：①不退貨（依異常程度向廠商申請扣款）②退貨（退貨＋運費＋退款）；
+// 處理方式為可複選，故種子資料刻意做一筆「同時退貨＋補貨換貨」的單，對應紙本範例 M-202602。
+
+const abnormalSourceOrders = shippingOrders.filter((so) => so.status === '已完成' && so.items.length > 0).slice(0, 2)
+
+/** 同批未出貨庫存亦有異常時連動標記的條碼：挑未被預留占用的可用捲，避免與庫存預留種子資料打架 */
+const reservedRollCodes = new Set(stockReservations.flatMap((r) => r.rollCodes))
+const batchDefectLabels = fabricLabels
+  .filter((l) => l.status === '已建立' && !reservedRollCodes.has(l.rollCode))
+  .slice(0, 3)
+
+const salesAccountId = (accounts.find((a) => a.roles.includes('業務')) ?? accounts[0]).id
+
+/** 追溯鍵：有染單走生產編號（→表4），純採購沒有生產編號，改以訂購單（→表2）為追溯鍵 */
+function abnormalTraceKeys(parentId: string): Pick<AbnormalNotice, 'productionCode' | 'dyeOrderId' | 'purchaseOrderId'> {
+  const dyeOrder = dyeOrders.find((d) => d.parentId === parentId)
+  if (dyeOrder) {
+    return { productionCode: `J${dayjs(dyeOrder.effectiveAt ?? dyeOrder.dueDate).format('YYMMDD')}C`, dyeOrderId: dyeOrder.id }
+  }
+  return { purchaseOrderId: purchaseOrders.find((po) => po.parentId === parentId)?.id }
+}
+
+export const abnormalNotices: AbnormalNotice[] = abnormalSourceOrders.flatMap((so, i) => {
+  const item = so.items[0]
+  const noticeDate = dayjs(so.shipDate).add(20 + i * 5, 'day')
+  const id = `AB-${noticeDate.format('YYYYMMDD')}-${pad(i + 1)}`
+  const shippedQty = item.yard
+  const trace = abnormalTraceKeys(so.parentId)
+  const base = {
+    id,
+    kind: '客訴異常' as const,
+    createdAt: noticeDate.toISOString(),
+    noticeDate: noticeDate.toISOString(),
+    createdByAccountId: salesAccountId,
+    customerId: so.customerId,
+    ...trace,
+    shippingOrderId: so.id,
+    shipDate: so.shipDate,
+    productName: item.roricaProductName ?? '',
+    color: item.color ?? '',
+    shippedQty,
+    unit: 'Yard' as const,
+  }
+
+  if (i === 0) {
+    // 紙本範例情境：同一張異常單同時處理「退貨」與「額外補償出貨」
+    const returnYard = Number((shippedQty * 0.6).toFixed(1))
+    const notice: AbnormalNotice = {
+      ...base,
+      status: '處理中',
+      abnormalQty: returnYard,
+      categoryName: '手感問題',
+      categoryItem: '太軟',
+      issueNote: `${dayjs(so.shipDate).format('M/D')} 安排出貨 ${shippedQty} 碼，客戶反映手感不對太軟。`,
+      handling: {
+        returnGoods: { yard: returnYard, feeEstimate: 'NT 9,000~10,000' },
+        replacement: { yard: Number((shippedQty * 0.2).toFixed(1)), freightEstimate: 'NT 3,000~4,000（空運）' },
+      },
+      batchDefectRollCodes: batchDefectLabels.map((l) => l.rollCode),
+      returnedRolls: [
+        { rollCode: item.rollCodes[0], yard: returnYard, verdict: '待複核' },
+      ],
+      productionReply: '已請染整廠回覆手感異常原因，退回布另行複核良品／瑕疵。',
+      processedAt: noticeDate.add(2, 'day').toISOString(),
+    }
+    return [notice]
+  }
+
+  const notice: AbnormalNotice = {
+    ...base,
+    status: '已完成',
+    abnormalQty: Number((shippedQty * 0.15).toFixed(1)),
+    categoryName: '顏色問題',
+    categoryItem: '色差',
+    issueNote: '客戶反映左右色差，僅部分異常，協議不退貨改為折讓扣款。',
+    handling: {
+      deduction: {
+        amount: 12000,
+        upstreamVendorId: (vendors.find((v) => v.types.includes('染整廠')) ?? vendors[0]).id,
+      },
+    },
+    batchDefectRollCodes: [],
+    productionReply: '已依異常程度與染整廠議定扣款金額。',
+    processedAt: noticeDate.add(1, 'day').toISOString(),
+    completedAt: noticeDate.add(10, 'day').toISOString(),
+  }
+  return [notice]
+})
+
+// 上游追討附單：客訴後回頭向染整廠追討，掛在該張表9底下（欄位暫時與表9相同）
+if (abnormalNotices.length > 0) {
+  const parent = abnormalNotices[0]
+  abnormalNotices.push({
+    ...parent,
+    id: `${parent.id}-U1`,
+    kind: '上游追討',
+    parentAbnormalId: parent.id,
+    status: '受理中',
+    createdAt: dayjs(parent.createdAt).add(3, 'day').toISOString(),
+    noticeDate: dayjs(parent.noticeDate).add(3, 'day').toISOString(),
+    handling: {
+      deduction: { upstreamVendorId: (vendors.find((v) => v.types.includes('染整廠')) ?? vendors[0]).id },
+    },
+    batchDefectRollCodes: [],
+    returnedRolls: undefined,
+    productionReply: undefined,
+    processedAt: undefined,
+    completedAt: undefined,
+    issueNote: '客戶客訴手感異常，回頭向染整廠追討加工費與退款。',
+  })
+}
+
+// 種子資料中已連動標記的同批條碼：狀態同步為瑕疵／報廢，否則庫存查詢仍會把它們算成可用
+batchDefectLabels.forEach((label) => {
+  const idx = fabricLabels.findIndex((l) => l.id === label.id)
+  if (idx !== -1) {
+    fabricLabels[idx] = {
+      ...fabricLabels[idx],
+      status: '瑕疵／報廢',
+      defectedAt: abnormalNotices[0]?.noticeDate,
+      defectNote: `同批庫存連動標記（${abnormalNotices[0]?.id ?? ''}）`,
+    }
+  }
+})
+
 const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v1'
 
 interface SessionSnapshot {
@@ -693,6 +833,7 @@ interface SessionSnapshot {
   goodsReceipts: GoodsReceipt[]
   fabricLabels: FabricLabel[]
   shippingOrders: ShippingOrder[]
+  abnormalNotices: AbnormalNotice[]
   secondaryProcessingOrders: SecondaryProcessingOrder[]
   stockReservations: StockReservation[]
   splicingSuggestions: SplicingSuggestion[]
@@ -713,6 +854,7 @@ export function persistSessionSnapshot(): void {
       goodsReceipts,
       fabricLabels,
       shippingOrders,
+      abnormalNotices,
       secondaryProcessingOrders,
       stockReservations,
       splicingSuggestions,
@@ -739,6 +881,8 @@ function restoreSessionSnapshot(): void {
     goodsReceipts.splice(0, goodsReceipts.length, ...snapshot.goodsReceipts)
     fabricLabels.splice(0, fabricLabels.length, ...snapshot.fabricLabels)
     shippingOrders.splice(0, shippingOrders.length, ...snapshot.shippingOrders)
+    // 表9為後續新增的快照欄位，舊快照沒有時沿用種子資料
+    if (snapshot.abnormalNotices) abnormalNotices.splice(0, abnormalNotices.length, ...snapshot.abnormalNotices)
     if (snapshot.secondaryProcessingOrders)
       secondaryProcessingOrders.splice(0, secondaryProcessingOrders.length, ...snapshot.secondaryProcessingOrders)
     stockReservations.splice(0, stockReservations.length, ...snapshot.stockReservations)
