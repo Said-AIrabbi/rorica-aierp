@@ -62,6 +62,8 @@ export function AbnormalNoticeFormPage() {
   const item = source?.items[Number(values.shippingOrderItemIndex) || 0]
   const customer = source ? getCustomer(source.customerId) : undefined
   const withinWindow = isWithinAbnormalClaimWindow(source?.shipDate)
+  // 異常數量上限為原出貨數量（可等於）：即時擋在畫面上，不必等送出才由 mutation 丟錯
+  const exceedsShipped = !!item && Number(values.abnormalQty) > item.yard
   const categoryItems =
     ABNORMAL_CATEGORIES.find((c) => c.name === values.categoryName)?.items ?? ([] as readonly string[])
 
@@ -180,9 +182,24 @@ export function AbnormalNoticeFormPage() {
                 <Input value={item ? `${formatNumber(item.yard, 1)} Y` : ''} disabled placeholder="-" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-destructive">異常數量（Y，可小於出貨數量＝部分退）</Label>
-                <Input type="number" step="0.1" className="border-destructive/50" {...register('abnormalQty')} />
+                <Label className="text-destructive">
+                  異常數量（Y，可小於出貨數量＝部分退，最多等於出貨數量）
+                </Label>
+                {/* 上限為原出貨數量：退貨依實際碼數處理，退回的碼數不可能多於當初出的貨 */}
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max={item?.yard}
+                  className="border-destructive/50"
+                  {...register('abnormalQty')}
+                />
                 {errors.abnormalQty && <p className="text-xs text-destructive">{errors.abnormalQty.message}</p>}
+                {exceedsShipped && (
+                  <p className="text-xs text-destructive">
+                    異常數量不可大於原出貨數量 {formatNumber(item!.yard, 1)} Y（最多等於）
+                  </p>
+                )}
               </div>
             </div>
 
@@ -337,7 +354,11 @@ export function AbnormalNoticeFormPage() {
           <Button type="button" variant="outline" onClick={() => navigate('/abnormal-notice')}>
             取消
           </Button>
-          <Button type="submit" className="bg-brand hover:bg-brand-dark" disabled={mutation.isPending}>
+          <Button
+            type="submit"
+            className="bg-brand hover:bg-brand-dark"
+            disabled={mutation.isPending || exceedsShipped || (values.kind === '客訴異常' && !!source && !withinWindow)}
+          >
             {mutation.isPending ? '建立中...' : '受理並建立'}
           </Button>
         </div>
