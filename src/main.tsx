@@ -22,7 +22,8 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <HashRouter>
         <App />
-        <Toaster />
+        {/* closeButton：提示訊息右上角顯示「×」，可在自動消失前手動關閉（擋住畫面時不必等） */}
+        <Toaster closeButton />
       </HashRouter>
     </QueryClientProvider>
   </StrictMode>,
