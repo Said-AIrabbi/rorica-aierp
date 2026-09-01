@@ -17,13 +17,7 @@ const columns: PrintColumn<ShippingOrderItem>[] = [
   },
   { header: '數量 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '18mm' },
   { header: '(M)', cell: (r) => formatNumber(r.meter, 1), align: 'right', width: '16mm' },
-  { header: '售價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
-  {
-    header: '金額',
-    cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice * r.yard, 0)),
-    align: 'right',
-    width: '20mm',
-  },
+  // 售價與金額不列印：本單隨貨交付客戶，價格資訊不隨貨外流，僅保留於系統畫面
   { header: '備註', cell: (r) => r.note ?? ' ' },
 ]
 
@@ -36,7 +30,6 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
   const customer = getCustomer(order.customerId)
   const operator = order.operatorAccountId ? getAccount(order.operatorAccountId) : undefined
   const title = order.isSampleOrder ? PRINT_TITLES.shippingSample : PRINT_TITLES.shippingOrder
-  const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
 
   const meta: PrintMetaItem[] = [
     { label: '出貨單號', value: order.id },
@@ -73,8 +66,6 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
             null,
             formatNumber(order.items.reduce((s, i) => s + i.yard, 0), 1),
             formatNumber(order.items.reduce((s, i) => s + i.meter, 0), 1),
-            null,
-            amount > 0 ? formatNumber(amount, 0) : null,
             null,
           ]}
         />
