@@ -12,7 +12,6 @@ import {
   ScrollText,
   Send,
   ShoppingCart,
-  Tags,
   Users,
   Warehouse,
 } from 'lucide-react'
@@ -34,9 +33,9 @@ const masterNav = [
   { to: '/masters/products', label: '產品主檔', icon: Package },
   { to: '/masters/vendors', label: '廠商主檔', icon: Boxes },
   { to: '/masters/accounts', label: '帳戶主檔', icon: PackageSearch },
-  // 表7非系統畫面／表單，而是列印在標籤紙上的實體標籤；系統這一頁管的是標籤背後的布卷資料，
-  // 依 PRD 第四章第 5 節列為第五張主檔（見 PRD 決策 61-1）
-  { to: '/fabric-label', label: '布卷資料主檔', icon: Tags },
+  // 布卷資料在「資料層」仍是獨立的第五張主檔（PRD 決策 61-1），但「UI 層」併入商品主檔：
+  // 使用者先在商品列表看到商品，點進商品詳細頁才看到該分支底下的每一捲布，
+  // 故此處不另列一項，避免同一份資料出現兩個入口。/fabric-label 路由保留供既有連結與單捲操作使用。
 ]
 
 function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Home }) {

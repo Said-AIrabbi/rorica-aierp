@@ -169,11 +169,11 @@ export function HomePage() {
           getStatus={(item) => item.status}
         />
         <DocCard
-          to="/fabric-label"
+          to="/masters/products"
           queryKey="fabricLabels"
           formCode="表7"
           title="布卷條碼標籤"
-          description="入庫時並行產生，貼於布捲上，非獨立系統頁面"
+          description="入庫時並行產生、貼於布捲上；布卷資料併入商品主檔，點入商品即可檢視該分支所有布卷"
           icon={Tags}
           query={api.fabricLabels}
           getStatus={(item) => item.status}
