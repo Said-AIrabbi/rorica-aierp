@@ -16,13 +16,27 @@ export function toleranceText(notice: PackingNotice): string {
   return notice.tolerance.mode === '其他' ? `其他：${notice.tolerance.customText || ''}` : notice.tolerance.mode
 }
 
-const itemColumns: PrintColumn<PackingNoticeItem>[] = [
+/**
+ * 明細欄位：數量以建單時的輸入基準為主值，另一單位標為換算值（≈）——
+ * 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的。
+ */
+const buildItemColumns = (unit: 'Yard' | 'Meter'): PrintColumn<PackingNoticeItem>[] => [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
   { header: '客戶品名', cell: (r) => r.customerProductName },
   { header: '皇加品名', cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}` },
   { header: '顏色', cell: (r) => r.color },
-  { header: '商品總數 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '20mm' },
-  { header: '(M)', cell: (r) => formatNumber(r.meter, 1), align: 'right', width: '18mm' },
+  {
+    header: unit === 'Yard' ? '商品總數 (Y)' : '商品總數 (M)',
+    cell: (r) => formatNumber(unit === 'Yard' ? r.yard : r.meter, 1),
+    align: 'right',
+    width: '20mm',
+  },
+  {
+    header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
+    cell: (r) => formatNumber(unit === 'Yard' ? r.meter : r.yard, 1),
+    align: 'right',
+    width: '18mm',
+  },
   {
     header: '包裝方式',
     cell: (r) => (
@@ -54,6 +68,8 @@ const itemColumns: PrintColumn<PackingNoticeItem>[] = [
  */
 export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
   const customer = getCustomer(notice.customerId)
+  // 建單時的數量輸入基準；舊資料未記錄者視為 Yard
+  const itemUnit = notice.itemUnit ?? 'Yard'
   const meta: PrintMetaItem[] = [
     { label: '客戶代號', value: customer?.code ?? notice.customerId },
     { label: '客戶簡稱', value: customer?.shortName ?? ' ' },
@@ -63,6 +79,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
     { label: '出貨日期', value: formatDate(notice.expectedDeliveryAt) },
     { label: '狀態', value: notice.status },
     { label: '可接疋', value: notice.allowSplicing ? '可接疋' : '不可接疋' },
+    { label: '數量輸入基準', value: `${itemUnit}（另一單位為換算值）` },
   ]
 
   const totalYard = notice.items.reduce((sum, i) => sum + i.yard, 0)
@@ -80,15 +97,15 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
     >
       <PrintSection title="明細">
         <PrintTable
-          columns={itemColumns}
+          columns={buildItemColumns(itemUnit)}
           rows={notice.items}
           totalRow={[
             '合計',
             null,
             null,
             null,
-            formatNumber(totalYard, 1),
-            formatNumber(totalMeter, 1),
+            formatNumber(itemUnit === 'Yard' ? totalYard : totalMeter, 1),
+            formatNumber(itemUnit === 'Yard' ? totalMeter : totalYard, 1),
             null,
             null,
             null,

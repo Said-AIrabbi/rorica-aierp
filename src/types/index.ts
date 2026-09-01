@@ -251,6 +251,13 @@ export interface PackingNotice {
   /** 生產數量容許誤差：±5%／±10%，或其他並附文字說明 */
   tolerance: PackingNoticeTolerance
   items: PackingNoticeItem[]
+  /**
+   * 明細數量的輸入單位基準：建單時 Yard／Meter 切換一次即套用到整個明細區塊。
+   * 資料一律以 Yard 存放商品總數（meter 為換算值），此欄只記錄「當初是以哪個單位下單」——
+   * 沒有這個欄位，存檔後畫面上 Yard 與 Meter 兩欄並列，就看不出哪一個是客戶實際下的數字、
+   * 哪一個是系統換算出來的。舊資料未記錄者視為 Yard。
+   */
+  itemUnit?: 'Yard' | 'Meter'
   /** 接疋規則：訂單層級可調整欄位，預設「不可」，依客戶偏好決定 */
   allowSplicing: boolean
   marking: PackingNoticeMarking

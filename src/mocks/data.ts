@@ -282,6 +282,8 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
         : { mode: faker.helpers.arrayElement(['±5%', '±10%'] as const) },
     items,
     // 接疋規則：訂單層級可調整欄位，預設「不可」，客戶通常會希望不接疋
+    // 數量輸入基準：實務上多數客戶以碼下單，少數以米，種子資料兩種都給，方便看出畫面呈現差異
+    itemUnit: i % 4 === 0 ? 'Meter' : 'Yard',
     allowSplicing: faker.datatype.boolean({ probability: 0.2 }),
     marking: {
       shape: faker.helpers.arrayElement(MARKING_SHAPES),

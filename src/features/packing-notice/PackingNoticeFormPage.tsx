@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -150,6 +150,10 @@ export function PackingNoticeFormPage() {
    * 此處僅切換輸入與顯示的單位，切換時即時換算既有數值。
    */
   const [itemUnit, setItemUnit] = useState<'Yard' | 'Meter'>('Yard')
+  // 編輯既有單據時，以當初建單的基準開啟，避免以 Yard 顯示一張當初用 Meter 下的單
+  useEffect(() => {
+    if (existing?.itemUnit) setItemUnit(existing.itemUnit)
+  }, [existing?.itemUnit])
   // 輸入過程中保留使用者原始鍵入的字串，避免換算後的小數位在打字途中被四捨五入回寫
   const [qtyDraft, setQtyDraft] = useState<Record<number, string>>({})
   const [fixedDraft, setFixedDraft] = useState<Record<number, string>>({})
@@ -237,6 +241,7 @@ export function PackingNoticeFormPage() {
     mutationFn: async (values: PackingNoticeFormValues) => {
       const payload = {
         ...values,
+        itemUnit,
         expectedDeliveryAt: dayjs(values.expectedDeliveryAt).toISOString(),
         // 燙金非必填：未勾選任何項目時預設為「否」
         embossing: values.embossing.length > 0 ? values.embossing : (['否'] as PackingNoticeFormValues['embossing']),

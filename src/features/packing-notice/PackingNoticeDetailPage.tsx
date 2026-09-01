@@ -88,6 +88,8 @@ export function PackingNoticeDetailPage() {
   }
 
   const customer = getCustomer(notice.customerId)
+  // 建單時的數量輸入基準：畫面以此為主值呈現，另一單位標為換算值；舊資料未記錄者視為 Yard
+  const itemUnit = notice.itemUnit ?? 'Yard'
   const relatedPOs = purchaseOrders.filter((p) => p.parentId === notice.id)
   const relatedDyeRequests = dyeRequests.filter((d) => d.parentId === notice.id)
   const relatedDyeOrders = dyeOrders.filter((d) => d.parentId === notice.id)
@@ -166,6 +168,7 @@ export function PackingNoticeDetailPage() {
               <DetailField label="建立日" value={formatDate(notice.createdAt)} />
               <DetailField label="生效日" value={formatDate(notice.effectiveAt)} />
               <DetailField label="出貨日期" value={formatDate(notice.expectedDeliveryAt)} />
+              <DetailField label="數量輸入基準" value={`${itemUnit}（另一單位為系統換算值）`} />
             </DetailGrid>
           </CardContent>
         </Card>
@@ -199,8 +202,7 @@ export function PackingNoticeDetailPage() {
                   <TableHead>客戶品名</TableHead>
                   <TableHead>皇加品名</TableHead>
                   <TableHead>顏色</TableHead>
-                  <TableHead className="text-right">商品總數 (Yard)</TableHead>
-                  <TableHead className="text-right">米數 (Meter)</TableHead>
+                  <TableHead className="text-right">商品總數 ({itemUnit})</TableHead>
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
                   <TableHead>加工方法</TableHead>
@@ -217,13 +219,32 @@ export function PackingNoticeDetailPage() {
                       <span className="text-muted-foreground">{productBranchSuffix(item.productId)}</span>
                     </TableCell>
                     <TableCell>{item.color}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.yard, 0)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.meter, 1)}</TableCell>
+                    <TableCell className="text-right">
+                      <div>{itemUnit === 'Yard' ? formatNumber(item.yard, 0) : formatNumber(item.meter, 1)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {itemUnit === 'Yard'
+                          ? `≈ ${formatNumber(item.meter, 1)} 米 (Meter)`
+                          : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
+                      </div>
+                    </TableCell>
                     <TableCell>{item.packingMethod}</TableCell>
                     <TableCell className="text-right">
-                      {item.fixedLengthMeter
-                        ? `${formatNumber(item.fixedLengthMeter, 1)}M ／ ${formatNumber(meterToYard(item.fixedLengthMeter), 1)}Y`
-                        : '-'}
+                      {item.fixedLengthMeter ? (
+                        <>
+                          <div>
+                            {itemUnit === 'Meter'
+                              ? `${formatNumber(item.fixedLengthMeter, 1)} M`
+                              : `${formatNumber(meterToYard(item.fixedLengthMeter), 1)} Y`}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {itemUnit === 'Meter'
+                              ? `≈ ${formatNumber(meterToYard(item.fixedLengthMeter), 1)} 碼 (Yard)`
+                              : `≈ ${formatNumber(item.fixedLengthMeter, 1)} 米 (Meter)`}
+                          </div>
+                        </>
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                     <TableCell>
                       {item.processingMethod ? (
