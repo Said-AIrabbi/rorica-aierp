@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -78,6 +78,13 @@ export function ProductDetailPage() {
 
   return (
     <div>
+      <Link
+        to="/masters/products"
+        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-ink"
+      >
+        <ArrowLeft className="h-4 w-4" /> 返回商品主檔
+      </Link>
+
       <PageHeader
         title={`${product.productName}-${product.sortNo}　${product.id}`}
         description="商品資料主檔編輯視窗。產品編號、產品序號、米重（G/M）與歷史色號為系統維護欄位，不開放手動輸入。"
@@ -85,7 +92,7 @@ export function ProductDetailPage() {
           <>
             <Button variant="outline" onClick={() => navigate('/masters/products')}>
               <ArrowLeft className="mr-1 h-4 w-4" />
-              返回列表
+              返回商品主檔
             </Button>
             <Button onClick={() => mutation.mutate()} disabled={!dirty || mutation.isPending}>
               <Save className="mr-1 h-4 w-4" />

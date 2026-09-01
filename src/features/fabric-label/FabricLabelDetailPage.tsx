@@ -75,7 +75,7 @@ export function FabricLabelDetailPage() {
   return (
     <div>
       <Link to="/fabric-label" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-ink print:hidden">
-        <ArrowLeft className="h-4 w-4" /> 返回布卷條碼標籤列表
+        <ArrowLeft className="h-4 w-4" /> 返回布卷資料列表
       </Link>
 
       <PageHeader

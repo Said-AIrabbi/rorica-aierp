@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   AlertTriangle,
   Boxes,
+  Tags,
   Home,
   Layers,
   Package,
@@ -28,28 +29,42 @@ const documentNav = [
   { to: '/abnormal-notice', label: '表9 異常通知單', icon: AlertTriangle },
 ]
 
-const masterNav = [
+interface NavEntry {
+  to: string
+  label: string
+  icon: typeof Home
+  /** 下一階層：從屬於上一層主檔的資料，縮排呈現 */
+  children?: NavEntry[]
+}
+
+const masterNav: NavEntry[] = [
   { to: '/masters/customers', label: '客戶主檔', icon: Users },
-  { to: '/masters/products', label: '產品主檔', icon: Package },
+  {
+    to: '/masters/products',
+    label: '產品主檔',
+    icon: Package,
+    // 布卷資料在資料層是獨立的第五張主檔（PRD 決策 61-1），但從屬於商品分支，
+    // 故 UI 上列為產品主檔的下一階層：由商品點進去看該分支的布卷，也可直接進來跨商品查詢
+    children: [{ to: '/fabric-label', label: '布卷資料', icon: Tags }],
+  },
   { to: '/masters/vendors', label: '廠商主檔', icon: Boxes },
   { to: '/masters/accounts', label: '帳戶主檔', icon: PackageSearch },
-  // 布卷資料在「資料層」仍是獨立的第五張主檔（PRD 決策 61-1），但「UI 層」併入商品主檔：
-  // 使用者先在商品列表看到商品，點進商品詳細頁才看到該分支底下的每一捲布，
-  // 故此處不另列一項，避免同一份資料出現兩個入口。/fabric-label 路由保留供既有連結與單捲操作使用。
 ]
 
-function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Home }) {
+function NavItem({ to, label, icon: Icon, nested = false }: { to: string; label: string; icon: typeof Home; nested?: boolean }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          'flex items-center gap-2.5 rounded-md py-2 font-medium transition-colors',
+          // 下一階層以縮排＋左側細線表示從屬關係，字級略小
+          nested ? 'ml-3 border-l border-border pl-4 pr-3 text-[13px]' : 'px-3 text-sm',
           isActive ? 'bg-brand text-white' : 'text-ink-body hover:bg-muted',
         )
       }
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className={cn('shrink-0', nested ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
       <span className="truncate">{label}</span>
     </NavLink>
   )
@@ -91,7 +106,12 @@ export function Sidebar({ className = '' }: { className?: string }) {
           </div>
           <div className="space-y-0.5">
             {masterNav.map((item) => (
-              <NavItem key={item.to} {...item} />
+              <div key={item.to} className="space-y-0.5">
+                <NavItem to={item.to} label={item.label} icon={item.icon} />
+                {item.children?.map((child) => (
+                  <NavItem key={child.to} to={child.to} label={child.label} icon={child.icon} nested />
+                ))}
+              </div>
             ))}
           </div>
         </div>
