@@ -182,9 +182,7 @@ export function AbnormalNoticeFormPage() {
                 <Input value={item ? `${formatNumber(item.yard, 1)} Y` : ''} disabled placeholder="-" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-destructive">
-                  異常數量（Y，可小於出貨數量＝部分退，最多等於出貨數量）
-                </Label>
+                <Label className="text-destructive">異常數量（Y，可小於出貨數量＝部分退）</Label>
                 {/* 上限為原出貨數量：退貨依實際碼數處理，退回的碼數不可能多於當初出的貨 */}
                 <Input
                   type="number"
@@ -197,7 +195,7 @@ export function AbnormalNoticeFormPage() {
                 {errors.abnormalQty && <p className="text-xs text-destructive">{errors.abnormalQty.message}</p>}
                 {exceedsShipped && (
                   <p className="text-xs text-destructive">
-                    異常數量不可大於原出貨數量 {formatNumber(item!.yard, 1)} Y（最多等於）
+                    異常數量不可大於原出貨數量 {formatNumber(item!.yard, 1)} Y
                   </p>
                 )}
               </div>
