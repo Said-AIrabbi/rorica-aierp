@@ -8,7 +8,7 @@ export const PRINT_COMPANY = {
   nameEn: 'RORICA TEXTILE CO., LTD.',
   taxId: '16784675',
   address: '242 新北市新莊區中央路712號2樓',
-  phone: '02-8995-6568',
+  phone: '02-22968760',
   /** 傳真：皇加確認暫不提供；留空時列印抬頭不印出 FAX 欄位，不留空白佔位 */
   fax: '',
 } as const
