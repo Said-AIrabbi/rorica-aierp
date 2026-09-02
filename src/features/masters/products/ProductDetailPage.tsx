@@ -334,7 +334,7 @@ export function ProductDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-xs text-muted-foreground">
-              查詢鍵為「客戶＋皇加品名＋顏色＋染整廠」四者綁定，非通用色號；換一家染整廠即視為無色號。標示 ⚠ 表示超過12個月未使用，開單時系統會提醒可能需重新複色，非自動擋單。
+              查詢鍵為「客戶＋皇加品名＋顏色＋染整廠」四者綁定，非通用色號；換一家染整廠即視為無色號。標示 ⚠ 表示超過12個月未使用，開單時系統會提醒可能需重新覆色，非自動擋單。
             </p>
             {product.colors.length === 0 ? (
               <p className="text-sm text-muted-foreground">尚無歷史色號紀錄</p>

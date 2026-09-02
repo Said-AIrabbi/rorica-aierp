@@ -6,7 +6,7 @@ export const DEFAULT_LEAD_TIME_DAYS = 14
 /** 建單後自動簽核鎖定天數 */
 export const AUTO_SIGN_LOCK_WORKDAYS = 7
 
-/** 顏色超過幾個月未使用視為「疑似複色」 */
+/** 顏色超過幾個月未使用視為「疑似覆色」 */
 export const COLOR_STALE_MONTHS = 12
 
 export function formatDate(date: string | Date | Dayjs | undefined | null): string {

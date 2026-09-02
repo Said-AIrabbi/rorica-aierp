@@ -629,8 +629,8 @@ function goodsReceiptSourceForPurchaseOrder(type: PurchaseOrder['type']): GoodsR
 /**
  * 依「客戶＋皇加品名（產品分支）＋顏色＋染整廠」查詢歷史色號，回傳結果依三種情境分流：
  * 1) 查得到且12個月內使用過：直接沿用，色樣編號自動帶入。
- * 2) 查得到但超過12個月未使用（「重新複色」情境）：仍沿用舊色號並記錄最後使用日，
- *    由畫面提醒使用者可沿用或自行建立表3重新複色，**不自動開立表3**。
+ * 2) 查得到但超過12個月未使用（「重新覆色」情境）：仍沿用舊色號並記錄最後使用日，
+ *    由畫面提醒使用者可沿用或自行建立表3重新覆色，**不自動開立表3**。
  * 3) 完全查無：自動觸發表3打色通知單委託染整廠打色（平行進行，非開染單前置條件），色樣編號留空，
  *    並回傳該張表3的單號記錄於染單明細，作為色樣編號的來源（表3與染單為1:N）。
  * 色號非通用碼：換一家染整廠即視為無色號，即使顏色相同；同品名的不同規格分支亦各自獨立，
@@ -1042,7 +1042,7 @@ export function updateDyeOrderSampleCodes(id: string, sampleCodeByItem: Record<s
     items: current.items.map((item) => {
       if (!(item.id in sampleCodeByItem)) return item
       const next = sampleCodeByItem[item.id].trim()
-      // 手動改動後即脫離歷史色號沿用關係，一併清除重新複色提醒的依據
+      // 手動改動後即脫離歷史色號沿用關係，一併清除重新覆色提醒的依據
       return next === (item.sampleCode ?? '')
         ? item
         : { ...item, sampleCode: next || undefined, sampleCodeLastUsedAt: undefined }

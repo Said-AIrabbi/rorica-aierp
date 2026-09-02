@@ -9,7 +9,7 @@ import type { Product } from '@/types'
  * 得到的是「有哪些染整廠做過這個顏色」，而非最終結論——故多一種「視染整廠而定」的結果，
  * 不謊稱查得到，也不謊稱一定要打色。表2 指定染整廠後才會有確定答案。
  */
-export type ColorLookupKind = '已有色號' | '疑似複色' | '全新配色' | '視染整廠而定'
+export type ColorLookupKind = '已有色號' | '疑似覆色' | '全新配色' | '視染整廠而定'
 
 export interface ColorLookupResult {
   kind: ColorLookupKind
@@ -82,11 +82,11 @@ export function lookupColorSample(params: {
     }
     if (isColorStale(matched.lastUsedAt)) {
       return {
-        kind: '疑似複色',
+        kind: '疑似覆色',
         sampleCode: matched.sampleCode,
         lastUsedAt: matched.lastUsedAt,
         knownVendorIds: records.map((c) => c.dyeVendorId),
-        message: `色號 ${matched.sampleCode} 查得到，但已逾 ${COLOR_STALE_MONTHS} 個月未使用。系統會沿用舊色號、不自動開表3；如需重新複色請於染單自行建立。`,
+        message: `色號 ${matched.sampleCode} 查得到，但已逾 ${COLOR_STALE_MONTHS} 個月未使用。系統會沿用舊色號、不自動開表3；如需重新覆色請於染單自行建立。`,
       }
     }
     return {
@@ -109,9 +109,9 @@ export function lookupColorSample(params: {
   const fresh = records.filter((c) => !isColorStale(c.lastUsedAt))
   if (fresh.length === 0) {
     return {
-      kind: '疑似複色',
+      kind: '疑似覆色',
       knownVendorIds: records.map((c) => c.dyeVendorId),
-      message: `${records.map((c) => nameOf(c.dyeVendorId)).join('、')} 做過此配色，但都已逾 ${COLOR_STALE_MONTHS} 個月未使用；送這幾家會沿用舊色號（可自行決定是否重新複色），送其他家則需要打色。`,
+      message: `${records.map((c) => nameOf(c.dyeVendorId)).join('、')} 做過此配色，但都已逾 ${COLOR_STALE_MONTHS} 個月未使用；送這幾家會沿用舊色號（可自行決定是否重新覆色），送其他家則需要打色。`,
     }
   }
   return {

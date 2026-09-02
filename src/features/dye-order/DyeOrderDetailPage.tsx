@@ -78,7 +78,7 @@ export function DyeOrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
-  // 重新複色：色號超過12個月未使用時系統僅提醒，由使用者自行決定是否建立表3（非自動開單）
+  // 重新覆色：色號超過12個月未使用時系統僅提醒，由使用者自行決定是否建立表3（非自動開單）
   const recolorMutation = useMutation({
     mutationFn: (input: { colors: string[] }) =>
       createDyeRequest({
@@ -87,7 +87,7 @@ export function DyeOrderDetailPage() {
         productName: order!.productName,
         productId: order!.productId,
         colors: input.colors,
-        note: `色號超過 ${COLOR_STALE_MONTHS} 個月未使用，重新複色（來源染單 ${order!.id}）`,
+        note: `色號超過 ${COLOR_STALE_MONTHS} 個月未使用，重新覆色（來源染單 ${order!.id}）`,
       }),
     onSuccess: async (request) => {
       await queryClient.invalidateQueries({ queryKey: ['dyeRequests'] })
@@ -117,7 +117,7 @@ export function DyeOrderDetailPage() {
     }),
     { pendingDyeQty: 0, inDyeQty: 0, finishedQty: 0 },
   )
-  // 查得到色號但超過12個月未使用＝「重新複色」情境：系統僅提醒，不自動開立表3
+  // 查得到色號但超過12個月未使用＝「重新覆色」情境：系統僅提醒，不自動開立表3
   const staleItems = order.items.filter((item) => isColorStale(item.sampleCodeLastUsedAt))
   // 色樣編號在結案（已完成）前皆可修改，不受表3回填時機限制
   const sampleCodeEditable = order.status !== '已完成'
@@ -195,11 +195,11 @@ export function DyeOrderDetailPage() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="flex-1">
             <p>
-              下列色號查得到歷史紀錄，但已超過 {COLOR_STALE_MONTHS} 個月未使用，屬「重新複色」情境：
+              下列色號查得到歷史紀錄，但已超過 {COLOR_STALE_MONTHS} 個月未使用，屬「重新覆色」情境：
               {staleItems.map((i) => `${i.color}（${i.sampleCode ?? '-'}）`).join('、')}。
             </p>
             <p className="mt-0.5 text-xs">
-              系統已沿用舊色號，未自動開立表3；如需重新複色，請點右側按鈕自行建立打色通知單。
+              系統已沿用舊色號，未自動開立表3；如需重新覆色，請點右側按鈕自行建立打色通知單。
             </p>
           </div>
           <Button
@@ -209,7 +209,7 @@ export function DyeOrderDetailPage() {
             disabled={recolorMutation.isPending}
             onClick={() => recolorMutation.mutate({ colors: staleItems.map((i) => i.color) })}
           >
-            建立表3重新複色
+            建立表3重新覆色
           </Button>
         </div>
       )}

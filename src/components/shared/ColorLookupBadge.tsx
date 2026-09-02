@@ -41,8 +41,8 @@ export function ColorLookupLegend({ withVendor }: { withVendor?: boolean }) {
         <span>查得到且近期使用過，開染單時自動帶入色樣編號，不需要表3。</span>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <StatusBadge status="疑似複色" />
-        <span>查得到但逾 12 個月未使用；系統沿用舊色號、不自動開表3，由生管決定是否重新複色。</span>
+        <StatusBadge status="疑似覆色" />
+        <span>查得到但逾 12 個月未使用；系統沿用舊色號、不自動開表3，由生管決定是否重新覆色。</span>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <StatusBadge status="全新配色" />

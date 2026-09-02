@@ -2,7 +2,7 @@
  * 全系統狀態色彩語意（對齊 README「主 UI 視覺配色」）：
  * - success（橄欖綠）：已完成
  * - warning（赭黃）：待確認 / 進行中待處理
- * - error（磚紅）：駁回 / 異常 / 疑似複色
+ * - error（磚紅）：駁回 / 異常 / 疑似覆色
  * - info（皇加藍）：生效 / 已簽回等「已進入下一階段」
  * - neutral（灰）：草稿等尚未送出的狀態
  */
@@ -54,7 +54,7 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
 
   // 顏色機制提示（表1／表2 的色號查詢結果）
   已有色號: 'success',
-  疑似複色: 'warning',
+  疑似覆色: 'warning',
   全新配色: 'info',
   視染整廠而定: 'neutral',
 
