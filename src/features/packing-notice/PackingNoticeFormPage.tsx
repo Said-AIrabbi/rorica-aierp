@@ -14,7 +14,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { productBranchLabel, resolveProduct } from '@/mocks/data'
+import { productBranchLabel, resolveProduct, vendorDisplayName } from '@/mocks/data'
 import { createPackingNotice, updatePackingNotice } from '@/mocks/mutations'
 import { packingNoticeFormSchema, type PackingNoticeFormValues } from './schema'
 import {
@@ -33,6 +33,8 @@ import {
 import { freezeDate, isPackingNoticeEditable } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
+import { lookupColorSample } from '@/lib/colors'
+import { ColorLookupBadge, ColorLookupLegend } from '@/components/shared/ColorLookupBadge'
 
 function itemErrorMessages(itemErrors: Record<string, unknown> | undefined): string[] {
   if (!itemErrors) return []
@@ -63,6 +65,7 @@ export function PackingNoticeFormPage() {
   const { data: notices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: customers = [] } = useQuery({ queryKey: ['customers'], queryFn: api.customers })
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
+  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const existing = isEdit ? notices.find((n) => n.id === id) : undefined
 
   const {
@@ -201,6 +204,24 @@ export function PackingNoticeFormPage() {
   }
 
   // 皇加品名下拉選項：連結產品主檔；客戶欄位比對得到現有客戶時，優先只顯示該客戶的品項
+  /**
+   * 色號查詢：表1 這個階段還沒指定染整廠（要到表2 才選），故只能以「客戶＋品名＋顏色」三鍵查，
+   * 結果可能是「視染整廠而定」。提前顯示是為了讓業務／生管在建單當下就知道
+   * 這個顏色之後會不會需要開表3 打色，而不是等開染單才發現。
+   */
+  const vendorNameOf = (vendorId: string) => vendorDisplayName(vendors.find((v) => v.id === vendorId))
+  function colorLookupFor(index: number) {
+    const item = itemValues[index]
+    return lookupColorSample({
+      products,
+      customerId: matchedCustomer?.id,
+      productId: item?.productId,
+      productName: item?.roricaProductName,
+      color: item?.color,
+      vendorNameOf,
+    })
+  }
+
   const matchedCustomer = customers.find(
     (c) => c.shortName === customerNameValue?.trim() || c.fullNameCN === customerNameValue?.trim(),
   )
@@ -389,6 +410,7 @@ export function PackingNoticeFormPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {errors.items?.root && <p className="text-xs text-destructive">{errors.items.root.message}</p>}
+            <ColorLookupLegend />
 
             {fields.map((field, index) => (
               <div key={field.id} className="rounded-lg border border-border p-3">
@@ -407,7 +429,7 @@ export function PackingNoticeFormPage() {
                       emptyText="查無品項，可直接使用輸入內容"
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 lg:col-span-2">
                     <Label className="text-xs">顏色</Label>
                     <Combobox
                       value={itemValues[index]?.color ?? ''}
@@ -416,6 +438,8 @@ export function PackingNoticeFormPage() {
                       placeholder="輸入或搜尋顏色"
                       emptyText="查無顏色，可直接使用輸入內容"
                     />
+                    {/* 填完品名與顏色即可查歷史色號，先告知之後會不會需要表3 */}
+                    <ColorLookupBadge result={colorLookupFor(index)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">商品總數 ({itemUnit})</Label>

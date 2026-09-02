@@ -17,6 +17,8 @@ import { api } from '@/mocks/api'
 import { vendorDisplayName } from '@/mocks/data'
 import { createPurchaseOrder } from '@/mocks/mutations'
 import { formatNumber, meterToYard } from '@/lib/units'
+import { lookupColorSample } from '@/lib/colors'
+import { ColorLookupBadge, ColorLookupLegend } from '@/components/shared/ColorLookupBadge'
 import { purchaseOrderFormSchema, type PurchaseOrderFormValues } from './schema'
 
 export function PurchaseOrderFormPage() {
@@ -24,6 +26,7 @@ export function PurchaseOrderFormPage() {
   const queryClient = useQueryClient()
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
+  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
 
   const {
     register,
@@ -210,6 +213,9 @@ export function PurchaseOrderFormPage() {
             <CardTitle className="text-base">明細（與表1包裝通知單1:1帶入，僅單價可編輯）</CardTitle>
           </CardHeader>
           <CardContent className="px-0">
+            <div className="px-4">
+              <ColorLookupLegend withVendor={Boolean(dyeVendorId)} />
+            </div>
             {!notice ? (
               <p className="px-4 text-sm text-muted-foreground">請先選擇來源包裝通知單以帶入明細。</p>
             ) : (
@@ -220,6 +226,7 @@ export function PurchaseOrderFormPage() {
                       <TableHead>客戶品名</TableHead>
                       <TableHead>皇加品名</TableHead>
                       <TableHead>顏色</TableHead>
+                      <TableHead>色號查詢</TableHead>
                       <TableHead className="text-right">Yard</TableHead>
                       <TableHead className="text-right">Meter</TableHead>
                       <TableHead>包裝方式</TableHead>
@@ -234,6 +241,20 @@ export function PurchaseOrderFormPage() {
                         <TableCell>{item.customerProductName}</TableCell>
                         <TableCell>{item.roricaProductName}</TableCell>
                         <TableCell>{item.color}</TableCell>
+                        <TableCell className="max-w-64">
+                          {/* 選定染整廠後即為完整四鍵查詢：這裡就能看出這批顏色要不要打色 */}
+                          <ColorLookupBadge
+                            result={lookupColorSample({
+                              products,
+                              customerId: notice.customerId,
+                              productId: item.productId,
+                              productName: item.roricaProductName,
+                              color: item.color,
+                              dyeVendorId: dyeVendorId || undefined,
+                              vendorNameOf: (vendorId) => vendorDisplayName(vendors.find((v) => v.id === vendorId)),
+                            })}
+                          />
+                        </TableCell>
                         <TableCell className="text-right">{item.yard}</TableCell>
                         <TableCell className="text-right">{item.meter}</TableCell>
                         <TableCell>{item.packingMethod}</TableCell>

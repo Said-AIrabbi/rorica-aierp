@@ -52,9 +52,11 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   通過: 'success',
   退回: 'error',
 
-  // 顏色機制提示
+  // 顏色機制提示（表1／表2 的色號查詢結果）
+  已有色號: 'success',
   疑似複色: 'warning',
   全新配色: 'info',
+  視染整廠而定: 'neutral',
 
   // 接疋拼接建議（系統提供建議、人工確認）
   待確認: 'warning',

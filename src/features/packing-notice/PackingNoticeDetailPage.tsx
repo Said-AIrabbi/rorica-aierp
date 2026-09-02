@@ -12,9 +12,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getCustomer, productBranchSuffix } from '@/mocks/data'
+import { getCustomer, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import { confirmSplicingSuggestion, rejectSplicingSuggestion, setPackingNoticeStatus } from '@/mocks/mutations'
 import { formatDate, formatDateTime } from '@/lib/dates'
+import { lookupColorSample } from '@/lib/colors'
+import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { effectiveReservationStatus } from '@/lib/inventory'
 import { freezeDate, isPackingNoticeEditable, isPackingNoticeFullyShipped } from '@/lib/workflow'
@@ -37,6 +39,8 @@ export function PackingNoticeDetailPage() {
   const { data: shippingOrders = [] } = useQuery({ queryKey: ['shippingOrders'], queryFn: api.shippingOrders })
   const { data: stockReservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
   const { data: splicingSuggestions = [] } = useQuery({ queryKey: ['splicingSuggestions'], queryFn: api.splicingSuggestions })
+  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
+  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
 
   /** 拼接建議的處理結果會連動庫存預留與出貨單草稿，故一併重新整理 */
   const invalidateSplicing = async () => {
@@ -203,6 +207,7 @@ export function PackingNoticeDetailPage() {
                   <TableHead>皇加品名</TableHead>
                   <TableHead>顏色</TableHead>
                   <TableHead className="text-right">商品總數 ({itemUnit})</TableHead>
+                  <TableHead>色號查詢</TableHead>
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
                   <TableHead>加工方法</TableHead>
@@ -226,6 +231,19 @@ export function PackingNoticeDetailPage() {
                           ? `≈ ${formatNumber(item.meter, 1)} 米 (Meter)`
                           : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
                       </div>
+                    </TableCell>
+                    <TableCell className="max-w-64">
+                      {/* 表1 階段尚未指定染整廠，故可能是「視染整廠而定」；表2 選定染整廠後才有確定結論 */}
+                      <ColorLookupBadge
+                        result={lookupColorSample({
+                          products,
+                          customerId: notice.customerId,
+                          productId: item.productId,
+                          productName: item.roricaProductName,
+                          color: item.color,
+                          vendorNameOf: (vendorId) => vendorDisplayName(vendors.find((v) => v.id === vendorId)),
+                        })}
+                      />
                     </TableCell>
                     <TableCell>{item.packingMethod}</TableCell>
                     <TableCell className="text-right">

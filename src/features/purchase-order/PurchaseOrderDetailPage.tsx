@@ -19,6 +19,8 @@ import { api } from '@/mocks/api'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import { completePurchaseOrderDraft, signPurchaseOrder, submitPurchaseOrderLargeSample, triggerPurchaseOrderFulfillment } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
+import { lookupColorSample } from '@/lib/colors'
+import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
 import {
   effectivePurchaseOrderStatus,
@@ -38,7 +40,11 @@ export function PurchaseOrderDetailPage() {
   const { data: goodsReceipts = [] } = useQuery({ queryKey: ['goodsReceipts'], queryFn: api.goodsReceipts })
   const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
+  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
+  // 歷史色號的查詢鍵含客戶，故需回頭取來源表1 的客戶（訂購單本身只記主號）
+  const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const order = data.find((o) => o.id === id)
+  const sourceNotice = packingNotices.find((n) => n.id === data.find((o) => o.id === id)?.parentId)
   const [rejectReason, setRejectReason] = useState('')
   const [draftType, setDraftType] = useState<PurchaseOrder['type']>('胚布')
   const [draftHasDyeVendor, setDraftHasDyeVendor] = useState(false)
@@ -369,6 +375,7 @@ export function PurchaseOrderDetailPage() {
                   <TableHead>顏色</TableHead>
                   <TableHead className="text-right">Yard</TableHead>
                   <TableHead className="text-right">Meter</TableHead>
+                  <TableHead>色號查詢</TableHead>
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
                   <TableHead>加工方法</TableHead>
@@ -388,6 +395,20 @@ export function PurchaseOrderDetailPage() {
                     <TableCell>{item.color}</TableCell>
                     <TableCell className="text-right">{formatNumber(item.yard, 0)}</TableCell>
                     <TableCell className="text-right">{formatNumber(item.meter, 1)}</TableCell>
+                    <TableCell className="max-w-64">
+                      {/* 本單已指定染整廠時即為完整四鍵查詢，結論確定；未指定則仍為「視染整廠而定」 */}
+                      <ColorLookupBadge
+                        result={lookupColorSample({
+                          products,
+                          customerId: sourceNotice?.customerId,
+                          productId: item.productId,
+                          productName: item.roricaProductName,
+                          color: item.color,
+                          dyeVendorId: order.dyeVendorId,
+                          vendorNameOf: (vendorId) => vendorDisplayName(vendors.find((v) => v.id === vendorId)),
+                        })}
+                      />
+                    </TableCell>
                     <TableCell>{item.packingMethod}</TableCell>
                     <TableCell className="text-right">
                       {item.fixedLengthMeter
