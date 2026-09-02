@@ -241,9 +241,10 @@ export function PurchaseOrderFormPage() {
                         <TableCell>{item.customerProductName}</TableCell>
                         <TableCell>{item.roricaProductName}</TableCell>
                         <TableCell>{item.color}</TableCell>
-                        <TableCell className="max-w-64">
+                        <TableCell>
                           {/* 選定染整廠後即為完整四鍵查詢：這裡就能看出這批顏色要不要打色 */}
                           <ColorLookupBadge
+                            showMessage={false}
                             result={lookupColorSample({
                               products,
                               customerId: notice.customerId,

@@ -395,9 +395,10 @@ export function PurchaseOrderDetailPage() {
                     <TableCell>{item.color}</TableCell>
                     <TableCell className="text-right">{formatNumber(item.yard, 0)}</TableCell>
                     <TableCell className="text-right">{formatNumber(item.meter, 1)}</TableCell>
-                    <TableCell className="max-w-64">
+                    <TableCell>
                       {/* 本單已指定染整廠時即為完整四鍵查詢，結論確定；未指定則仍為「視染整廠而定」 */}
                       <ColorLookupBadge
+                        showMessage={false}
                         result={lookupColorSample({
                           products,
                           customerId: sourceNotice?.customerId,

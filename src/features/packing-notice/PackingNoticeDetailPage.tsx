@@ -232,9 +232,10 @@ export function PackingNoticeDetailPage() {
                           : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-64">
+                    <TableCell>
                       {/* 表1 階段尚未指定染整廠，故可能是「視染整廠而定」；表2 選定染整廠後才有確定結論 */}
                       <ColorLookupBadge
+                        showMessage={false}
                         result={lookupColorSample({
                           products,
                           customerId: notice.customerId,

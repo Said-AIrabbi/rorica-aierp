@@ -3,12 +3,28 @@ import type { ColorLookupResult } from '@/lib/colors'
 
 /**
  * 色號查詢結果標籤：把「這筆明細之後會不會需要開表3 打色通知單」提前講清楚。
- * 標籤只給結論，後面的說明文字給理由——單靠顏色使用者記不住四種狀態各代表什麼。
+ *
+ * 明細表格內只放標籤（showMessage=false）——四種標籤的意思由區塊下方的圖例一次說明，
+ * 每列再重複一段長句會把欄寬撐開、擠壓其他欄位；該列的實際理由（做過的染整廠、色號、
+ * 未使用月數）改掛在標籤的 title，滑鼠移上去即可看到。
  */
-export function ColorLookupBadge({ result, inline = false }: { result: ColorLookupResult | null; inline?: boolean }) {
+export function ColorLookupBadge({
+  result,
+  showMessage = true,
+}: {
+  result: ColorLookupResult | null
+  showMessage?: boolean
+}) {
   if (!result) return null
+  if (!showMessage) {
+    return (
+      <span title={result.message} className="cursor-help">
+        <StatusBadge status={result.kind} />
+      </span>
+    )
+  }
   return (
-    <div className={inline ? 'flex flex-wrap items-center gap-1.5' : 'space-y-0.5'}>
+    <div className="space-y-0.5">
       <StatusBadge status={result.kind} />
       <span className="text-xs text-muted-foreground">{result.message}</span>
     </div>
