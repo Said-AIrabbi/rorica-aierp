@@ -59,20 +59,60 @@ function MarkCell({ marking }: { marking: PackingNoticeMarking }) {
   )
 }
 
+/** 中日文字元寬度約為拉丁字母的 1.7 倍，估算字串寬度時分開計算 */
+function visualLength(text: string): number {
+  return [...text].reduce((sum, ch) => sum + (/[⺀-鿿＀-￯]/.test(ch) ? 1.7 : 1), 0)
+}
+
 /**
  * 形狀以 SVG 繪製並讓抬頭文字置中於形狀內；用 SVG 而非 CSS 邊框拼三角形，
  * 是因為列印時線寬與比例才不會隨瀏覽器縮放跑掉。
+ *
+ * 字級依文字長度自動縮小：形狀內可寫字的寬度有限（菱形腰身更窄），
+ * 若照固定字級印，長一點的抬頭文字會整段穿出形狀外緣。
  */
 function MarkShape({ shape, text }: { shape: PackingNoticeMarking['shape']; text: string }) {
-  const points = shape === '菱形' ? '50,3 97,31 50,59 3,31' : '50,3 97,59 3,59'
-  // 三角形的可寫字區域偏下（頂點很窄），菱形則置中
-  const textY = shape === '菱形' ? 36 : 50
+  const isDiamond = shape === '菱形'
+  const points = isDiamond ? '50,3 97,31 50,59 3,31' : '50,3 97,59 3,59'
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  const centerY = isDiamond ? 31 : 45
+
+  /**
+   * 形狀內每個高度可寫的寬度都不同——菱形越往上下越窄、三角形越往上越窄，
+   * 所以不能只用單一的最大寬度判斷，否則多行文字的第一行仍會穿出斜邊。
+   * 這裡逐行檢查各自所在高度的可用寬度，字級由大往小試到全部塞得下為止。
+   */
+  const widthAt = (y: number) =>
+    (isDiamond ? 94 * (1 - Math.abs(y - 31) / 28) : 94 * ((y - 3) / 56)) * 0.86
+
+  let fontSize = 11
+  for (let i = 0; i < 40; i++) {
+    const lh = fontSize * 1.2
+    const top = centerY - ((lines.length - 1) * lh) / 2
+    const fits = lines.every((line, li) => visualLength(line) * fontSize * 0.6 <= widthAt(top + li * lh))
+    if (fits || fontSize <= 3.5) break
+    fontSize = Number((fontSize - 0.25).toFixed(2))
+  }
+
+  // 多行時整組文字垂直置中於形狀的可寫字區
+  const lineHeight = fontSize * 1.2
+  const firstY = centerY - ((lines.length - 1) * lineHeight) / 2 + fontSize * 0.35
+
   return (
     <svg className="pr-mark-shape" viewBox="0 0 100 62" preserveAspectRatio="xMidYMid meet">
       <polygon points={points} fill="none" stroke="#000" strokeWidth="0.8" />
-      <text x="50" y={textY} textAnchor="middle" className="pr-mark-shape-text">
-        {text}
-      </text>
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x="50"
+          y={firstY + i * lineHeight}
+          textAnchor="middle"
+          className="pr-mark-shape-text"
+          style={{ fontSize: `${fontSize}px` }}
+        >
+          {line}
+        </text>
+      ))}
     </svg>
   )
 }

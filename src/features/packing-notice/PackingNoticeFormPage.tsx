@@ -145,7 +145,6 @@ export function PackingNoticeFormPage() {
   const embossingValues = watch('embossing') ?? []
   const labelTypeValues = watch('labelTypes') ?? []
   const itemValues = watch('items') ?? []
-  const markingShape = watch('marking.shape')
   const customerNameValue = watch('customerName')
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -750,11 +749,15 @@ export function PackingNoticeFormPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>抬頭文字</Label>
-                {/* A5大小沒有形狀、整段印在最上方（例：公司名／城市國別／電話三行），故允許換行 */}
+                {/*
+                  用 Textarea 而非 Input 是因為 A5大小 需要多行（公司名／城市國別／電話）；
+                  預設高度對齊其他欄位，靠 field-sizing-content 在輸入第二行時才自動長高。
+                */}
                 <Textarea
-                  rows={2}
+                  rows={1}
+                  className="h-9 min-h-9 py-1.5"
                   {...register('marking.headerText')}
-                  placeholder={markingShape === 'A5大小' ? '可多行，整段印在嘜頭最上方' : '印在形狀內，如 FASHION、G.L'}
+                  placeholder="非必填"
                 />
               </div>
               <div className="space-y-1.5">

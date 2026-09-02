@@ -232,6 +232,8 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
   const customer = faker.helpers.arrayElement(customers)
   const itemCount = faker.number.int({ min: 1, max: 4 })
   const shipMethod = faker.helpers.arrayElements(SHIP_METHODS, { min: 1, max: 2 })
+  // 嘜頭形狀先決定，抬頭文字的格式（形狀內短字樣 vs A5 多行公司抬頭）要跟著它走
+  const markingShape = faker.helpers.arrayElement(MARKING_SHAPES)
 
   const items: PackingNoticeItem[] = Array.from({ length: itemCount }).map((_, j) => {
     const product = faker.helpers.arrayElement(products)
@@ -286,11 +288,15 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
     itemUnit: i % 4 === 0 ? 'Meter' : 'Yard',
     allowSplicing: faker.datatype.boolean({ probability: 0.2 }),
     marking: {
-      shape: faker.helpers.arrayElement(MARKING_SHAPES),
-      // 抬頭文字：三角形／菱形印在形狀內（短字樣），A5 整段印在最上方（可多行）
-      headerText: i % 3 === 0 ? `${customer.shortName.toUpperCase()}
-JEDDAH, K.S.A.
-TEL：6435695` : customer.shortName.toUpperCase(),
+      shape: markingShape,
+      // 抬頭文字依形狀給不同格式：三角形／菱形印在形狀內，只放得下短字樣；
+      // A5大小沒有形狀、整段印在最上方，才是多行的公司抬頭
+      headerText:
+        markingShape === 'A5大小'
+          ? `${customer.fullNameEN}
+${faker.helpers.arrayElement(['JEDDAH, K.S.A.', 'XIAMEN, CHINA', 'HO CHI MINH, VIETNAM'])}
+TEL：${customer.personInChargePhone}`
+          : faker.helpers.arrayElement(['FASHION', 'G.L', 'BRIDAL', 'RORICA']),
       destination: faker.helpers.arrayElement(['', 'LA Warehouse', 'NY Distribution Center', '']),
       grossWeightKg: faker.number.float({ min: 20, max: 120, fractionDigits: 1 }),
       netWeightKg: faker.number.float({ min: 18, max: 110, fractionDigits: 1 }),
