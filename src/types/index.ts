@@ -158,7 +158,7 @@ export const PACKING_METHODS = ['捲支', '板捲', '定碼ROLL可接疋', '定�
 export const FIXED_ROLL_PACKING_METHODS: (typeof PACKING_METHODS)[number][] = ['定碼ROLL可接疋', '定碼ROLL不可接疋']
 
 /** 加工方法：每個商品明細只對應一種加工方法，單選；未指定加工時留空 */
-export const PROCESSING_METHODS = ['上膠', '壓褶', '壓光', '膠印', '噴沖', '柔軟', '手感'] as const
+export const PROCESSING_METHODS = ['上膠', '壓褶', '壓光', '膠印', '噴蔥', '柔軟', '手感'] as const
 
 export type ProcessingMethod = (typeof PROCESSING_METHODS)[number]
 

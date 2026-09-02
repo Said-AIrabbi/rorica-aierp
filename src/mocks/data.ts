@@ -66,7 +66,7 @@ const PROCESSING_METHOD_NOTE_SAMPLES: Record<(typeof PROCESSING_METHODS)[number]
   壓褶: '直條褶，褶距 1.5cm',
   壓光: '高溫壓光一次，正面亮度提升',
   膠印: '客供圖檔，單色膠印',
-  噴沖: '全幅噴沖，去除多餘漿料',
+  噴蔥: '全幅噴蔥，去除多餘漿料',
   柔軟: '柔軟精處理，手感偏軟',
   手感: '依客戶留樣手感為準，勿過硬',
 }
