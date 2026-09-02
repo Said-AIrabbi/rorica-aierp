@@ -14,6 +14,8 @@ import {
 
 export const packingNoticeMarkingSchema = z.object({
   shape: z.enum(MARKING_SHAPES),
+  // 抬頭文字：三角形／菱形印在形狀內，A5 整段印在最上方（可多行）
+  headerText: z.string().optional(),
   destination: z.string().optional(),
   grossWeightKg: z.coerce.number().min(0).optional(),
   netWeightKg: z.coerce.number().min(0).optional(),

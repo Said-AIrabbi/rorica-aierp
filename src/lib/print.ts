@@ -26,7 +26,7 @@ export const PRINT_TITLES = {
   shippingSample: { formCode: '表8', title: '樣品單' },
   abnormalNotice: { formCode: '表9', title: '異常通知單' },
   upstreamClaim: { formCode: '表9 附單', title: '上游追討附單' },
-  // 表1嘜頭：客戶尚未提供實際版面格式，待提供後再建立對應列印版面
+  // 嘜頭：貼於出貨紙箱的標記，不套用公司抬頭，故不列於此（版面見 features/packing-notice/MarkingPrint.tsx）
 } as const
 
 /** 出貨單／訂購單等紙本單據沿用的簽名欄；表8為四欄（處理人／倉管／出貨／業務） */

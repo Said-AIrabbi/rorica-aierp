@@ -328,6 +328,7 @@ export function PackingNoticeDetailPage() {
               value={`${notice.marking.shape}（列印格式待客戶提供）`}
             />
             <DetailField label="客戶簡稱" value={customer?.shortName} />
+            <DetailField label="抬頭文字" value={notice.marking.headerText || '-'} />
             <DetailField label="運送目的地" value={notice.marking.destination || '-'} />
             <DetailField label="毛重" value={notice.marking.grossWeightKg ? `${notice.marking.grossWeightKg} Kg` : '-'} />
             <DetailField label="淨重" value={notice.marking.netWeightKg ? `${notice.marking.netWeightKg} Kg` : '-'} />

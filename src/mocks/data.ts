@@ -287,6 +287,10 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
     allowSplicing: faker.datatype.boolean({ probability: 0.2 }),
     marking: {
       shape: faker.helpers.arrayElement(MARKING_SHAPES),
+      // 抬頭文字：三角形／菱形印在形狀內（短字樣），A5 整段印在最上方（可多行）
+      headerText: i % 3 === 0 ? `${customer.shortName.toUpperCase()}
+JEDDAH, K.S.A.
+TEL：6435695` : customer.shortName.toUpperCase(),
       destination: faker.helpers.arrayElement(['', 'LA Warehouse', 'NY Distribution Center', '']),
       grossWeightKg: faker.number.float({ min: 20, max: 120, fractionDigits: 1 }),
       netWeightKg: faker.number.float({ min: 18, max: 110, fractionDigits: 1 }),

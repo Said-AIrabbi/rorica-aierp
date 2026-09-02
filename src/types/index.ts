@@ -198,6 +198,11 @@ export const TOLERANCE_MODES = ['±5%', '±10%', '其他'] as const
 /** 嘜頭：出貨箱嘜頭列印所需資訊 */
 export interface PackingNoticeMarking {
   shape: (typeof MARKING_SHAPES)[number]
+  /**
+   * 抬頭文字：印在嘜頭最顯眼位置的字樣（客戶品牌／代號）。
+   * 正三角形與菱形印在形狀「內部」；A5大小沒有形狀，整段印在最上方，故允許多行。
+   */
+  headerText?: string
   destination?: string
   grossWeightKg?: number
   netWeightKg?: number

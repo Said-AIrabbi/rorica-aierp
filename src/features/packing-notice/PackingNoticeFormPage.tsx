@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
 import { productBranchLabel, resolveProduct, vendorDisplayName } from '@/mocks/data'
 import { createPackingNotice, updatePackingNotice } from '@/mocks/mutations'
@@ -101,6 +102,7 @@ export function PackingNoticeFormPage() {
         origin: '',
         hasSmallMarking: false,
         smallMarkingText: '',
+        headerText: '',
       },
     },
     // 編輯模式下，包裝通知單資料透過非同步查詢取得；用 `values`（而非手動 reset）
@@ -143,6 +145,7 @@ export function PackingNoticeFormPage() {
   const embossingValues = watch('embossing') ?? []
   const labelTypeValues = watch('labelTypes') ?? []
   const itemValues = watch('items') ?? []
+  const markingShape = watch('marking.shape')
   const customerNameValue = watch('customerName')
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -744,6 +747,15 @@ export function PackingNoticeFormPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>抬頭文字</Label>
+                {/* A5大小沒有形狀、整段印在最上方（例：公司名／城市國別／電話三行），故允許換行 */}
+                <Textarea
+                  rows={2}
+                  {...register('marking.headerText')}
+                  placeholder={markingShape === 'A5大小' ? '可多行，整段印在嘜頭最上方' : '印在形狀內，如 FASHION、G.L'}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>運送目的地</Label>

@@ -8,6 +8,7 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { ShippingOrderPrint } from './ShippingOrderPrint'
+import { MarkingPrint } from '@/features/packing-notice/MarkingPrint'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -126,7 +127,15 @@ export function ShippingOrderDetailPage() {
         actions={
           <>
             <StatusBadge status={order.status} className="text-sm" />
-            <PrintActions sheets={[{ key: 'doc', label: '列印出貨單', sheet: <ShippingOrderPrint order={order} /> }]} />
+            <PrintActions
+              sheets={[
+                { key: 'doc', label: '列印出貨單', sheet: <ShippingOrderPrint order={order} /> },
+                // 嘜頭資料維護於表1，但貼箱是出貨當下的動作，故列印入口放在表8
+                ...(marking
+                  ? [{ key: 'marking', label: '列印嘜頭', sheet: <MarkingPrint marking={marking} /> }]
+                  : []),
+              ]}
+            />
             {order.status === '草稿' && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={buildMutation.isPending} onClick={() => buildMutation.mutate()}>
                 建立出貨單
