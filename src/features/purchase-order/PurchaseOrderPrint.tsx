@@ -3,7 +3,7 @@ import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
-import { basisQtyColumns, basisMetaValue } from '@/components/print/basisColumns'
+import { basisQtyColumns } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { PurchaseOrder, PurchaseOrderItem } from '@/types'
 
@@ -59,17 +59,15 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
   const meta: PrintMetaItem[] = [
     { label: '訂購單號', value: order.id },
     { label: '來源包裝通知單', value: order.parentId },
-    // 類型不列印：胚布／成品是皇加內部的採購分類，賣方看品項即知
+    // 類型、狀態、數量輸入基準不列印：皆為皇加內部的採購分類與流程追蹤資訊
     { label: '日期', value: formatDate(order.createdAt) },
     { label: '賣方', value: vendorDisplayName(vendor) },
     { label: '交貨日期', value: formatDate(order.dueDate) },
-    { label: '狀態', value: order.status },
     ...(dyeVendor
       ? [{ label: '染整廠（名稱＋廠點）', value: vendorDisplayName(dyeVendor), span: 2 as const }]
       : []),
     { label: '燙金', value: order.embossing },
     { label: '彩條', value: order.colorRatioNote },
-    { label: '數量輸入基準', value: basisMetaValue(itemUnit) },
   ]
 
   return (
