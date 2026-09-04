@@ -2,7 +2,7 @@ import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaI
 import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
-import { getCustomer, getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
+import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import { basisQtyColumns, basisMetaValue } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { SecondaryProcessingItem, SecondaryProcessingOrder } from '@/types'
@@ -45,23 +45,19 @@ const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] =>
  */
 export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessingOrder }) {
   const vendor = getVendor(order.vendorId)
-  const customer = getCustomer(order.customerId)
   const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
   const pk = order.packaging
   // 數量以來源表1 的建單基準為主值：加工廠看到的數字要跟客戶下單的單位一致
   const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
 
+  // 客戶、聯絡人、電話、加工廠地址、狀態不列印：客戶是皇加的商業資訊不對加工廠揭露，
+  // 聯絡人／電話／地址是加工廠自己的資料，狀態則是皇加系統內的流程追蹤
   const meta: PrintMetaItem[] = [
     { label: '二次加工單號', value: order.id },
     { label: '來源包裝通知單', value: order.parentId },
-    { label: '客戶', value: customer?.shortName ?? order.customerId },
     { label: '交期', value: formatDate(order.dueDate) },
-    { label: '加工廠', value: vendorDisplayName(vendor), span: 2 },
-    { label: '聯絡人', value: order.vendorContactPerson ?? vendor?.contactPerson ?? ' ' },
-    { label: '電話', value: order.vendorPhone ?? vendor?.phone ?? ' ' },
-    { label: '加工廠地址', value: order.vendorAddress ?? vendor?.address ?? ' ', span: 2 },
-    { label: '皇加聯絡窗口', value: order.internalContact ?? ' ' },
-    { label: '狀態', value: order.status },
+    { label: '加工廠', value: vendorDisplayName(vendor) },
+    { label: '皇加聯絡窗口', value: order.internalContact ?? ' ', span: 2 },
     { label: '數量輸入基準', value: basisMetaValue(itemUnit) },
   ]
 
