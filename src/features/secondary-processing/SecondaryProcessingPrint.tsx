@@ -88,7 +88,9 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
           <tbody>
             <tr>
               <th style={{ width: '28mm' }}>出貨樣數量</th>
-              <td>{pk.sampleQty} 碼</td>
+              <td>
+                {pk.sampleQty} 碼{pk.sampleQtyNote ? `（${pk.sampleQtyNote}）` : ''}
+              </td>
               <th style={{ width: '28mm' }}>出貨包裝</th>
               <td>{pk.packagingType}</td>
             </tr>

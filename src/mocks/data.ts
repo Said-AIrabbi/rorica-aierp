@@ -280,7 +280,14 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
     createdAt: createdAt.toISOString(),
     effectiveAt: status === '草稿' ? undefined : createdAt.add(1, 'day').toISOString(),
     expectedDeliveryAt: createdAt.add(customer.leadTimeDays, 'day').toISOString(),
-    sampleQty: faker.number.int({ min: 0, max: 10 }) * 0.5,
+    // 出貨樣數量：半碼一單位，上限 20 碼；部分訂單另有文字說明（誰的樣、寄哪、剪法）
+    sampleQty: faker.number.int({ min: 0, max: 40 }) * 0.5,
+    sampleQtyNote: faker.helpers.arrayElement([
+      undefined,
+      undefined,
+      '每色各剪一段，隨大貨寄客戶樣品室',
+      '業務留樣，不隨大貨出',
+    ]),
     shipMethod,
     shipMethodNote: shipMethod.includes('其他') ? '客戶指定貨運行代收' : undefined,
     colorRatio:

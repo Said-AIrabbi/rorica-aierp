@@ -86,6 +86,7 @@ export interface PackingNoticeInput {
   customerOrderNo: string
   expectedDeliveryAt: string
   sampleQty: number
+  sampleQtyNote?: string
   shipMethod: PackingNotice['shipMethod']
   shipMethodNote?: string
   colorRatio: PackingNotice['colorRatio']
@@ -351,6 +352,7 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     createdAt: today.toISOString(),
     expectedDeliveryAt: input.expectedDeliveryAt,
     sampleQty: input.sampleQty,
+    sampleQtyNote: input.sampleQtyNote?.trim() || undefined,
     shipMethod: input.shipMethod,
     shipMethodNote: input.shipMethod.includes('其他') ? input.shipMethodNote : undefined,
     colorRatio: input.colorRatio,
@@ -388,6 +390,7 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
     customerOrderNo: input.customerOrderNo,
     expectedDeliveryAt: input.expectedDeliveryAt,
     sampleQty: input.sampleQty,
+    sampleQtyNote: input.sampleQtyNote?.trim() || undefined,
     shipMethod: input.shipMethod,
     shipMethodNote: input.shipMethod.includes('其他') ? input.shipMethodNote : undefined,
     colorRatio: input.colorRatio,

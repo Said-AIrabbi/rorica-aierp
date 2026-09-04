@@ -159,7 +159,9 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
           <tbody>
             <tr>
               <th style={{ width: '30mm' }}>出貨樣數量</th>
-              <td>{notice.sampleQty} 碼</td>
+              <td>
+                {notice.sampleQty} 碼{notice.sampleQtyNote ? `（${notice.sampleQtyNote}）` : ''}
+              </td>
               <th style={{ width: '30mm' }}>出貨方式</th>
               <td>{shipMethodText(notice)}</td>
             </tr>

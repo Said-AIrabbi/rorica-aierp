@@ -116,6 +116,7 @@ export function PackingNoticeFormPage() {
       customerOrderNo: '',
       expectedDeliveryAt: dayjs().add(14, 'day').format('YYYY-MM-DD'),
       sampleQty: 0,
+      sampleQtyNote: '',
       shipMethod: [SHIP_METHODS[0]],
       shipMethodNote: '',
       colorRatio: { mode: COLOR_RATIO_MODES[0], customText: '' },
@@ -136,6 +137,7 @@ export function PackingNoticeFormPage() {
           customerOrderNo: existing.customerOrderNo,
           expectedDeliveryAt: dayjs(existing.expectedDeliveryAt).format('YYYY-MM-DD'),
           sampleQty: existing.sampleQty,
+          sampleQtyNote: existing.sampleQtyNote ?? '',
           shipMethod: existing.shipMethod,
           shipMethodNote: existing.shipMethodNote ?? '',
           colorRatio: existing.colorRatio,
@@ -585,25 +587,29 @@ export function PackingNoticeFormPage() {
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-1.5">
-                <Label>出貨樣數量（半碼一單位，0~5碼）</Label>
-                <Input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="5"
-                  className="w-28"
-                  value={watch('sampleQty')}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    if (raw === '') {
-                      setValue('sampleQty', 0, { shouldValidate: true })
-                      return
-                    }
-                    const num = Number(raw)
-                    if (Number.isNaN(num)) return
-                    setValue('sampleQty', Math.min(5, Math.max(0, num)), { shouldValidate: true })
-                  }}
-                />
+                <Label>出貨樣數量（半碼一單位，0~20碼）</Label>
+                {/* 數量與說明併排於原欄位寬度內：碼數本身講不清楚的條件（誰的樣、寄哪、剪法）寫在右側 */}
+                <div className="flex gap-1.5">
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="20"
+                    className="w-24 shrink-0"
+                    value={watch('sampleQty')}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      if (raw === '') {
+                        setValue('sampleQty', 0, { shouldValidate: true })
+                        return
+                      }
+                      const num = Number(raw)
+                      if (Number.isNaN(num)) return
+                      setValue('sampleQty', Math.min(20, Math.max(0, num)), { shouldValidate: true })
+                    }}
+                  />
+                  <Input {...register('sampleQtyNote')} placeholder="說明（非必填）" />
+                </div>
                 {errors.sampleQty && <p className="text-xs text-destructive">{errors.sampleQty.message}</p>}
               </div>
 

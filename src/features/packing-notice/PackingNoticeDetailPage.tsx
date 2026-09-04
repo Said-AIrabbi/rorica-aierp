@@ -293,7 +293,10 @@ export function PackingNoticeDetailPage() {
         </CardHeader>
         <CardContent>
           <DetailGrid>
-            <DetailField label="出貨樣數量" value={`${notice.sampleQty} 碼`} />
+            <DetailField
+              label="出貨樣數量"
+              value={`${notice.sampleQty} 碼${notice.sampleQtyNote ? `（${notice.sampleQtyNote}）` : ''}`}
+            />
             <DetailField label="出貨包裝" value={notice.packagingType} />
             <DetailField
               label="出貨方式"

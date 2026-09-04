@@ -168,6 +168,7 @@ export function goodsReceiptShrinkageRate(receipt: Pick<GoodsReceipt, 'pledgedQt
 export function buildSecondaryProcessingPackaging(notice: PackingNotice): SecondaryProcessingPackaging {
   return {
     sampleQty: notice.sampleQty,
+    sampleQtyNote: notice.sampleQtyNote,
     packagingType: notice.packagingType,
     shipMethod: notice.shipMethod,
     shipMethodNote: notice.shipMethodNote,

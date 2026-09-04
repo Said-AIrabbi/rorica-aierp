@@ -241,8 +241,10 @@ export interface PackingNotice {
   createdAt: string
   effectiveAt?: string
   expectedDeliveryAt: string
-  /** 出貨樣數量：半碼一單位，0~5碼滾輪選單 */
+  /** 出貨樣數量：半碼一單位，0~20碼滾輪選單 */
   sampleQty: number
+  /** 出貨樣數量說明：數字本身講不清楚的條件（誰的樣、寄哪裡、剪法），非必填 */
+  sampleQtyNote?: string
   /** 出貨方式：海運/空運/小三通/其他，可複選 */
   shipMethod: (typeof SHIP_METHODS)[number][]
   /** 出貨方式為「其他」時的文字說明 */
@@ -674,6 +676,7 @@ export interface SecondaryProcessingItem {
  */
 export interface SecondaryProcessingPackaging {
   sampleQty: number
+  sampleQtyNote?: string
   packagingType: (typeof PACKAGING_TYPES)[number]
   shipMethod: (typeof SHIP_METHODS)[number][]
   shipMethodNote?: string

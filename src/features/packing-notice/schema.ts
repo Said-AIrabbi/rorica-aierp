@@ -62,7 +62,8 @@ export const packingNoticeFormSchema = z
     customerName: z.string().min(1, '請輸入客戶名稱'),
     customerOrderNo: z.string().min(1, '請輸入客戶訂單號'),
     expectedDeliveryAt: z.string().min(1, '請選擇出貨日期'),
-    sampleQty: z.coerce.number().min(0).max(5),
+    sampleQty: z.coerce.number().min(0).max(20),
+    sampleQtyNote: z.string().optional(),
     // 出貨方式：PRD規定可複選（海運/空運/小三通/其他）
     shipMethod: z.array(z.enum(SHIP_METHODS)).min(1, '請至少選擇一種出貨方式'),
     // 出貨方式勾選「其他」時需另外文字說明
@@ -87,4 +88,4 @@ export const packingNoticeFormSchema = z
 export type PackingNoticeFormValues = z.infer<typeof packingNoticeFormSchema>
 
 /** 出貨樣數量：半碼一單位，0~5碼滾輪選單 */
-export const SAMPLE_QTY_OPTIONS = Array.from({ length: 11 }, (_, i) => i * 0.5)
+export const SAMPLE_QTY_OPTIONS = Array.from({ length: 41 }, (_, i) => i * 0.5)

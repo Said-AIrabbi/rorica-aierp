@@ -11,7 +11,10 @@ export function PackagingSummary({ packaging }: { packaging: SecondaryProcessing
     <>
       <p className="mb-3 text-xs text-muted-foreground">以下為表1 包裝通知單的包裝要求，唯讀帶入，不在本單重新設定。</p>
       <DetailGrid>
-        <DetailField label="出貨樣數量" value={`${packaging.sampleQty} 碼`} />
+        <DetailField
+          label="出貨樣數量"
+          value={`${packaging.sampleQty} 碼${packaging.sampleQtyNote ? `（${packaging.sampleQtyNote}）` : ''}`}
+        />
         <DetailField label="出貨包裝" value={packaging.packagingType} />
         <DetailField
           label="出貨方式"
