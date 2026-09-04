@@ -996,6 +996,8 @@ export interface DyeOrderItemInput {
   finishedSpec?: string
   unitPrice?: number
   pendingDyeQty: number
+  /** 指染數量：建單時可手動填寫（胚布已到廠即可投染）；未填為 0，之後由「胚布到貨」把待染整批轉入 */
+  inDyeQty?: number
 }
 
 export interface DyeOrderInput {
@@ -1047,7 +1049,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
       finishedSpec: item.finishedSpec,
       unitPrice: item.unitPrice,
       pendingDyeQty: item.pendingDyeQty,
-      inDyeQty: 0,
+      inDyeQty: item.inDyeQty ?? 0,
       finishedQty: 0,
     }
   })

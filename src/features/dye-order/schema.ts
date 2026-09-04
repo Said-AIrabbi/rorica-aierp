@@ -12,6 +12,8 @@ export const dyeOrderItemSchema = z.object({
   finishedSpec: z.string().optional(),
   unitPrice: z.coerce.number().min(0).optional(),
   pendingDyeQty: z.coerce.number().min(0, '待染數量需大於等於 0'),
+  // 指染數量：建單時可先手動填寫（部分胚布已到廠即可投染），未填則為 0，日後由「胚布到貨」整批轉入
+  inDyeQty: z.coerce.number().min(0, '指染數量需大於等於 0').optional(),
 })
 
 export const dyeOrderFormSchema = z.object({
