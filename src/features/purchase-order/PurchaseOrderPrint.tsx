@@ -59,9 +59,9 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
   const meta: PrintMetaItem[] = [
     { label: '訂購單號', value: order.id },
     { label: '來源包裝通知單', value: order.parentId },
-    { label: '類型', value: order.type === '胚布' ? `胚布${order.hasDyeVendor ? '（委外染整）' : '（純採購）'}` : '成品' },
+    // 類型不列印：胚布／成品是皇加內部的採購分類，賣方看品項即知
     { label: '日期', value: formatDate(order.createdAt) },
-    { label: '賣方', value: vendorDisplayName(vendor), span: 2 },
+    { label: '賣方', value: vendorDisplayName(vendor) },
     { label: '交貨日期', value: formatDate(order.dueDate) },
     { label: '狀態', value: order.status },
     ...(dyeVendor

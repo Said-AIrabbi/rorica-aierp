@@ -79,11 +79,10 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
       </PrintSection>
 
 
-      {order.note && (
-        <PrintSection title="備註">
-          <div style={{ border: '0.5pt solid #000', minHeight: '12mm', padding: '1.5mm 2mm' }}>{order.note}</div>
-        </PrintSection>
-      )}
+      {/* 備註固定輸出：沒有內容時留空框供染整廠現場手寫 */}
+      <PrintSection title="備註">
+        <div style={{ border: '0.5pt solid #000', minHeight: '12mm', padding: '1.5mm 2mm' }}>{order.note ?? ' '}</div>
+      </PrintSection>
       {/* 明細放在最後：規格第二行讓每個項次佔兩行，放中間會把備註與使用胚布擠到次頁 */}
       <PrintSection title="明細">
         <PrintTable

@@ -3,7 +3,7 @@ import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
-import { basisQtyColumns, basisMetaValue } from '@/components/print/basisColumns'
+import { basisQtyColumns } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { SecondaryProcessingItem, SecondaryProcessingOrder } from '@/types'
 
@@ -58,7 +58,6 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
     { label: '交期', value: formatDate(order.dueDate) },
     { label: '加工廠', value: vendorDisplayName(vendor) },
     { label: '皇加聯絡窗口', value: order.internalContact ?? ' ', span: 2 },
-    { label: '數量輸入基準', value: basisMetaValue(itemUnit) },
   ]
 
   return (
