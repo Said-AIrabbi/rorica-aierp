@@ -673,8 +673,8 @@ export interface ShippingOrder {
    */
   sourceAbnormalId?: string
   /**
-   * 箱袋號：出貨當下人工填寫，僅用於本張出貨單列印嘜頭，不與表1 或其他單據連動。
-   * 索引對應來源表1 的嘜頭組別（markings 的第幾組），每組嘜頭各自一個箱袋號。
+   * 箱/袋號：出貨當下人工填寫，僅用於本張出貨單列印嘜頭，不與表1 或其他單據連動。
+   * 索引對應來源表1 的嘜頭組別（markings 的第幾組），每組嘜頭各自一個箱/袋號。
    */
   markingBoxNos?: string[]
 }

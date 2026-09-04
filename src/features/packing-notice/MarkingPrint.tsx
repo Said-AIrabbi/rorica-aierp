@@ -62,7 +62,7 @@ function MarkCell({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: s
     marking.netWeightKg ? `N.W ${formatNumber(marking.netWeightKg, 1)} KGS` : undefined,
     // 產地照欄位字面列印：填 Taiwan 就印 Taiwan，填 MADE IN TAIWAN 就印 MADE IN TAIWAN
     marking.origin,
-    // 箱袋號來自表8（出貨當下才知道箱袋編到幾號），同樣照填寫內容原樣列印；未填則整行不印
+    // 箱/袋號來自表8（出貨當下才知道箱袋編到幾號），同樣照填寫內容原樣列印；未填則整行不印
     boxNo,
   ].filter((l): l is string => Boolean(l && String(l).trim()))
 

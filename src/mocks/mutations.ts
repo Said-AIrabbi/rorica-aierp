@@ -1613,7 +1613,7 @@ export function updateShippingOrderSignatures(id: string, signatures: ShippingOr
 }
 
 /**
- * 箱袋號：表8 列印嘜頭用的人工輸入欄位，逐組嘜頭各自填寫。
+ * 箱/袋號：表8 列印嘜頭用的人工輸入欄位，逐組嘜頭各自填寫。
  * 純屬本張出貨單的列印資訊，不回寫表1、也不影響任何流程判斷。
  */
 export function updateShippingOrderMarkingBoxNo(id: string, index: number, boxNo: string): Promise<ShippingOrder> {

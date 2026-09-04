@@ -46,7 +46,7 @@ export function ShippingOrderDetailPage() {
 
   // 明細由包裝通知單帶入後可微調／刪除，供倉管於確認建單前調整實際出貨內容
   const [itemDraft, setItemDraft] = useState<ShippingOrderItem[]>([])
-  // 箱袋號輸入草稿：鍵為嘜頭組別索引，按下儲存才寫入出貨單
+  // 箱/袋號輸入草稿：鍵為嘜頭組別索引；打字時只更新草稿，離開欄位才寫入，避免每個字都送一次
   const [boxNoDraft, setBoxNoDraft] = useState<Record<number, string>>({})
   useEffect(() => {
     if (order) setItemDraft(order.items)
@@ -61,7 +61,6 @@ export function ShippingOrderDetailPage() {
     onSuccess: async () => {
       await invalidate()
       setBoxNoDraft({})
-      toast.success(`箱袋號已儲存，列印嘜頭時會帶入`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -122,8 +121,13 @@ export function ShippingOrderDetailPage() {
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
   const notice = packingNotices.find((n) => n.id === order.parentId)
   const markings = notice?.markings ?? []
-  // 箱袋號：表8 自己的列印欄位，逐組嘜頭各一個；未存檔前先放在草稿狀態，離開輸入框才寫入
+  // 箱/袋號：逐組嘜頭各一個，草稿階段填寫；離開欄位即自動儲存，不需要另外按儲存
   const boxNoOf = (index: number) => boxNoDraft[index] ?? order?.markingBoxNos?.[index] ?? ''
+  const saveBoxNo = (index: number) => {
+    const next = boxNoDraft[index]
+    if (next === undefined || next === (order?.markingBoxNos?.[index] ?? '')) return
+    boxNoMutation.mutate({ index, boxNo: next })
+  }
   // 數量以「當初下單用的單位」為主值呈現，另一單位標為換算值；沿用表1 的作法，
   // 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的
   const itemUnit = notice?.itemUnit ?? 'Yard'
@@ -357,32 +361,24 @@ export function ShippingOrderDetailPage() {
                   // 序號對應列印選單的「列印嘜頭 N」，貼箱時才知道印出來的是哪一組
                   <div className="mb-2 text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</div>
                 )}
-                {/* 箱袋號是出貨當下才知道的資訊（箱袋編到幾號），故在表8 手動填寫，
-                    不回寫表1、也不與其他單據連動；僅作為本張出貨單列印嘜頭時的一行 */}
-                <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">箱袋號（列印嘜頭用）</Label>
+                {/* 箱/袋號是出貨當下才知道的資訊（箱袋編到幾號），故在表8 填寫；
+                    草稿階段可輸入，離開欄位即自動儲存，確認建立後轉為唯讀 */}
+                <div className="mb-3 space-y-1">
+                  <Label className="text-xs">箱/袋號（列印嘜頭用）</Label>
+                  {itemsEditable ? (
                     <Input
                       className="w-56"
                       value={boxNoOf(index)}
                       placeholder="非必填，例：C/NO 1-20"
                       onChange={(e) => setBoxNoDraft((prev) => ({ ...prev, [index]: e.target.value }))}
+                      onBlur={() => saveBoxNo(index)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur()
+                      }}
                     />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      boxNoMutation.isPending || boxNoDraft[index] === undefined ||
-                      boxNoDraft[index] === (order.markingBoxNos?.[index] ?? '')
-                    }
-                    onClick={() => boxNoMutation.mutate({ index, boxNo: boxNoOf(index) })}
-                  >
-                    儲存箱袋號
-                  </Button>
-                  <span className="pb-2 text-xs text-muted-foreground">
-                    僅用於本張出貨單列印嘜頭，不會寫回表1
-                  </span>
+                  ) : (
+                    <div className="text-sm text-ink-body">{order.markingBoxNos?.[index] || '-'}</div>
+                  )}
                 </div>
                 <DetailGrid>
                   <DetailField label="嘜頭形狀" value={marking.shape} />
