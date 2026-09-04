@@ -147,6 +147,8 @@ function resolveCustomerByName(name: string): Customer {
     taxRate: '',
     paymentTerms: '',
     leadTimeDays: 14,
+    // 由表1 建單當下自動建檔的新客戶：等級待業務後續評定，先給 B level
+    status: 'B level',
   }
   customers.push(customer)
   return customer

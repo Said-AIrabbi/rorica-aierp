@@ -386,6 +386,12 @@ export function PackingNoticeFormPage() {
                   emptyText="查無客戶，可直接使用輸入內容建立新客戶"
                 />
                 {errors.customerName && <p className="text-xs text-destructive">{errors.customerName.message}</p>}
+                {/* 已歇業客戶仍可開單（可能是收尾的既有訂單），但要當場提醒，不是建完才發現 */}
+                {matchedCustomer?.status === '已歇業' && (
+                  <p className="text-xs text-destructive">
+                    此客戶主檔狀態為「已歇業」，仍可建單，但請先確認是否應改由其他客戶承接。
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">

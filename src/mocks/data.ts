@@ -115,6 +115,8 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
   taxRate: '5%',
   paymentTerms: faker.helpers.arrayElement(['月結30天', '月結45天', '月結60天', '訂金30%/出貨前付清']),
   leadTimeDays: 14,
+  // 往來等級分佈：多數為 A／B，最後一家設為已歇業，方便看出停用客戶的呈現
+  status: i === CUSTOMER_NAMES.length - 1 ? '已歇業' : faker.helpers.arrayElement(['A level', 'A level', 'B level', 'C level']),
 }))
 
 export const vendors: Vendor[] = VENDOR_NAMES.map((v, i) => ({

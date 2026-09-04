@@ -1,5 +1,12 @@
 // ---------- 主檔（Masters） ----------
 
+/**
+ * 客戶狀態：A～C 為往來等級（由業務依交易量與付款狀況評定），已歇業為終止往來。
+ * 已歇業的客戶仍保留主檔與歷史單據——單據上的客戶是既成事實，不可刪除，只改狀態。
+ */
+export const CUSTOMER_STATUSES = ['A level', 'B level', 'C level', '已歇業'] as const
+export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number]
+
 export interface Customer {
   /**
    * 系統編號（主鍵）：建檔時由系統自動產生（CUST-001…），不開放修改。
@@ -24,6 +31,8 @@ export interface Customer {
   taxRate: string
   paymentTerms: string
   leadTimeDays: number
+  /** 客戶狀態：A～C 往來等級或已歇業；舊資料未設定者視為 B level */
+  status: CustomerStatus
 }
 
 export const PRODUCT_CATEGORIES = [

@@ -52,6 +52,12 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   通過: 'success',
   退回: 'error',
 
+  // 客戶主檔狀態：A～C 為往來等級，已歇業為終止往來
+  'A level': 'success',
+  'B level': 'info',
+  'C level': 'warning',
+  已歇業: 'error',
+
   // 顏色機制提示（表1／表2 的色號查詢結果）
   已有色號: 'success',
   疑似覆色: 'warning',

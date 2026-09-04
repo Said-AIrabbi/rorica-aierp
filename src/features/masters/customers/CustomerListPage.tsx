@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { api } from '@/mocks/api'
 import type { Customer } from '@/types'
 
@@ -16,6 +17,12 @@ export function CustomerListPage() {
   const columns = useMemo<ColumnDef<Customer, unknown>[]>(
     () => [
       { accessorKey: 'id', header: '系統編號' },
+      {
+        id: 'status',
+        header: '狀態',
+        accessorFn: (row) => row.status,
+        cell: ({ getValue }) => <StatusBadge status={getValue<string>()} />,
+      },
       { accessorKey: 'code', header: '客戶代碼' },
       { accessorKey: 'shortName', header: '客戶簡稱' },
       { accessorKey: 'fullNameCN', header: '公司名稱' },

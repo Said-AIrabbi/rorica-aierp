@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
 import { createCustomer, deleteCustomer, masterDefaults, updateCustomer, type CustomerInput } from '@/mocks/mutations'
 import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
-import type { Customer } from '@/types'
+import { CUSTOMER_STATUSES, type Customer } from '@/types'
 
 function toInput(customer: Customer): CustomerInput {
   const { id: _id, ...rest } = customer
@@ -36,6 +36,8 @@ function emptyInput(): CustomerInput {
     paymentTerms: '',
     // 交期預設天數：全公司統一 14 天
     leadTimeDays: 14,
+    // 新客戶等級待業務評定，先給 B level
+    status: 'B level',
   }
 }
 
@@ -133,6 +135,31 @@ export function CustomerDetailPage() {
             <div className="space-y-1">
               <Label className="text-xs">客戶簡稱</Label>
               <Input value={draft.shortName} onChange={(e) => set('shortName', e.target.value)} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">客戶狀態</Label>
+              {/* A～C 為往來等級，已歇業為終止往來；以分段按鈕呈現，一眼看得出目前落在哪一級 */}
+              <div className="inline-flex overflow-hidden rounded-md border border-input">
+                {CUSTOMER_STATUSES.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => set('status', status)}
+                    className={
+                      draft.status === status
+                        ? status === '已歇業'
+                          ? 'bg-destructive px-3 py-1.5 text-xs font-medium text-white'
+                          : 'bg-brand px-3 py-1.5 text-xs font-medium text-white'
+                        : 'bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted'
+                    }
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                往來等級由業務評定；已歇業僅停止往來，主檔與歷史單據一律保留
+              </p>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">統一編號</Label>
