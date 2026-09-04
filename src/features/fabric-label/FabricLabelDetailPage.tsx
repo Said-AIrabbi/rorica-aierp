@@ -17,14 +17,11 @@ import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
 import { markFabricLabelDefective, splitFabricLabel } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
-import { formatNumber, inchToCm, meterToYard, yardToMeter } from '@/lib/units'
+import { formatNumber, inchToCm } from '@/lib/units'
+import { rollLengthText } from '@/components/shared/BasisQty'
 
-/** 長度雙單位同時顯示，如 55.0yd／50.3m；不論欄位以 Yard 或 Meter 儲存皆換算補齊另一單位 */
-function dualUnitLength(length: number, unit: 'Yard' | 'Meter') {
-  const yard = unit === 'Yard' ? length : meterToYard(length)
-  const meter = unit === 'Meter' ? length : yardToMeter(length)
-  return `${formatNumber(yard, 1)}yd／${formatNumber(meter, 1)}m`
-}
+/** 長度以該捲實際量測的單位為主值，另一單位為換算值（見 rollLengthText） */
+const dualUnitLength = rollLengthText
 
 export function FabricLabelDetailPage() {
   const { id } = useParams<{ id: string }>()

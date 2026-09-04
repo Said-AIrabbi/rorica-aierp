@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getCustomer, getVendor, productBranchSuffix } from '@/mocks/data'
+import { getCustomer, getPackingNotice, getVendor, productBranchSuffix } from '@/mocks/data'
+import { BasisQty } from '@/components/shared/BasisQty'
 import {
   setSecondaryProcessingStatus,
   updateSecondaryProcessingItems,
@@ -36,6 +37,8 @@ export function SecondaryProcessingDetailPage() {
     queryFn: api.secondaryProcessingOrders,
   })
   const order = data.find((o) => o.id === id)
+  // 數量以來源表1 的建單基準為主值呈現，另一單位標為換算值；舊資料未記錄者視為 Yard
+  const itemUnit = getPackingNotice(order?.parentId ?? '')?.itemUnit ?? 'Yard'
 
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
 
@@ -309,8 +312,7 @@ export function SecondaryProcessingDetailPage() {
                     <TableHead>客戶品名</TableHead>
                     <TableHead>皇加品名</TableHead>
                     <TableHead>顏色</TableHead>
-                    <TableHead className="text-right">商品總數 (Yard)</TableHead>
-                    <TableHead className="text-right">米數 (Meter)</TableHead>
+                    <TableHead className="text-right">商品總數 ({itemUnit})</TableHead>
                     <TableHead>加工方法</TableHead>
                     <TableHead className="text-right">加工單價</TableHead>
                     <TableHead className="text-right">金額</TableHead>
@@ -327,8 +329,9 @@ export function SecondaryProcessingDetailPage() {
                       <span className="text-muted-foreground">{productBranchSuffix(item.productId)}</span>
                     </TableCell>
                       <TableCell>{item.color}</TableCell>
-                      <TableCell className="text-right">{formatNumber(item.yard, 0)}</TableCell>
-                      <TableCell className="text-right">{formatNumber(item.meter, 1)}</TableCell>
+                      <TableCell className="text-right">
+                        <BasisQty yard={item.yard} meter={item.meter} unit={itemUnit} />
+                      </TableCell>
                       <TableCell className="text-xs">
                         {item.processingMethod ? (
                           <>

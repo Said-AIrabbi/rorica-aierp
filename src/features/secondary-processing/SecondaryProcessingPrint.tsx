@@ -2,16 +2,24 @@ import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaI
 import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
-import { getCustomer, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
+import { getCustomer, getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
+import { basisQtyColumns, basisMetaValue } from '@/components/print/basisColumns'
+import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { SecondaryProcessingItem, SecondaryProcessingOrder } from '@/types'
 
-const columns: PrintColumn<SecondaryProcessingItem>[] = [
+/** 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈ */
+const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] => [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
   { header: '客戶品名', cell: (r) => r.customerProductName },
   { header: '皇加品名', cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}` },
   { header: '顏色', cell: (r) => r.color },
-  { header: '商品總數 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '20mm' },
-  { header: '(M)', cell: (r) => formatNumber(r.meter, 1), align: 'right', width: '16mm' },
+  ...basisQtyColumns<SecondaryProcessingItem>({
+    unit,
+    label: '商品總數',
+    yard: (r) => r.yard,
+    meter: (r) => r.meter,
+    width: '20mm',
+  }),
   {
     header: '加工方法',
     cell: (r) => (
@@ -40,6 +48,8 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
   const customer = getCustomer(order.customerId)
   const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
   const pk = order.packaging
+  // 數量以來源表1 的建單基準為主值：加工廠看到的數字要跟客戶下單的單位一致
+  const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
 
   const meta: PrintMetaItem[] = [
     { label: '二次加工單號', value: order.id },
@@ -52,6 +62,7 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
     { label: '加工廠地址', value: order.vendorAddress ?? vendor?.address ?? ' ', span: 2 },
     { label: '皇加聯絡窗口', value: order.internalContact ?? ' ' },
     { label: '狀態', value: order.status },
+    { label: '數量輸入基準', value: basisMetaValue(itemUnit) },
   ]
 
   return (
@@ -66,15 +77,15 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
     >
       <PrintSection title="加工明細">
         <PrintTable
-          columns={columns}
+          columns={buildColumns(itemUnit)}
           rows={order.items}
           totalRow={[
             '合計',
             null,
             null,
             null,
-            formatNumber(order.items.reduce((s, i) => s + i.yard, 0), 1),
-            formatNumber(order.items.reduce((s, i) => s + i.meter, 0), 1),
+            formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.yard : i.meter), 0), 1),
+            formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0), 1),
             null,
             null,
             amount > 0 ? formatNumber(amount, 0) : null,

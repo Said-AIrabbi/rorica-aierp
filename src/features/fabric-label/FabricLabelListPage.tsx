@@ -7,14 +7,8 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { api } from '@/mocks/api'
-import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
+import { rollLengthText } from '@/components/shared/BasisQty'
 import type { FabricLabel } from '@/types'
-
-function dualUnitLength(length: number, unit: 'Yard' | 'Meter') {
-  const yard = unit === 'Yard' ? length : meterToYard(length)
-  const meter = unit === 'Meter' ? length : yardToMeter(length)
-  return `${formatNumber(yard, 1)}yd／${formatNumber(meter, 1)}m`
-}
 
 export function FabricLabelListPage() {
   const navigate = useNavigate()
@@ -30,7 +24,8 @@ export function FabricLabelListPage() {
       { accessorKey: 'color', header: '顏色' },
       { id: 'width', header: '幅寬', accessorFn: (row) => `${row.width}"` },
       { id: 'batchCode', header: '批', accessorFn: (row) => row.batchCode ?? '-' },
-      { id: 'length', header: '長度（雙單位）', accessorFn: (row) => dualUnitLength(row.length, row.unit) },
+      // 長度以該捲入庫時實際量測的單位為主值，另一單位標 ≈ 為換算值
+      { id: 'length', header: '長度（實測單位為主）', accessorFn: (row) => rollLengthText(row.length, row.unit) },
       {
         id: 'status',
         header: '狀態',

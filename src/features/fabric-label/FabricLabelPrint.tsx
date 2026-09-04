@@ -45,7 +45,9 @@ export function FabricLabelPrint({ label }: { label: FabricLabel }) {
             <dd>{label.productId ?? '—'}</dd>
             <dt>長度</dt>
             <dd>
-              {formatNumber(yard, 1)}yd／{formatNumber(meter, 1)}m
+              {label.unit === 'Yard'
+                ? `${formatNumber(yard, 1)}yd（≈ ${formatNumber(meter, 1)}m）`
+                : `${formatNumber(meter, 1)}m（≈ ${formatNumber(yard, 1)}yd）`}
             </dd>
           </dl>
         </div>

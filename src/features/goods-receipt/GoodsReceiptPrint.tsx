@@ -3,14 +3,28 @@ import { PRINT_TITLES } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, formatPercent } from '@/lib/units'
 import { goodsReceiptShrinkageRate } from '@/lib/workflow'
-import { getAccount, getVendor, vendorDisplayName } from '@/mocks/data'
+import { getAccount, getPackingNotice, getVendor, vendorDisplayName } from '@/mocks/data'
 import type { GoodsReceipt, GoodsReceiptRoll } from '@/types'
 
-const columns: PrintColumn<GoodsReceiptRoll>[] = [
+/**
+ * 碼數與米數皆為廠商收據上的實際量測值（OCR 逐欄辨識），非同一數字的換算，
+ * 故兩欄都保留，只在客戶下單基準的那一欄標註，讓驗收時知道要對哪個數字。
+ */
+const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<GoodsReceiptRoll>[] => [
   { header: '疋號', cell: (r) => r.rollNo, align: 'center', width: '14mm' },
   { header: '批號', cell: (r) => r.batchCode ?? ' ', width: '24mm' },
-  { header: '碼數 (Y)', cell: (r) => formatNumber(r.length, 1), align: 'right', width: '22mm' },
-  { header: '米數 (M)', cell: (r) => formatNumber(r.meter, 1), align: 'right', width: '22mm' },
+  {
+    header: unit === 'Yard' ? '碼數 (Y)＊' : '碼數 (Y)',
+    cell: (r) => formatNumber(r.length, 1),
+    align: 'right',
+    width: '22mm',
+  },
+  {
+    header: unit === 'Meter' ? '米數 (M)＊' : '米數 (M)',
+    cell: (r) => formatNumber(r.meter, 1),
+    align: 'right',
+    width: '22mm',
+  },
   { header: '重量 (KG)', cell: (r) => formatNumber(r.weight, 1), align: 'right', width: '22mm' },
   {
     header: 'OCR 信心度',
@@ -29,6 +43,7 @@ export function GoodsReceiptPrint({ receipt }: { receipt: GoodsReceipt }) {
   const operator = getAccount(receipt.operatorAccountId)
   const shrinkage = goodsReceiptShrinkageRate(receipt)
   const totalYard = receipt.rolls.reduce((s, r) => s + r.length, 0)
+  const itemUnit = getPackingNotice(receipt.parentId)?.itemUnit ?? 'Yard'
 
   const meta: PrintMetaItem[] = [
     { label: '入庫單號', value: receipt.id },
@@ -49,6 +64,7 @@ export function GoodsReceiptPrint({ receipt }: { receipt: GoodsReceipt }) {
     { label: '投胚量', value: receipt.pledgedQty ? `${formatNumber(receipt.pledgedQty, 1)} Y` : ' ' },
     { label: '縮率', value: shrinkage === null ? ' ' : formatPercent(shrinkage, 1) },
     { label: '原始收據附件', value: receipt.receiptAttachmentName ?? ' ' },
+    { label: '數量輸入基準', value: `${itemUnit}（明細標＊者為客戶下單基準）` },
   ]
 
   return (
@@ -63,7 +79,7 @@ export function GoodsReceiptPrint({ receipt }: { receipt: GoodsReceipt }) {
     >
       <PrintSection title="入庫明細">
         <PrintTable
-          columns={columns}
+          columns={buildColumns(itemUnit)}
           rows={receipt.rolls}
           totalRow={[
             '合計',

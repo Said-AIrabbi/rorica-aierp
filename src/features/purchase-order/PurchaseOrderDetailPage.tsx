@@ -21,6 +21,7 @@ import { completePurchaseOrderDraft, signPurchaseOrder, submitPurchaseOrderLarge
 import { formatDate } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
+import { BasisQty } from '@/components/shared/BasisQty'
 import { formatNumber, meterToYard } from '@/lib/units'
 import {
   effectivePurchaseOrderStatus,
@@ -45,6 +46,8 @@ export function PurchaseOrderDetailPage() {
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const order = data.find((o) => o.id === id)
   const sourceNotice = packingNotices.find((n) => n.id === data.find((o) => o.id === id)?.parentId)
+  // 數量以來源表1 的建單基準為主值呈現，另一單位標為換算值；舊資料未記錄者視為 Yard
+  const itemUnit = sourceNotice?.itemUnit ?? 'Yard'
   const [rejectReason, setRejectReason] = useState('')
   const [draftType, setDraftType] = useState<PurchaseOrder['type']>('胚布')
   const [draftHasDyeVendor, setDraftHasDyeVendor] = useState(false)
@@ -373,8 +376,7 @@ export function PurchaseOrderDetailPage() {
                   <TableHead>客戶品名</TableHead>
                   <TableHead>皇加品名</TableHead>
                   <TableHead>顏色</TableHead>
-                  <TableHead className="text-right">Yard</TableHead>
-                  <TableHead className="text-right">Meter</TableHead>
+                  <TableHead className="text-right">數量 ({itemUnit})</TableHead>
                   <TableHead>色號查詢</TableHead>
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
@@ -393,8 +395,9 @@ export function PurchaseOrderDetailPage() {
                       <span className="text-muted-foreground">{productBranchSuffix(item.productId)}</span>
                     </TableCell>
                     <TableCell>{item.color}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.yard, 0)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.meter, 1)}</TableCell>
+                    <TableCell className="text-right">
+                      <BasisQty yard={item.yard} meter={item.meter} unit={itemUnit} />
+                    </TableCell>
                     <TableCell>
                       {/* 本單已指定染整廠時即為完整四鍵查詢，結論確定；未指定則仍為「視染整廠而定」 */}
                       <ColorLookupBadge

@@ -7,7 +7,8 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
 import { isRollReserved } from '@/lib/inventory'
-import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
+import { formatNumber, meterToYard } from '@/lib/units'
+import { rollLengthText } from '@/components/shared/BasisQty'
 import type { FabricLabel, Product } from '@/types'
 
 /** 布卷長度一律換算為碼呈現：帳務基準為 Yard */
@@ -15,10 +16,9 @@ function toYard(roll: FabricLabel): number {
   return roll.unit === 'Yard' ? roll.length : meterToYard(roll.length)
 }
 
-/** 實體標籤上長度為雙單位並列，故明細也一併顯示，避免與標籤對不起來 */
+/** 與實體標籤同一種呈現：以該捲實測單位為主值，另一單位標 ≈，避免與標籤對不起來 */
 function dualUnitLength(roll: FabricLabel): string {
-  const yard = toYard(roll)
-  return `${formatNumber(yard, 1)}yd／${formatNumber(yardToMeter(yard), 1)}m`
+  return rollLengthText(roll.length, roll.unit)
 }
 
 type RollFilter = '可用' | '已預留' | '瑕疵／報廢' | '全部'

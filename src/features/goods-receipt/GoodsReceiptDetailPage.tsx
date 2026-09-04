@@ -53,6 +53,8 @@ export function GoodsReceiptDetailPage() {
   const receipt = data.find((r) => r.id === id)
   /** 來源表1明細：每一卷入庫布卷都對應其中一列，決定條碼標籤的品名／顏色／規格分支 */
   const sourceItems = packingNotices.find((n) => n.id === receipt?.parentId)?.items ?? []
+  // 客戶當初下單的單位：本表兩欄皆為實際量測值，故不合併，只標示哪一欄是基準
+  const itemUnit = packingNotices.find((n) => n.id === receipt?.parentId)?.itemUnit ?? 'Yard'
 
   const [rolls, setRolls] = useState<GoodsReceiptRoll[]>([])
   const [pledgedQty, setPledgedQty] = useState('')
@@ -297,7 +299,15 @@ export function GoodsReceiptDetailPage() {
             <DetailField label="廠商出貨單號（OCR）" value={receipt.vendorShipmentNo || '-'} />
             <DetailField label="出貨日期（OCR）" value={formatDate(receipt.vendorShipDate)} />
             <DetailField label="布卷總數" value={`${rolls.length} 卷`} />
-            <DetailField label="長度合計" value={`${formatNumber(totalLength, 0)} Yard ／ ${formatNumber(totalMeter, 1)} Meter`} />
+            <DetailField
+              label="長度合計"
+              // 兩者皆為收據上的實測加總（非換算），故不合併；建單基準排前面
+              value={
+                itemUnit === 'Meter'
+                  ? `${formatNumber(totalMeter, 1)} Meter ／ ${formatNumber(totalLength, 0)} Yard`
+                  : `${formatNumber(totalLength, 0)} Yard ／ ${formatNumber(totalMeter, 1)} Meter`
+              }
+            />
             {isOutsourced && (
               <DetailField label="縮率" value={shrinkage !== null ? formatPercent(shrinkage) : '待填投胚量後計算'} />
             )}
@@ -444,8 +454,14 @@ export function GoodsReceiptDetailPage() {
                   <TableHead>疋號</TableHead>
                   <TableHead>對應表1明細</TableHead>
                   <TableHead>批號</TableHead>
-                  <TableHead className="text-right">碼數 (Y)</TableHead>
-                  <TableHead className="text-right">米數 (M)</TableHead>
+                  <TableHead className="text-right">
+                    碼數 (Y)
+                    {itemUnit === 'Yard' && <span className="ml-1 text-xs font-normal text-muted-foreground">建單基準</span>}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    米數 (M)
+                    {itemUnit === 'Meter' && <span className="ml-1 text-xs font-normal text-muted-foreground">建單基準</span>}
+                  </TableHead>
                   <TableHead className="text-right">重量 (KG)</TableHead>
                   <TableHead>OCR 辨識信心度</TableHead>
                   <TableHead>已人工複核</TableHead>
