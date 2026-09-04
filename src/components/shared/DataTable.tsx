@@ -25,7 +25,11 @@ interface DataTableProps<TData> {
    * 若沿用整頁捲動，表頭就會跟著整塊表格一起捲出畫面。
    */
   stickyHeader?: boolean
-  /** 水平捲動時要固定在左側的欄位 id（依陣列順序由左至右排列） */
+  /**
+   * 水平捲動時要固定在左側的欄位 id（依陣列順序由左至右排列）。
+   * 未指定時固定第一欄——各列表的第一欄都是識別欄（單號／代碼／條碼／品名），
+   * 橫向捲到右邊時，那正是唯一還需要看得到的欄位。傳入空陣列即可關閉。
+   */
   pinnedColumnIds?: string[]
   /** 捲動區高度上限，僅在 stickyHeader 時有效 */
   maxHeight?: string
@@ -37,7 +41,7 @@ export function DataTable<TData>({
   searchPlaceholder = '搜尋...',
   onRowClick,
   emptyText = '目前沒有資料',
-  stickyHeader = false,
+  stickyHeader = true,
   pinnedColumnIds,
   maxHeight = 'calc(100vh - 20rem)',
 }: DataTableProps<TData>) {
@@ -56,7 +60,8 @@ export function DataTable<TData>({
   })
 
   // 呼叫端多半直接寫陣列字面值，每次 render 都是新參考；以字串為鍵取得穩定的相依值
-  const pinnedKey = (pinnedColumnIds ?? []).join(',')
+  const firstColumnId = table.getAllLeafColumns()[0]?.id
+  const pinnedKey = (pinnedColumnIds ?? (firstColumnId ? [firstColumnId] : [])).join(',')
   const pinned = useMemo(() => (pinnedKey ? pinnedKey.split(',') : []), [pinnedKey])
   const lastPinnedId = pinned[pinned.length - 1]
 

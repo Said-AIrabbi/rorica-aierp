@@ -112,8 +112,6 @@ export function ProductListPage() {
         columns={columns}
         data={data}
         searchPlaceholder="搜尋品名、編號..."
-        stickyHeader
-        pinnedColumnIds={['productName']}
         onRowClick={(row) => navigate(`/masters/products/${row.id}`)}
         emptyText={isLoading ? '載入中...' : '目前沒有產品資料'}
       />

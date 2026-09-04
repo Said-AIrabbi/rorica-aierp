@@ -64,8 +64,6 @@ export function FabricLabelListPage() {
         columns={columns}
         data={data}
         searchPlaceholder="搜尋條碼、入庫單..."
-        stickyHeader
-        pinnedColumnIds={['rollCode']}
         onRowClick={(row) => navigate(`/fabric-label/${row.id}`)}
         emptyText={isLoading ? '載入中...' : '目前沒有布卷條碼紀錄'}
       />
