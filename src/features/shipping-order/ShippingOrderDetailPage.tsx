@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { ShippingOrderPrint } from './ShippingOrderPrint'
 import { MarkingPrint } from '@/features/packing-notice/MarkingPrint'
+import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,6 +26,7 @@ import {
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
+import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
 import type { ShippingOrderItem, ShippingOrderSignatures } from '@/types'
 
 export function ShippingOrderDetailPage() {
@@ -301,6 +303,18 @@ export function ShippingOrderDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 裝箱出貨要照客戶原始包裝要求作業，故與嘜頭一樣由表1 唯讀帶入 */}
+      {notice && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-base">包裝設定（帶入自表1包裝通知單）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PackagingSummary packaging={buildSecondaryProcessingPackaging(notice)} />
+          </CardContent>
+        </Card>
+      )}
 
       {marking && (
         <Card className="mt-4">

@@ -14,7 +14,7 @@ import { api } from '@/mocks/api'
 import { createSecondaryProcessingOrder } from '@/mocks/mutations'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
 import { formatNumber } from '@/lib/units'
-import { PackagingSummary } from './PackagingSummary'
+import { PackagingSummary } from '@/components/shared/PackagingSummary'
 
 export function SecondaryProcessingFormPage() {
   const navigate = useNavigate()

@@ -25,7 +25,7 @@ import {
 import dayjs from 'dayjs'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
-import { PackagingSummary } from './PackagingSummary'
+import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import type { SecondaryProcessingItem } from '@/types'
 
 export function SecondaryProcessingDetailPage() {
