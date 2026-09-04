@@ -195,7 +195,7 @@ export function ProductDetailPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">成品類別</Label>
+              <Label className="text-xs">產品類別</Label>
               <Select value={draft.categoryCode} onValueChange={(v) => set('categoryCode', v as Product['categoryCode'])}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="請選擇類別" />
@@ -218,7 +218,7 @@ export function ProductDetailPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">產品特性</Label>
+              <Label className="text-xs">產品說明</Label>
               <Input
                 value={draft.characteristics}
                 onChange={(e) => set('characteristics', e.target.value)}
@@ -234,7 +234,7 @@ export function ProductDetailPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
-              <Label className="text-xs">胚布材質</Label>
+              <Label className="text-xs">成份</Label>
               <Input
                 value={draft.material}
                 onChange={(e) => set('material', e.target.value)}
@@ -268,7 +268,7 @@ export function ProductDetailPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">幅寬（英吋）</Label>
+              <Label className="text-xs">幅寬（英吋）約有 ±5% 誤差</Label>
               <div className="flex items-center gap-1.5">
                 <Input
                   type="number"
@@ -294,7 +294,7 @@ export function ProductDetailPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">碼重（G/Y）</Label>
+              <Label className="text-xs">碼重（G/Y）約有 ±5% 誤差</Label>
               <Input
                 type="number"
                 step="0.1"

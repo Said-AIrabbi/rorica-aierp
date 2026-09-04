@@ -32,7 +32,7 @@ export function ProductListPage() {
       { accessorKey: 'customerProductName', header: '客戶品名' },
       {
         id: 'category',
-        header: '款式類別',
+        header: '產品類別',
         accessorFn: (row) => getCategoryLabel(row.categoryCode),
       },
       { accessorKey: 'id', header: '產品編號' },
@@ -42,7 +42,7 @@ export function ProductListPage() {
         header: '所屬客戶',
         accessorFn: (row) => getCustomer(row.customerId)?.shortName ?? row.customerId,
       },
-      { accessorKey: 'material', header: '胚布材質' },
+      { accessorKey: 'material', header: '成份' },
       { accessorKey: 'greigeSpec', header: '胚布規格' },
       { accessorKey: 'finishedSpec', header: '成品規格' },
       // 幅寬原始單位為英吋（廠商規格單位），括號附註公分換算供內部參考

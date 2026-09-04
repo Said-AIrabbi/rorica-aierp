@@ -82,7 +82,7 @@ export function DyeOrderFormPage() {
     setValue(
       'items',
       notice.items.map((item) => {
-        // 胚布材質／胚布規格／成品規格自商品資料主檔依皇加品名自動帶入，帶入後仍可修改
+        // 成份／胚布規格／成品規格自商品資料主檔依皇加品名自動帶入，帶入後仍可修改
         const product = resolveProduct(item.productId, item.roricaProductName)
         return {
           color: item.color,
@@ -91,7 +91,7 @@ export function DyeOrderFormPage() {
           colorMatchStandard: '',
           // 單卷碼數＝該筆明細定碼長度換算的每卷碼數（非整批商品總數）
           rollYard: defaultRollYard(item.fixedLengthMeter) ?? undefined,
-          // 胚布材質／胚布規格／成品規格依明細的產品分支自動帶入，唯讀不可改
+          // 成份／胚布規格／成品規格依明細的產品分支自動帶入，唯讀不可改
           fabricMaterial: product?.material ?? '',
           fabricSpec: product?.greigeSpec ?? '',
           finishedSpec: product?.finishedSpec ?? '',
@@ -219,7 +219,7 @@ export function DyeOrderFormPage() {
                       <TableHead>色樣編號</TableHead>
                       <TableHead>對色標準</TableHead>
                       <TableHead>單卷碼數</TableHead>
-                      <TableHead>胚布材質</TableHead>
+                      <TableHead>成份</TableHead>
                       <TableHead>胚布規格</TableHead>
                       <TableHead>成品規格</TableHead>
                       <TableHead className="text-right">加工單價</TableHead>
@@ -270,7 +270,7 @@ export function DyeOrderFormPage() {
                             </span>
                           </div>
                         </TableCell>
-                        {/* 胚布材質／胚布規格／成品規格：依明細的產品分支自動帶入，唯讀不可改，
+                        {/* 成份／胚布規格／成品規格：依明細的產品分支自動帶入，唯讀不可改，
                             要改請回商品資料主檔維護，避免同一分支的規格在各單據各存一份而不一致 */}
                         <TableCell>
                           <Input className="w-32" disabled {...register(`items.${index}.fabricMaterial`)} />

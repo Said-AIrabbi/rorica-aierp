@@ -758,7 +758,7 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
       const dyeOrderId = `${order.parentId}-D${seq}`
       const productName = groupItems[0].roricaProductName
       const productId = groupItems[0].productId
-      // 胚布材質／胚布規格／成品規格依明細的產品分支自動帶入（唯讀）
+      // 成份／胚布規格／成品規格依明細的產品分支自動帶入（唯讀）
       const product = resolveProduct(productId, productName)
       const items: DyeOrderItem[] = groupItems.map((item, i) => {
         const resolved = resolveDyeOrderItemSampleCode(

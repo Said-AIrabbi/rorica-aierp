@@ -227,7 +227,7 @@ export function DyeOrderDetailPage() {
                   <TableHead>色樣編號</TableHead>
                   <TableHead>對色標準</TableHead>
                   <TableHead className="text-right">單卷碼數</TableHead>
-                  <TableHead>胚布材質</TableHead>
+                  <TableHead>成份</TableHead>
                   <TableHead>胚布規格</TableHead>
                   <TableHead>成品規格</TableHead>
                   <TableHead className="text-right">加工單價</TableHead>
