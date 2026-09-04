@@ -7,23 +7,33 @@ import { basisQtyColumns, basisMetaValue } from '@/components/print/basisColumns
 import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { PurchaseOrder, PurchaseOrderItem } from '@/types'
 
-/** 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈，對外單據才看得出賣方要交的是幾碼還是幾米 */
-const buildColumns = (unit: QtyBasis): PrintColumn<PurchaseOrderItem>[] => [
+/**
+ * 訂購明細欄位。
+ *
+ * 這張單是給賣方看的，故只印賣方作業需要的資訊：
+ * - **客戶品名、加工方法不印**：客戶品名是皇加對客戶的稱呼，加工方法屬表5 二次加工的範疇，與供應商無關
+ * - **胚布單另外不印顏色與包裝方式**：胚布是未染的坯布，顏色由後續染整決定；包裝方式屬成品交付規格
+ *
+ * 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈，對外單據才看得出賣方要交的是幾碼還是幾米。
+ */
+const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '客戶品名', cell: (r) => r.customerProductName },
   { header: '皇加品名', cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}` },
-  { header: '顏色', cell: (r) => r.color },
+  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color }]),
   ...basisQtyColumns<PurchaseOrderItem>({ unit, label: '數量', yard: (r) => r.yard, meter: (r) => r.meter }),
-  {
-    header: '包裝方式',
-    cell: (r) => (
-      <>
-        {r.packingMethod}
-        {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
-      </>
-    ),
-  },
-  { header: '加工方法', cell: (r) => r.processingMethod ?? '不指定' },
+  ...(isGreige
+    ? []
+    : [
+        {
+          header: '包裝方式',
+          cell: (r: PurchaseOrderItem) => (
+            <>
+              {r.packingMethod}
+              {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
+            </>
+          ),
+        },
+      ]),
   { header: '單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
   {
     header: '金額',
@@ -42,6 +52,9 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
   const dyeVendor = order.dyeVendorId ? getVendor(order.dyeVendorId) : undefined
   const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
   const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
+  // 胚布單：顏色未定、包裝屬成品規格，兩欄都不印
+  const columns = buildColumns(itemUnit, order.type === '胚布')
+  const qtyIndex = columns.findIndex((c) => String(c.header).startsWith('數量'))
 
   const meta: PrintMetaItem[] = [
     { label: '訂購單號', value: order.id },
@@ -71,20 +84,20 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
     >
       <PrintSection title="訂購明細" note="明細逐列對應包裝通知單；數量以客戶下單基準為主值，另一單位為換算值。">
         <PrintTable
-          columns={buildColumns(itemUnit)}
+          columns={columns}
           rows={order.items}
-          totalRow={[
-            '合計',
-            null,
-            null,
-            null,
-            formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.yard : i.meter), 0), 1),
-            formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0), 1),
-            null,
-            null,
-            null,
-            amount > 0 ? formatNumber(amount, 0) : null,
-          ]}
+          /* 合計列以欄位位置推算，不寫死 null 的個數——欄位會依單據類型增減，寫死一定會錯位 */
+          totalRow={columns.map((col, i) => {
+            if (i === 0) return '合計'
+            if (i === qtyIndex) {
+              return formatNumber(order.items.reduce((s, item) => s + (itemUnit === 'Yard' ? item.yard : item.meter), 0), 1)
+            }
+            if (i === qtyIndex + 1) {
+              return formatNumber(order.items.reduce((s, item) => s + (itemUnit === 'Yard' ? item.meter : item.yard), 0), 1)
+            }
+            if (col.header === '金額') return amount > 0 ? formatNumber(amount, 0) : null
+            return null
+          })}
         />
       </PrintSection>
 
