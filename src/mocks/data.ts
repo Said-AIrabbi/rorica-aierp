@@ -441,6 +441,11 @@ export const dyeRequests: DyeRequest[] = packingNotices.slice(0, 7).flatMap((pn,
         color,
         sampleCode: status === '草稿' || status === '已送出' ? undefined : `${id}-SAMPLE${k + 1}`,
       })),
+      // 成品規格於打色過程中確認，故僅已進入色卡確認階段之後的單據才有值
+      finishedSpec:
+        status === '草稿' || status === '已送出'
+          ? undefined
+          : `${product.width}" ${product.weightGY}G/Y 打色確認版`,
       colorSampleSubmissions: colorSampleConfirmedAt
         ? [{ id: `${id}-SAMPLE1`, submittedAt: colorSampleConfirmedAt, result: '通過' as const }]
         : undefined,

@@ -873,6 +873,39 @@ export function updateDyeRequestColors(id: string, colors: DyeRequestColorInput[
   return delay(updated)
 }
 
+/**
+ * 成品規格：本單自行登記的手動欄位，已完成的單據不再修改。
+ * 只寫在表3，不動商品主檔——要不要納入主檔是結案後的另一個決定（見 applyDyeRequestFinishedSpec）。
+ */
+export function updateDyeRequestFinishedSpec(id: string, finishedSpec: string): Promise<DyeRequest> {
+  const idx = dyeRequests.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
+  if (dyeRequests[idx].status === '已完成') throw new Error('已完成的打色通知單不可修改成品規格')
+  const updated: DyeRequest = { ...dyeRequests[idx], finishedSpec: finishedSpec.trim() || undefined }
+  dyeRequests[idx] = updated
+  return delay(updated)
+}
+
+/**
+ * 將本單登記的成品規格納入商品資料主檔。
+ *
+ * 限單據**結案（已完成）** 後才可套用：打色可能被退回重打，中途的規格還不算數。
+ * 動作為人工觸發而非結案時自動寫入——主檔規格是所有後續單據的依據，
+ * 要不要以這次打色結果為準，由生管判斷。
+ */
+export function applyDyeRequestFinishedSpec(id: string): Promise<Product> {
+  const request = dyeRequests.find((d) => d.id === id)
+  if (!request) throw new Error(`打色通知單 ${id} 不存在`)
+  if (request.status !== '已完成') throw new Error('打色通知單結案（已完成）後才可納入商品主檔')
+  const spec = request.finishedSpec?.trim()
+  if (!spec) throw new Error('本單尚未填寫成品規格')
+  const idx = products.findIndex((p) => p.id === request.productId)
+  if (idx === -1) throw new Error(`商品 ${request.productId} 不存在`)
+  const updated: Product = { ...products[idx], finishedSpec: spec }
+  products[idx] = updated
+  return delay(updated)
+}
+
 export function createDyeRequest(input: DyeRequestInput): Promise<DyeRequest> {
   // 表3的子序號為 -C{n}，與表4染單的 -D{n} 分開，避免同一主號下單號相撞
   const id = nextDyeRequestId(input.parentId)

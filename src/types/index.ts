@@ -441,6 +441,12 @@ export interface DyeRequest {
   /** 色卡送樣確認：完整送樣子流程，退回不設次數上限，選「退回」後該筆鎖定、自動新增下一筆 */
   colorSampleSubmissions?: LargeSampleSubmission[]
   colorSampleConfirmedAt?: string
+  /**
+   * 成品規格：手動輸入。打色是「試出這塊布最後長什麼樣」的過程，實際規格往往到這時才確定，
+   * 故在本單登記；待單據結案（已完成）確認無誤後，可由人工套用為商品資料主檔的「成品規格」。
+   * 不自動回寫主檔——打色可能退回重打，未確認的規格不應污染主檔。
+   */
+  finishedSpec?: string
   /** 備註：自由文字，如「請安排打色，謝謝！色號太久重新覆色」 */
   note?: string
   status: DyeRequestStatus

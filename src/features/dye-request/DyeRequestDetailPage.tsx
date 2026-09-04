@@ -14,7 +14,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
 import { getProduct, getVendor } from '@/mocks/data'
-import { sendDyeRequest, submitDyeRequestColorSample, updateDyeRequestColors, type DyeRequestColorInput } from '@/mocks/mutations'
+import {
+  applyDyeRequestFinishedSpec,
+  sendDyeRequest,
+  submitDyeRequestColorSample,
+  updateDyeRequestColors,
+  updateDyeRequestFinishedSpec,
+  type DyeRequestColorInput,
+} from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 
 export function DyeRequestDetailPage() {
@@ -24,6 +31,8 @@ export function DyeRequestDetailPage() {
   const { data = [] } = useQuery({ queryKey: ['dyeRequests'], queryFn: api.dyeRequests })
   const request = data.find((d) => d.id === id)
   const [rejectReason, setRejectReason] = useState('')
+  // 成品規格草稿：打字時只更新草稿，離開欄位才寫入
+  const [specDraft, setSpecDraft] = useState<string | undefined>(undefined)
   // 色號清單為可編輯草稿：染整廠回覆後由生管補填色樣編號，或因重新覆色追加新列
   const [colorDraft, setColorDraft] = useState<DyeRequestColorInput[]>([])
 
@@ -58,6 +67,24 @@ export function DyeRequestDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const saveSpecMutation = useMutation({
+    mutationFn: (spec: string) => updateDyeRequestFinishedSpec(id!, spec),
+    onSuccess: async () => {
+      await invalidate()
+      setSpecDraft(undefined)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const applySpecMutation = useMutation({
+    mutationFn: () => applyDyeRequestFinishedSpec(id!),
+    onSuccess: async (product) => {
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success(`已納入商品主檔 ${product.productName}-${product.sortNo} 的成品規格`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const saveColorsMutation = useMutation({
     mutationFn: () => updateDyeRequestColors(id!, colorDraft.filter((c) => c.color.trim())),
     onSuccess: async () => {
@@ -83,6 +110,8 @@ export function DyeRequestDetailPage() {
   const pending = sendMutation.isPending || submitSampleMutation.isPending
   // 已完成後鎖定色號清單，其餘狀態皆可補填／追加（重新覆色不設次數上限）
   const colorsEditable = request.status !== '已完成'
+  // 成品規格同樣在結案前可修改；結案後改為唯讀，並開放「納入商品主檔」
+  const specEditable = request.status !== '已完成'
 
   return (
     <div>
@@ -132,6 +161,42 @@ export function DyeRequestDetailPage() {
             <DetailField label="委託日" value={formatDate(request.requestDate)} />
             <DetailField label="色卡確認日" value={formatDate(request.colorSampleConfirmedAt)} />
             <DetailField label="備註" value={request.note || '-'} />
+            {/* 成品規格：打色過程中才確定，故於本單手動登記；結案後可人工納入商品主檔 */}
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs text-muted-foreground">成品規格（手動輸入）</Label>
+              {specEditable ? (
+                <Input
+                  value={specDraft ?? request.finishedSpec ?? ''}
+                  placeholder="例：60&quot; 120G/Y 緞布，打色確認版"
+                  onChange={(e) => setSpecDraft(e.target.value)}
+                  onBlur={() => {
+                    if (specDraft !== undefined && specDraft !== (request.finishedSpec ?? '')) {
+                      saveSpecMutation.mutate(specDraft)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur()
+                  }}
+                />
+              ) : (
+                <div className="text-sm text-ink-body">{request.finishedSpec || '-'}</div>
+              )}
+              {!specEditable && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!request.finishedSpec || applySpecMutation.isPending}
+                    onClick={() => applySpecMutation.mutate()}
+                  >
+                    納入商品主檔成品規格
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    主檔現值：{product?.finishedSpec || '-'}
+                  </span>
+                </div>
+              )}
+            </div>
           </DetailGrid>
         </CardContent>
       </Card>

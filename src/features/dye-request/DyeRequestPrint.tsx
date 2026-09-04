@@ -22,6 +22,8 @@ export function DyeRequestPrint({ request }: { request: DyeRequest }) {
     { label: '染整廠', value: vendorDisplayName(vendor), span: 2 },
     { label: '皇加品名', value: product?.productName ?? request.productId },
     { label: '胚布編號', value: request.greigeFabricCode ?? ' ' },
+    // 成品規格是打色的目標規格，對外單據一併印出供染整廠對照
+    { label: '成品規格', value: request.finishedSpec ?? ' ', span: 2 },
   ]
 
   return (
