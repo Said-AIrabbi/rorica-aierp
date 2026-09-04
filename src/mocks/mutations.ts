@@ -19,6 +19,7 @@ import {
 import type {
   AbnormalHandling,
   AbnormalNotice,
+  Account,
   ActualReceiptComparison,
   Customer,
   DyeOrder,
@@ -2227,4 +2228,281 @@ export function completeAbnormalNotice(id: string): Promise<AbnormalNotice> {
   if (pending.length > 0) throw new Error(`尚有處理方式未完成：${pending.join('；')}`)
   abnormalNotices[idx] = { ...notice, status: '已完成', completedAt: dayjs().toISOString() }
   return delay(abnormalNotices[idx])
+}
+
+// ---------- 主檔的新增／刪除（編輯見各主檔的 update*） ----------
+
+/**
+ * 主檔識別碼一律由系統產生，格式為「前綴-三位流水號」。
+ * 流水號取現有最大值 +1 而非「筆數 +1」——刪除過任何一筆之後，以筆數計會產生重複主鍵。
+ */
+function nextMasterId(prefix: string, existing: { id: string }[]): string {
+  const max = existing.reduce((m, row) => {
+    const n = Number(row.id.replace(`${prefix}-`, ''))
+    return Number.isFinite(n) ? Math.max(m, n) : m
+  }, 0)
+  return `${prefix}-${pad(max + 1)}`
+}
+
+/** 對外代號（客戶代碼／廠商代碼／帳戶代碼）的預設值，同樣取最大流水號 +1，使用者可自行改寫 */
+function nextMasterCode(prefix: string, existing: { code: string }[]): string {
+  const max = existing.reduce((m, row) => {
+    const n = Number(row.code.replace(prefix, ''))
+    return Number.isFinite(n) ? Math.max(m, n) : m
+  }, 0)
+  return `${prefix}${pad(max + 1)}`
+}
+
+/**
+ * 主檔刪除一律採「有引用就擋下」，不做連鎖刪除也不留孤兒參照——
+ * 單據上的客戶／廠商／商品是歷史事實，刪掉主檔會讓既有單據指向不存在的資料。
+ * 已經用過的主檔要停用，正確做法是改狀態或改名，不是刪除。
+ */
+function assertNotReferenced(label: string, refs: { where: string; ids: string[] }[]): void {
+  const hit = refs.find((r) => r.ids.length > 0)
+  if (hit) {
+    const shown = hit.ids.slice(0, 3).join('、')
+    const more = hit.ids.length > 3 ? ` 等 ${hit.ids.length} 筆` : ''
+    throw new Error(`${label}已被${hit.where}引用（${shown}${more}），不可刪除；如需停用請改由編輯調整內容`)
+  }
+}
+
+export function createCustomer(input: CustomerInput): Promise<Customer> {
+  if (!input.code.trim()) throw new Error('客戶代碼為必填')
+  if (!input.shortName.trim()) throw new Error('客戶簡稱為必填')
+  if (customers.some((c) => c.code.trim() === input.code.trim())) {
+    throw new Error(`客戶代碼「${input.code}」已被其他客戶使用`)
+  }
+  const customer: Customer = { ...input, id: nextMasterId('CUST', customers) }
+  customers.unshift(customer)
+  return delay(customer)
+}
+
+export function deleteCustomer(id: string): Promise<{ id: string }> {
+  const customer = customers.find((c) => c.id === id)
+  if (!customer) throw new Error(`客戶 ${id} 不存在`)
+  assertNotReferenced(`客戶「${customer.shortName}」`, [
+    { where: '包裝通知單', ids: packingNotices.filter((n) => n.customerId === id).map((n) => n.id) },
+    { where: '商品資料主檔', ids: products.filter((p) => p.customerId === id).map((p) => p.id) },
+    { where: '出貨單', ids: shippingOrders.filter((s) => s.customerId === id).map((s) => s.id) },
+    { where: '庫存預留', ids: stockReservations.filter((r) => r.customerId === id).map((r) => r.id) },
+  ])
+  customers.splice(customers.indexOf(customer), 1)
+  return delay({ id })
+}
+
+export function createVendor(input: VendorInput): Promise<Vendor> {
+  if (!input.code.trim()) throw new Error('廠商代碼為必填')
+  if (!input.name.trim()) throw new Error('廠名為必填')
+  if (input.types.length === 0) throw new Error('請至少選擇一種廠商類型')
+  if (!input.taxId.trim()) throw new Error('統一編號為必填')
+  if (vendors.some((v) => v.code.trim() === input.code.trim())) {
+    throw new Error(`廠商代碼「${input.code}」已被其他廠商使用`)
+  }
+  const vendor: Vendor = { ...input, id: nextMasterId('VEND', vendors) }
+  vendors.unshift(vendor)
+  return delay(vendor)
+}
+
+export function deleteVendor(id: string): Promise<{ id: string }> {
+  const vendor = vendors.find((v) => v.id === id)
+  if (!vendor) throw new Error(`廠商 ${id} 不存在`)
+  assertNotReferenced(`廠商「${vendor.name}」`, [
+    {
+      where: '訂購單',
+      ids: purchaseOrders.filter((p) => p.vendorId === id || p.dyeVendorId === id).map((p) => p.id),
+    },
+    { where: '打色通知單', ids: dyeRequests.filter((d) => d.dyeVendorId === id).map((d) => d.id) },
+    { where: '染單', ids: dyeOrders.filter((d) => d.vendorId === id).map((d) => d.id) },
+    { where: '二次加工單', ids: secondaryProcessingOrders.filter((o) => o.vendorId === id).map((o) => o.id) },
+    { where: '入庫單', ids: goodsReceipts.filter((r) => r.vendorId === id).map((r) => r.id) },
+  ])
+  vendors.splice(vendors.indexOf(vendor), 1)
+  return delay({ id })
+}
+
+/**
+ * 建立商品：產品編號與產品序號皆由系統指派。
+ * 序號是「同一皇加品名底下第幾個規格分支」，故取同名同客戶的既有筆數 +1，
+ * 讓新建的規格差異自動成為下一個分支，而不是覆蓋既有商品。
+ */
+export function createProduct(input: ProductInput): Promise<Product> {
+  if (!input.productName.trim()) throw new Error('皇加品名為必填')
+  if (!input.customerId) throw new Error('請選擇所屬客戶')
+  const branchNo =
+    products.filter((p) => p.productName === input.productName.trim() && p.customerId === input.customerId).length + 1
+  const product: Product = {
+    ...input,
+    id: nextMasterId('PROD', products),
+    sortNo: pad(branchNo, 2),
+    // 歷史色號由表3／表4 實際使用時累積，新建商品一律從空的色卡開始
+    colors: [],
+    weightMY: Number(yardWeightToMeterWeight(input.weightGY).toFixed(2)),
+  }
+  products.unshift(product)
+  return delay(product)
+}
+
+export function deleteProduct(id: string): Promise<{ id: string }> {
+  const product = products.find((p) => p.id === id)
+  if (!product) throw new Error(`商品 ${id} 不存在`)
+  assertNotReferenced(`商品「${product.productName}」`, [
+    {
+      where: '包裝通知單明細',
+      ids: packingNotices.filter((n) => n.items.some((i) => i.productId === id)).map((n) => n.id),
+    },
+    { where: '布卷資料', ids: fabricLabels.filter((l) => l.productId === id).map((l) => l.rollCode) },
+    {
+      where: '訂購單明細',
+      ids: purchaseOrders.filter((p) => p.items.some((i) => i.productId === id)).map((p) => p.id),
+    },
+  ])
+  products.splice(products.indexOf(product), 1)
+  return delay({ id })
+}
+
+// ---------- 帳號主檔 ----------
+
+/** 帳號主檔編輯視窗可輸入的欄位；系統編號為自動產生的主鍵，不在其中 */
+export type AccountInput = Omit<Account, 'id'>
+
+function assertAccountInput(input: AccountInput, selfId?: string): void {
+  if (!input.code.trim()) throw new Error('帳戶代碼為必填')
+  if (!input.name.trim()) throw new Error('姓名為必填')
+  if (!input.password.trim()) throw new Error('密碼為必填')
+  if (input.roles.length === 0) throw new Error('請至少選擇一種角色')
+  if (accounts.some((a) => a.id !== selfId && a.code.trim() === input.code.trim())) {
+    throw new Error(`帳戶代碼「${input.code}」已被其他帳號使用`)
+  }
+}
+
+export function createAccount(input: AccountInput): Promise<Account> {
+  assertAccountInput(input)
+  const account: Account = { ...input, id: nextMasterId('ACC', accounts) }
+  accounts.unshift(account)
+  return delay(account)
+}
+
+export function updateAccount(id: string, input: AccountInput): Promise<Account> {
+  const idx = accounts.findIndex((a) => a.id === id)
+  if (idx === -1) throw new Error(`帳號 ${id} 不存在`)
+  assertAccountInput(input, id)
+  const updated: Account = { ...accounts[idx], ...input }
+  accounts[idx] = updated
+  return delay(updated)
+}
+
+/**
+ * 刪除帳號：已在單據上留下經手紀錄者不可刪除——簽核與經手人是稽核軌跡，
+ * 人員離職應改為「停用」（狀態欄），而不是把歷史單據上的經手人抹掉。
+ */
+export function deleteAccount(id: string): Promise<{ id: string }> {
+  const account = accounts.find((a) => a.id === id)
+  if (!account) throw new Error(`帳號 ${id} 不存在`)
+  assertNotReferenced(`帳號「${account.name}」`, [
+    { where: '入庫單經手人', ids: goodsReceipts.filter((r) => r.operatorAccountId === id).map((r) => r.id) },
+    { where: '出貨單經手人', ids: shippingOrders.filter((s) => s.operatorAccountId === id).map((s) => s.id) },
+  ])
+  accounts.splice(accounts.indexOf(account), 1)
+  return delay({ id })
+}
+
+/** 預設值：新增畫面開啟時帶入的代號，避免使用者自己想編碼規則 */
+export const masterDefaults = {
+  customerCode: () => nextMasterCode('C', customers),
+  vendorCode: () => nextMasterCode('V', vendors),
+  accountCode: () => nextMasterCode('A', accounts),
+}
+
+// ---------- 布卷資料主檔（表7 條碼） ----------
+
+/**
+ * 布卷可修改的欄位。
+ *
+ * 布卷不開放手動新增：每一捲都必須由入庫單（表6）確認時產生，
+ * 憑空建立的布卷沒有來源入庫單，庫存與追溯就斷了。要多一捲請從入庫單新增布卷，
+ * 或用分割布卷把既有的一捲拆成兩捲。
+ *
+ * 條碼編號同樣不可改：它已經印在實體標籤上、貼在布捲上，也被出貨明細引用。
+ */
+export interface FabricLabelInput {
+  productName: string
+  color: string
+  composition?: string
+  width: number
+  batchCode?: string
+  /** 長度（碼）：更正量測或登打錯誤用；異動一律寫入長度異動紀錄 */
+  length: number
+  /** 長度更正的原因，會寫進異動紀錄供日後追查 */
+  lengthChangeReason?: string
+}
+
+export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<FabricLabel> {
+  const idx = fabricLabels.findIndex((l) => l.id === id)
+  if (idx === -1) throw new Error(`布卷 ${id} 不存在`)
+  const current = fabricLabels[idx]
+  if (!input.productName.trim()) throw new Error('皇加品名為必填')
+  if (!input.color.trim()) throw new Error('顏色為必填')
+  if (input.length < 0) throw new Error('長度不可為負數')
+
+  const lengthChanged = Number(input.length.toFixed(2)) !== Number(current.length.toFixed(2))
+  // 長度是庫存與出貨的依據，任何更動都要留下前後值與原因，不可靜默覆蓋
+  const lengthHistory = lengthChanged
+    ? [
+        ...(current.lengthHistory ?? []),
+        {
+          at: dayjs().toISOString(),
+          beforeLength: current.length,
+          afterLength: input.length,
+          reason: input.lengthChangeReason?.trim() || '主檔手動更正長度',
+        },
+      ]
+    : current.lengthHistory
+
+  const updated: FabricLabel = {
+    ...current,
+    productName: input.productName.trim(),
+    color: input.color.trim(),
+    composition: input.composition?.trim() || undefined,
+    width: input.width,
+    batchCode: input.batchCode?.trim() || undefined,
+    length: input.length,
+    lengthHistory,
+  }
+  fabricLabels[idx] = updated
+  return delay(updated)
+}
+
+/**
+ * 刪除布卷：僅限尚未被任何單據用到的布卷。
+ * 已預留、已出貨或已列入異常通知單的捲號代表實體布已經動過，
+ * 刪掉會讓那些單據指向不存在的捲號；此時應改用「標記瑕疵／報廢」讓它退出可用庫存。
+ */
+export function deleteFabricLabel(id: string): Promise<{ id: string }> {
+  const label = fabricLabels.find((l) => l.id === id)
+  if (!label) throw new Error(`布卷 ${id} 不存在`)
+  assertNotReferenced(`布卷「${label.rollCode}」`, [
+    {
+      where: '庫存預留',
+      ids: stockReservations
+        .filter((r) => r.status === '預留中' && r.rollCodes.includes(label.rollCode))
+        .map((r) => r.id),
+    },
+    {
+      where: '出貨單明細',
+      ids: shippingOrders.filter((s) => s.items.some((i) => i.rollCodes.includes(label.rollCode))).map((s) => s.id),
+    },
+    {
+      where: '異常通知單',
+      ids: abnormalNotices
+        .filter(
+          (n) =>
+            (n.batchDefectRollCodes ?? []).includes(label.rollCode) ||
+            (n.returnedRolls ?? []).some((r) => r.rollCode === label.rollCode),
+        )
+        .map((n) => n.id),
+    },
+  ])
+  fabricLabels.splice(fabricLabels.indexOf(label), 1)
+  return delay({ id })
 }

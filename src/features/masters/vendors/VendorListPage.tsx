@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -30,6 +32,11 @@ export function VendorListPage() {
       <PageHeader
         title="廠商主檔"
         description="點選任一列可開啟編輯視窗。系統編號為建檔時自動產生的主鍵，單據一律以此關聯；廠商代碼為對外代號，可由使用者隨時更新。成品供應商／胚布供應商／染整廠可複選；賣方與受託加工廠共用同一張主檔。"
+        actions={
+          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/masters/vendors/new')}>
+            <Plus className="mr-1 h-4 w-4" /> 新增廠商
+          </Button>
+        }
       />
       <DataTable
         columns={columns}

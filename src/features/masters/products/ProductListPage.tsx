@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -106,6 +108,11 @@ export function ProductListPage() {
     <div>
       <PageHeader
         title="產品主檔"
+        actions={
+          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/masters/products/new')}>
+            <Plus className="mr-1 h-4 w-4" /> 新增商品
+          </Button>
+        }
         description="點選任一列可開啟編輯視窗，該產品分支底下實際存在的每一捲布（布卷資料）列於詳細頁。產品編號與產品序號皆由系統自動編號、不可修改；同一皇加品名的規格若有些微差異，會各自建檔並以產品序號區分分支。顏色為「客戶＋皇加品名＋色號＋染整廠」四者綁定，非通用色號。標示 ⚠ 表示超過12個月未使用，疑似覆色。進價/售價欄位可見範圍待依角色權限另行設定，此處先顯示全部。"
       />
       <DataTable

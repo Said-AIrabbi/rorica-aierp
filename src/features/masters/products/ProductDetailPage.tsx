@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/mocks/api'
 import { customers, getVendor } from '@/mocks/data'
-import { updateProduct, type ProductInput } from '@/mocks/mutations'
+import { createProduct, deleteProduct, updateProduct, type ProductInput } from '@/mocks/mutations'
+import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import { formatDate, isColorStale } from '@/lib/dates'
 import { formatNumber, inchToCm, yardPriceToMeterPrice, yardWeightToMeterWeight } from '@/lib/units'
 import { PRODUCT_CATEGORIES, type Product } from '@/types'
@@ -40,6 +41,30 @@ function toInput(product: Product): ProductInput {
   }
 }
 
+/** 新增時的空白表單：規格數值先給常見預設，避免使用者面對一整排 0 */
+function emptyInput(): ProductInput {
+  return {
+    productName: '',
+    customerProductName: '',
+    customerId: customers[0]?.id ?? '',
+    categoryCode: PRODUCT_CATEGORIES[0].code,
+    greigeFabricCode: '',
+    material: '',
+    greigeSpec: '',
+    finishedSpec: '',
+    thicknessMm: 0,
+    characteristics: '',
+    width: 60,
+    // 容許誤差沿用全公司慣例：幅寬 ±3%、碼重 ±5%
+    widthTolerancePct: 3,
+    weightGY: 0,
+    weightTolerancePct: 5,
+    originalRollStandardYard: 100,
+    costPrice: undefined,
+    sellPrice: undefined,
+  }
+}
+
 /** 數字欄位：空字串一律視為 0，避免 NaN 寫回主檔 */
 function num(value: string): number {
   const parsed = Number(value)
@@ -51,8 +76,10 @@ export function ProductDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
+  // 新增與編輯共用同一份表單：路由 /masters/products/new 即為新增模式
+  const isNew = id === 'new'
   const product = data.find((p) => p.id === id)
-  const [draft, setDraft] = useState<ProductInput | null>(null)
+  const [draft, setDraft] = useState<ProductInput | null>(isNew ? emptyInput() : null)
 
   useEffect(() => {
     if (product) setDraft(toInput(product))
@@ -60,21 +87,33 @@ export function ProductDetailPage() {
   }, [product?.id])
 
   const mutation = useMutation({
-    mutationFn: () => updateProduct(id!, draft!),
-    onSuccess: async () => {
+    mutationFn: () => (isNew ? createProduct(draft!) : updateProduct(id!, draft!)),
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success(`${id} 商品資料已更新`)
+      toast.success(isNew ? `已建立商品 ${saved.id}（分支 ${saved.sortNo}）` : `${id} 商品資料已更新`)
+      if (isNew) navigate(`/masters/products/${saved.id}`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
 
-  if (!product || !draft) {
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProduct(id!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success(`已刪除商品 ${product?.productName ?? id}`)
+      navigate('/masters/products')
+    },
+    // 有單據或布卷引用時 mutation 層會擋下並回傳引用的單號，原文顯示給使用者
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  if ((!product && !isNew) || !draft) {
     return <div className="text-sm text-muted-foreground">找不到商品資料</div>
   }
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
-  const dirty = JSON.stringify(draft) !== JSON.stringify(toInput(product))
+  const dirty = isNew || (product ? JSON.stringify(draft) !== JSON.stringify(toInput(product)) : false)
 
   return (
     <div>
@@ -86,17 +125,25 @@ export function ProductDetailPage() {
       </Link>
 
       <PageHeader
-        title={`${product.productName}-${product.sortNo}　${product.id}`}
-        description="商品資料主檔編輯視窗。產品編號、產品序號、米重（G/M）與歷史色號為系統維護欄位，不開放手動輸入。"
+        title={isNew ? '新增商品' : `${product!.productName}-${product!.sortNo}　${product!.id}`}
+        description="商品資料主檔編輯視窗。產品編號、產品序號、米重（G/M）與歷史色號為系統維護欄位，不開放手動輸入；同一皇加品名再建一筆即自動成為下一個規格分支。"
         actions={
           <>
             <Button variant="outline" onClick={() => navigate('/masters/products')}>
               <ArrowLeft className="mr-1 h-4 w-4" />
               返回商品主檔
             </Button>
+            {!isNew && (
+              <DeleteMasterButton
+                label="商品"
+                name={`${product!.productName}-${product!.sortNo}`}
+                pending={deleteMutation.isPending}
+                onConfirm={() => deleteMutation.mutate()}
+              />
+            )}
             <Button onClick={() => mutation.mutate()} disabled={!dirty || mutation.isPending}>
               <Save className="mr-1 h-4 w-4" />
-              儲存商品資料
+              {isNew ? '建立商品' : '儲存商品資料'}
             </Button>
           </>
         }
@@ -110,12 +157,12 @@ export function ProductDetailPage() {
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
               <Label className="text-xs">產品編號（唯讀）</Label>
-              <Input value={product.id} disabled />
+              <Input value={isNew ? '建立後自動產生' : product!.id} disabled />
               <p className="text-xs text-muted-foreground">建檔時自動編號，單據以此關聯</p>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">產品序號（產品分支，唯讀）</Label>
-              <Input value={product.sortNo} disabled />
+              <Input value={isNew ? '建立後自動指派' : product!.sortNo} disabled />
               <p className="text-xs text-muted-foreground">同一皇加品名規格略有差異時，以此序號區分分支</p>
             </div>
             <div className="space-y-1">
@@ -336,11 +383,11 @@ export function ProductDetailPage() {
             <p className="mb-3 text-xs text-muted-foreground">
               查詢鍵為「客戶＋皇加品名＋顏色＋染整廠」四者綁定，非通用色號；換一家染整廠即視為無色號。標示 ⚠ 表示超過12個月未使用，開單時系統會提醒可能需重新覆色，非自動擋單。
             </p>
-            {product.colors.length === 0 ? (
+            {!product || product.colors.length === 0 ? (
               <p className="text-sm text-muted-foreground">尚無歷史色號紀錄</p>
             ) : (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {product.colors.map((c) => (
+                {product!.colors.map((c) => (
                   <div
                     key={`${c.color}-${c.dyeVendorId}`}
                     className={
@@ -364,8 +411,8 @@ export function ProductDetailPage() {
           </CardContent>
         </Card>
 
-        {/* 第五張卡：庫存（唯讀 UI 聚合，即時查詢布卷資料主檔） */}
-        <ProductStockCard product={product} />
+        {/* 第五張卡：庫存（唯讀 UI 聚合，即時查詢布卷資料主檔）；新增中的商品尚無布卷 */}
+        {product && <ProductStockCard product={product} />}
       </div>
     </div>
   )

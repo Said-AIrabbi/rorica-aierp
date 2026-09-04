@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { updateCustomer, type CustomerInput } from '@/mocks/mutations'
+import { createCustomer, deleteCustomer, masterDefaults, updateCustomer, type CustomerInput } from '@/mocks/mutations'
+import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import type { Customer } from '@/types'
 
 function toInput(customer: Customer): CustomerInput {
@@ -17,13 +18,36 @@ function toInput(customer: Customer): CustomerInput {
   return rest
 }
 
+/** 新增時的空白表單：代碼先給下一個流水號當預設值，使用者可自行改寫 */
+function emptyInput(): CustomerInput {
+  return {
+    code: masterDefaults.customerCode(),
+    shortName: '',
+    fullNameCN: '',
+    fullNameEN: '',
+    personInCharge: '',
+    personInChargePhone: '',
+    contactPerson: '',
+    contactPersonPhone: '',
+    address: '',
+    invoiceAddress: '',
+    taxId: '',
+    taxRate: '5%',
+    paymentTerms: '',
+    // 交期預設天數：全公司統一 14 天
+    leadTimeDays: 14,
+  }
+}
+
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['customers'], queryFn: api.customers })
+  // 新增與編輯共用同一份表單：路由 /masters/customers/new 即為新增模式
+  const isNew = id === 'new'
   const customer = data.find((c) => c.id === id)
-  const [draft, setDraft] = useState<CustomerInput | null>(null)
+  const [draft, setDraft] = useState<CustomerInput | null>(isNew ? emptyInput() : null)
 
   useEffect(() => {
     if (customer) setDraft(toInput(customer))
@@ -31,30 +55,42 @@ export function CustomerDetailPage() {
   }, [customer?.id])
 
   const mutation = useMutation({
-    mutationFn: () => updateCustomer(id!, draft!),
-    onSuccess: async () => {
+    mutationFn: () => (isNew ? createCustomer(draft!) : updateCustomer(id!, draft!)),
+    onSuccess: async (saved) => {
       // 客戶簡稱／代碼在各單據上以顯示欄位呈現，異動後一併刷新引用到客戶的查詢
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['customers'] }),
         queryClient.invalidateQueries({ queryKey: ['packingNotices'] }),
       ])
-      toast.success(`${customer?.shortName ?? id} 客戶資料已更新`)
+      toast.success(isNew ? `已建立客戶 ${saved.code} ${saved.shortName}` : `${customer?.shortName ?? id} 客戶資料已更新`)
+      if (isNew) navigate(`/masters/customers/${saved.id}`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
 
-  if (!customer || !draft) {
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCustomer(id!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['customers'] })
+      toast.success(`已刪除客戶 ${customer?.shortName ?? id}`)
+      navigate('/masters/customers')
+    },
+    // 有單據引用時 mutation 層會擋下並回傳引用的單號，原文顯示給使用者
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  if ((!customer && !isNew) || !draft) {
     return <div className="text-sm text-muted-foreground">找不到客戶資料</div>
   }
 
   const set = <K extends keyof CustomerInput>(key: K, value: CustomerInput[K]) =>
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
-  const dirty = JSON.stringify(draft) !== JSON.stringify(toInput(customer))
+  const dirty = isNew || (customer ? JSON.stringify(draft) !== JSON.stringify(toInput(customer)) : false)
 
   return (
     <div>
       <PageHeader
-        title={`${customer.code}　${customer.shortName}`}
+        title={isNew ? '新增客戶' : `${customer!.code}　${customer!.shortName}`}
         description="客戶資料主檔編輯視窗。系統編號為建檔時自動產生的主鍵，不可修改；客戶代碼為對外代號，可隨時更新，不影響既有單據關聯。"
         actions={
           <>
@@ -62,9 +98,17 @@ export function CustomerDetailPage() {
               <ArrowLeft className="mr-1 h-4 w-4" />
               返回列表
             </Button>
+            {!isNew && (
+              <DeleteMasterButton
+                label="客戶"
+                name={`${customer!.code} ${customer!.shortName}`}
+                pending={deleteMutation.isPending}
+                onConfirm={() => deleteMutation.mutate()}
+              />
+            )}
             <Button onClick={() => mutation.mutate()} disabled={!dirty || mutation.isPending}>
               <Save className="mr-1 h-4 w-4" />
-              儲存客戶資料
+              {isNew ? '建立客戶' : '儲存客戶資料'}
             </Button>
           </>
         }
@@ -78,7 +122,7 @@ export function CustomerDetailPage() {
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
               <Label className="text-xs">系統編號（唯讀）</Label>
-              <Input value={customer.id} disabled />
+              <Input value={isNew ? '建立後自動產生' : customer!.id} disabled />
               <p className="text-xs text-muted-foreground">建檔時自動編號，單據以此關聯</p>
             </div>
             <div className="space-y-1">

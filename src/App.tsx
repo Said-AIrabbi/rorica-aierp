@@ -34,6 +34,7 @@ import { ProductDetailPage } from '@/features/masters/products/ProductDetailPage
 import { VendorListPage } from '@/features/masters/vendors/VendorListPage'
 import { VendorDetailPage } from '@/features/masters/vendors/VendorDetailPage'
 import { AccountListPage } from '@/features/masters/accounts/AccountListPage'
+import { AccountDetailPage } from '@/features/masters/accounts/AccountDetailPage'
 
 export default function App() {
   return (
@@ -85,6 +86,8 @@ export default function App() {
         <Route path="/masters/vendors" element={<VendorListPage />} />
         <Route path="/masters/vendors/:id" element={<VendorDetailPage />} />
         <Route path="/masters/accounts" element={<AccountListPage />} />
+        {/* 新增與編輯共用同一個頁面元件，:id 為 new 時即新增模式 */}
+        <Route path="/masters/accounts/:id" element={<AccountDetailPage />} />
       </Route>
     </Routes>
   )

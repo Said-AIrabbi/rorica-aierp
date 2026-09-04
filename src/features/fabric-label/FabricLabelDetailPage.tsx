@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Scissors } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Scissors, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -15,7 +15,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { markFabricLabelDefective, splitFabricLabel } from '@/mocks/mutations'
+import {
+  deleteFabricLabel,
+  markFabricLabelDefective,
+  splitFabricLabel,
+  updateFabricLabel,
+  type FabricLabelInput,
+} from '@/mocks/mutations'
+import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, inchToCm } from '@/lib/units'
 import { rollLengthText } from '@/components/shared/BasisQty'
@@ -34,6 +41,9 @@ export function FabricLabelDetailPage() {
   const [splitLength, setSplitLength] = useState('')
   const [defectOpen, setDefectOpen] = useState(false)
   const [defectNote, setDefectNote] = useState('')
+  // 布卷資料的可編輯欄位另開視窗：條碼編號與來源入庫單不可改（已印在實體標籤上、被單據引用）
+  const [editOpen, setEditOpen] = useState(false)
+  const [editDraft, setEditDraft] = useState<FabricLabelInput | null>(null)
 
   const splitMutation = useMutation({
     mutationFn: (length: number) => splitFabricLabel(id!, length),
@@ -44,6 +54,27 @@ export function FabricLabelDetailPage() {
       setSplitLength('')
       navigate(`/fabric-label/${newLabels[0].id}`)
     },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const editMutation = useMutation({
+    mutationFn: () => updateFabricLabel(id!, editDraft!),
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({ queryKey: ['fabricLabels'] })
+      toast.success(`${updated.rollCode} 布卷資料已更新`)
+      setEditOpen(false)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteFabricLabel(id!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['fabricLabels'] })
+      toast.success('布卷資料已刪除')
+      navigate('/fabric-label')
+    },
+    // 已被預留／出貨／異常單引用時由 mutation 層擋下，錯誤訊息含引用的單號
     onError: (error: Error) => toast.error(error.message),
   })
 
@@ -95,6 +126,33 @@ export function FabricLabelDetailPage() {
                 <Scissors className="mr-1 h-4 w-4" /> 分割布卷
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="print:hidden"
+              onClick={() => {
+                setEditDraft({
+                  productName: label.productName,
+                  color: label.color,
+                  composition: label.composition,
+                  width: label.width,
+                  batchCode: label.batchCode,
+                  length: label.length,
+                  lengthChangeReason: '',
+                })
+                setEditOpen(true)
+              }}
+            >
+              <Pencil className="mr-1 h-4 w-4" /> 編輯布卷資料
+            </Button>
+            <span className="print:hidden">
+              <DeleteMasterButton
+                label="布卷"
+                name={label.rollCode}
+                pending={deleteMutation.isPending}
+                onConfirm={() => deleteMutation.mutate()}
+              />
+            </span>
             {/* 瑕疵／報廢為布卷的另一個終態；已完成或已終止的布卷不再開放標記 */}
             {(label.status === '已建立' || label.status === '已使用') && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setDefectOpen(true)}>
@@ -104,6 +162,90 @@ export function FabricLabelDetailPage() {
           </>
         }
       />
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>編輯布卷 {label.rollCode}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            條碼編號與來源入庫單不可修改：條碼已印在實體標籤上並被出貨明細引用。長度更動會寫入長度異動紀錄。
+          </p>
+          {editDraft && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>皇加品名</Label>
+                <Input
+                  value={editDraft.productName}
+                  onChange={(e) => setEditDraft({ ...editDraft, productName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>顏色</Label>
+                <Input value={editDraft.color} onChange={(e) => setEditDraft({ ...editDraft, color: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>成分</Label>
+                <Input
+                  value={editDraft.composition ?? ''}
+                  onChange={(e) => setEditDraft({ ...editDraft, composition: e.target.value })}
+                  placeholder="非必填"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>批號</Label>
+                <Input
+                  value={editDraft.batchCode ?? ''}
+                  onChange={(e) => setEditDraft({ ...editDraft, batchCode: e.target.value })}
+                  placeholder="非必填"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>幅寬（英吋）</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={editDraft.width}
+                  onChange={(e) => setEditDraft({ ...editDraft, width: Number(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>長度（{label.unit}）</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={editDraft.length}
+                  onChange={(e) => setEditDraft({ ...editDraft, length: Number(e.target.value) || 0 })}
+                />
+              </div>
+              {editDraft.length !== label.length && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>長度更正原因</Label>
+                  <Input
+                    value={editDraft.lengthChangeReason ?? ''}
+                    onChange={(e) => setEditDraft({ ...editDraft, lengthChangeReason: e.target.value })}
+                    placeholder="例：入庫登打錯誤，依實際量測更正"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              取消
+            </Button>
+            <Button
+              className="bg-brand hover:bg-brand-dark"
+              disabled={editMutation.isPending}
+              onClick={() => editMutation.mutate()}
+            >
+              儲存布卷資料
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={splitOpen} onOpenChange={setSplitOpen}>
         <DialogContent>

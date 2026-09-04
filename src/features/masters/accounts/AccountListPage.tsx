@@ -1,5 +1,8 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -13,6 +16,7 @@ import { ROLE_PERMISSION_MATRIX } from '@/types'
 const PERMISSION_FIELDS: PermissionField[] = ['訂單基本資訊', '售價', '進價', '客戶聯絡資訊', '帳號管理']
 
 export function AccountListPage() {
+  const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['accounts'], queryFn: api.accounts })
 
   const columns = useMemo<ColumnDef<Account, unknown>[]>(
@@ -53,12 +57,18 @@ export function AccountListPage() {
     <div>
       <PageHeader
         title="帳戶主檔"
-        description="角色（生管／業務／倉管／財務／管理層／管理員，多對多）搭配欄位層級權限矩陣，示範架構，細節待客戶逐一核對確認。"
+        description="點選任一列可開啟編輯視窗。角色（生管／業務／倉管／財務／管理層／管理員，多對多）搭配欄位層級權限矩陣，示範架構，細節待客戶逐一核對確認。"
+        actions={
+          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/masters/accounts/new')}>
+            <Plus className="mr-1 h-4 w-4" /> 新增帳號
+          </Button>
+        }
       />
       <DataTable
         columns={columns}
         data={data}
         searchPlaceholder="搜尋姓名、代碼..."
+        onRowClick={(row) => navigate(`/masters/accounts/${row.id}`)}
         emptyText={isLoading ? '載入中...' : '目前沒有帳戶資料'}
       />
 

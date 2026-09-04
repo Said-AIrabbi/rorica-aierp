@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { updateVendor, type VendorInput } from '@/mocks/mutations'
+import { createVendor, deleteVendor, masterDefaults, updateVendor, type VendorInput } from '@/mocks/mutations'
+import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import type { Vendor, VendorType } from '@/types'
 
 /** 廠商類型為複選（同一廠商可能身兼多重角色），與 VendorType 保持同步 */
@@ -20,13 +21,32 @@ function toInput(vendor: Vendor): VendorInput {
   return rest
 }
 
+/** 新增時的空白表單：代碼先給下一個流水號當預設值，使用者可自行改寫 */
+function emptyInput(): VendorInput {
+  return {
+    code: masterDefaults.vendorCode(),
+    name: '',
+    types: [],
+    siteCode: '',
+    address: '',
+    invoiceAddress: '',
+    contactPerson: '',
+    phone: '',
+    taxId: '',
+    taxRate: '5%',
+    paymentTerms: '',
+  }
+}
+
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
+  // 新增與編輯共用同一份表單：路由 /masters/vendors/new 即為新增模式
+  const isNew = id === 'new'
   const vendor = data.find((v) => v.id === id)
-  const [draft, setDraft] = useState<VendorInput | null>(null)
+  const [draft, setDraft] = useState<VendorInput | null>(isNew ? emptyInput() : null)
 
   useEffect(() => {
     if (vendor) setDraft(toInput(vendor))
@@ -34,26 +54,38 @@ export function VendorDetailPage() {
   }, [vendor?.id])
 
   const mutation = useMutation({
-    mutationFn: () => updateVendor(id!, draft!),
-    onSuccess: async () => {
+    mutationFn: () => (isNew ? createVendor(draft!) : updateVendor(id!, draft!)),
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ['vendors'] })
-      toast.success(`${vendor?.name ?? id} 廠商資料已更新`)
+      toast.success(isNew ? `已建立廠商 ${saved.code} ${saved.name}` : `${vendor?.name ?? id} 廠商資料已更新`)
+      if (isNew) navigate(`/masters/vendors/${saved.id}`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
 
-  if (!vendor || !draft) {
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteVendor(id!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      toast.success(`已刪除廠商 ${vendor?.name ?? id}`)
+      navigate('/masters/vendors')
+    },
+    // 有單據引用時 mutation 層會擋下並回傳引用的單號，原文顯示給使用者
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  if ((!vendor && !isNew) || !draft) {
     return <div className="text-sm text-muted-foreground">找不到廠商資料</div>
   }
 
   const set = <K extends keyof VendorInput>(key: K, value: VendorInput[K]) =>
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
-  const dirty = JSON.stringify(draft) !== JSON.stringify(toInput(vendor))
+  const dirty = isNew || (vendor ? JSON.stringify(draft) !== JSON.stringify(toInput(vendor)) : false)
 
   return (
     <div>
       <PageHeader
-        title={`${vendor.code}　${vendor.name}`}
+        title={isNew ? '新增廠商' : `${vendor!.code}　${vendor!.name}`}
         description="廠商資料主檔編輯視窗。系統編號為建檔時自動產生的主鍵，不可修改；廠商代碼為對外代號，可隨時更新，不影響既有單據關聯。"
         actions={
           <>
@@ -61,9 +93,17 @@ export function VendorDetailPage() {
               <ArrowLeft className="mr-1 h-4 w-4" />
               返回列表
             </Button>
+            {!isNew && (
+              <DeleteMasterButton
+                label="廠商"
+                name={`${vendor!.code} ${vendor!.name}`}
+                pending={deleteMutation.isPending}
+                onConfirm={() => deleteMutation.mutate()}
+              />
+            )}
             <Button onClick={() => mutation.mutate()} disabled={!dirty || mutation.isPending}>
               <Save className="mr-1 h-4 w-4" />
-              儲存廠商資料
+              {isNew ? '建立廠商' : '儲存廠商資料'}
             </Button>
           </>
         }
@@ -76,7 +116,7 @@ export function VendorDetailPage() {
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
             <Label className="text-xs">系統編號（唯讀）</Label>
-            <Input value={vendor.id} disabled />
+            <Input value={isNew ? '建立後自動產生' : vendor!.id} disabled />
             <p className="text-xs text-muted-foreground">建檔時自動編號，單據以此關聯</p>
           </div>
           <div className="space-y-1">
