@@ -73,7 +73,8 @@ export const packingNoticeFormSchema = z
     tolerance: packingNoticeToleranceSchema,
     items: z.array(packingNoticeItemSchema).min(1, '至少需要一筆明細'),
     allowSplicing: z.boolean(),
-    marking: packingNoticeMarkingSchema,
+    // 嘜頭比照明細可多組：一張訂單可能有不同目的地／箱型的嘜頭
+    markings: z.array(packingNoticeMarkingSchema).min(1, '至少需要一組嘜頭'),
     // 燙金非必填：未勾選任何項目時預設為「否」，「布邊」「布頭」可複選
     embossing: z.array(z.enum(EMBOSSING_OPTIONS)),
     edgeCut: z.boolean(),

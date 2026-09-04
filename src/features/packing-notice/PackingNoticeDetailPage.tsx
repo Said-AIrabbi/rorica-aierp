@@ -318,27 +318,29 @@ export function PackingNoticeDetailPage() {
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="text-base">嘜頭</CardTitle>
+          <CardTitle className="text-base">嘜頭（共 {notice.markings.length} 組）</CardTitle>
         </CardHeader>
-        <CardContent>
-          <DetailGrid>
-            <DetailField
-              label="嘜頭形狀"
-              // 嘜頭列印格式（正三角形／菱形／A5大小）待客戶提供實際版面後再建立
-              value={`${notice.marking.shape}（列印格式待客戶提供）`}
-            />
-            <DetailField label="客戶簡稱" value={customer?.shortName} />
-            <DetailField label="抬頭文字" value={notice.marking.headerText || '-'} />
-            <DetailField label="運送目的地" value={notice.marking.destination || '-'} />
-            <DetailField label="毛重" value={notice.marking.grossWeightKg ? `${notice.marking.grossWeightKg} Kg` : '-'} />
-            <DetailField label="淨重" value={notice.marking.netWeightKg ? `${notice.marking.netWeightKg} Kg` : '-'} />
-            <DetailField label="成分" value={notice.marking.composition || '-'} />
-            <DetailField label="產地" value={notice.marking.origin || '-'} />
-            <DetailField
-              label="小嘜頭"
-              value={notice.marking.hasSmallMarking ? notice.marking.smallMarkingText || '加印（未填內容）' : '不加印'}
-            />
-          </DetailGrid>
+        <CardContent className="space-y-4">
+          {notice.markings.map((marking, index) => (
+            // 多組嘜頭各自獨立成一區：列印時也是逐組各印一張，序號即對應關係
+            <div key={index} className="rounded-lg border border-border p-3">
+              <div className="mb-2 text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</div>
+              <DetailGrid>
+                <DetailField label="嘜頭形狀" value={marking.shape} />
+                <DetailField label="客戶簡稱" value={customer?.shortName} />
+                <DetailField label="抬頭文字" value={marking.headerText || '-'} />
+                <DetailField label="運送目的地" value={marking.destination || '-'} />
+                <DetailField label="毛重" value={marking.grossWeightKg ? `${marking.grossWeightKg} Kg` : '-'} />
+                <DetailField label="淨重" value={marking.netWeightKg ? `${marking.netWeightKg} Kg` : '-'} />
+                <DetailField label="成分" value={marking.composition || '-'} />
+                <DetailField label="產地" value={marking.origin || '-'} />
+                <DetailField
+                  label="小嘜頭"
+                  value={marking.hasSmallMarking ? marking.smallMarkingText || '加印（未填內容）' : '不加印'}
+                />
+              </DetailGrid>
+            </div>
+          ))}
         </CardContent>
       </Card>
 

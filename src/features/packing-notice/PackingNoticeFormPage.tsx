@@ -57,6 +57,18 @@ const EMPTY_ITEM: PackingNoticeFormValues['items'][number] = {
   note: '',
 }
 
+const EMPTY_MARKING: PackingNoticeFormValues['markings'][number] = {
+  shape: MARKING_SHAPES[0],
+  headerText: '',
+  destination: '',
+  composition: '',
+  origin: '',
+  grossWeightKg: undefined,
+  netWeightKg: undefined,
+  hasSmallMarking: false,
+  smallMarkingText: '',
+}
+
 export function PackingNoticeFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id)
@@ -93,17 +105,7 @@ export function PackingNoticeFormPage() {
       allowSplicing: false,
       embossing: [],
       edgeCut: false,
-      marking: {
-        shape: MARKING_SHAPES[0],
-        destination: '',
-        grossWeightKg: undefined,
-        netWeightKg: undefined,
-        composition: '',
-        origin: '',
-        hasSmallMarking: false,
-        smallMarkingText: '',
-        headerText: '',
-      },
+      markings: [EMPTY_MARKING],
     },
     // 編輯模式下，包裝通知單資料透過非同步查詢取得；用 `values`（而非手動 reset）
     // 讓 RHF 在資料到位後自動同步表單，這是官方建議處理「非同步預設值」的方式。
@@ -132,7 +134,7 @@ export function PackingNoticeFormPage() {
             note: item.note,
           })),
           allowSplicing: existing.allowSplicing,
-          marking: existing.marking,
+          markings: existing.markings,
           embossing: existing.embossing.filter((o) => o !== '否'),
           edgeCut: existing.edgeCut,
         }
@@ -148,6 +150,12 @@ export function PackingNoticeFormPage() {
   const customerNameValue = watch('customerName')
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+  // 嘜頭比照明細可多組：一張訂單可能有不同目的地／箱型的嘜頭
+  const {
+    fields: markingFields,
+    append: appendMarking,
+    remove: removeMarking,
+  } = useFieldArray({ control, name: 'markings' })
 
   /**
    * 明細區塊的輸入單位：Yard／Meter 切換一次即套用到所有品項，不逐列各自設定。
@@ -729,70 +737,97 @@ export function PackingNoticeFormPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">嘜頭</CardTitle>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendMarking(EMPTY_MARKING)}>
+              <Plus className="mr-1 h-4 w-4" /> 新增嘜頭
+            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label>嘜頭形狀</Label>
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  {...register('marking.shape')}
-                >
-                  {MARKING_SHAPES.map((shape) => (
-                    <option key={shape} value={shape}>
-                      {shape}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>抬頭文字</Label>
-                {/*
-                  用 Textarea 而非 Input 是因為 A5大小 需要多行（公司名／城市國別／電話）；
-                  預設高度對齊其他欄位，靠 field-sizing-content 在輸入第二行時才自動長高。
-                */}
-                <Textarea
-                  rows={1}
-                  className="h-9 min-h-9 py-1.5"
-                  {...register('marking.headerText')}
-                  placeholder="非必填"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>運送目的地</Label>
-                <Input {...register('marking.destination')} placeholder="非必填" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>成分</Label>
-                <Input {...register('marking.composition')} placeholder="非必填" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>產地</Label>
-                <Input {...register('marking.origin')} placeholder="非必填" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>毛重 (Kg)</Label>
-                <Input type="number" step="0.1" min="0" {...register('marking.grossWeightKg')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>淨重 (Kg)</Label>
-                <Input type="number" step="0.1" min="0" {...register('marking.netWeightKg')} />
-              </div>
-              <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
-                <input id="hasSmallMarking" type="checkbox" className="h-4 w-4" {...register('marking.hasSmallMarking')} />
-                <Label htmlFor="hasSmallMarking" className="cursor-pointer font-normal">
-                  小嘜頭加印
-                </Label>
-              </div>
-              {watch('marking.hasSmallMarking') && (
-                <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-                  <Label>小嘜頭內容</Label>
-                  <Input {...register('marking.smallMarkingText')} placeholder="例：RORICA-K2-2026" />
+          <CardContent className="space-y-4">
+            {errors.markings?.root && <p className="text-xs text-destructive">{errors.markings.root.message}</p>}
+            {markingFields.map((field, index) => (
+              <div key={field.id} className="rounded-lg border border-border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  {/* 一張單有多組嘜頭時，列印是逐組各印一張 A4，故以序號標示對應關係 */}
+                  <span className="text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    disabled={markingFields.length <= 1}
+                    onClick={() => removeMarking(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
-            </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label>嘜頭形狀</Label>
+                    <select
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      {...register(`markings.${index}.shape`)}
+                    >
+                      {MARKING_SHAPES.map((shape) => (
+                        <option key={shape} value={shape}>
+                          {shape}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>抬頭文字</Label>
+                    {/*
+                      用 Textarea 而非 Input 是因為 A5大小 需要多行（公司名／城市國別／電話）；
+                      預設高度對齊其他欄位，靠 field-sizing-content 在輸入第二行時才自動長高。
+                    */}
+                    <Textarea
+                      rows={1}
+                      className="h-9 min-h-9 py-1.5"
+                      {...register(`markings.${index}.headerText`)}
+                      placeholder="非必填"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>運送目的地</Label>
+                    <Input {...register(`markings.${index}.destination`)} placeholder="非必填" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>成分</Label>
+                    <Input {...register(`markings.${index}.composition`)} placeholder="非必填" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>產地</Label>
+                    <Input {...register(`markings.${index}.origin`)} placeholder="非必填" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>毛重 (Kg)</Label>
+                    <Input type="number" step="0.1" min="0" {...register(`markings.${index}.grossWeightKg`)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>淨重 (Kg)</Label>
+                    <Input type="number" step="0.1" min="0" {...register(`markings.${index}.netWeightKg`)} />
+                  </div>
+                  <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
+                    <input
+                      id={`hasSmallMarking-${index}`}
+                      type="checkbox"
+                      className="h-4 w-4"
+                      {...register(`markings.${index}.hasSmallMarking`)}
+                    />
+                    <Label htmlFor={`hasSmallMarking-${index}`} className="cursor-pointer font-normal">
+                      小嘜頭加印
+                    </Label>
+                  </div>
+                  {watch(`markings.${index}.hasSmallMarking`) && (
+                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                      <Label>小嘜頭內容</Label>
+                      <Input {...register(`markings.${index}.smallMarkingText`)} placeholder="例：RORICA-K2-2026" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 

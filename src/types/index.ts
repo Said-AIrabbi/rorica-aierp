@@ -265,7 +265,11 @@ export interface PackingNotice {
   itemUnit?: 'Yard' | 'Meter'
   /** 接疋規則：訂單層級可調整欄位，預設「不可」，依客戶偏好決定 */
   allowSplicing: boolean
-  marking: PackingNoticeMarking
+  /**
+   * 嘜頭：一張訂單可能同時需要多組嘜頭（不同目的地、不同箱型、或客戶指定的多種標記），
+   * 故比照明細改為陣列，至少一組。
+   */
+  markings: PackingNoticeMarking[]
   actualReceiptComparisons?: ActualReceiptComparison[]
   /** 燙金：多選（布邊/布頭/否），新增於表2、表4唯讀帶入（帶入時以頓號連接顯示） */
   embossing: (typeof EMBOSSING_OPTIONS)[number][]

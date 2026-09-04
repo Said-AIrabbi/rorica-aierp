@@ -107,7 +107,7 @@ export function ShippingOrderDetailPage() {
   const itemsEditable = order.status === '草稿'
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
   const notice = packingNotices.find((n) => n.id === order.parentId)
-  const marking = notice?.marking
+  const markings = notice?.markings ?? []
   // 數量以「當初下單用的單位」為主值呈現，另一單位標為換算值；沿用表1 的作法，
   // 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的
   const itemUnit = notice?.itemUnit ?? 'Yard'
@@ -137,10 +137,13 @@ export function ShippingOrderDetailPage() {
             <PrintActions
               sheets={[
                 { key: 'doc', label: '列印出貨單', sheet: <ShippingOrderPrint order={order} /> },
-                // 嘜頭資料維護於表1，但貼箱是出貨當下的動作，故列印入口放在表8
-                ...(marking
-                  ? [{ key: 'marking', label: '列印嘜頭', sheet: <MarkingPrint marking={marking} /> }]
-                  : []),
+                // 嘜頭資料維護於表1，但貼箱是出貨當下的動作，故列印入口放在表8。
+                // 一張單可能有多組嘜頭，各自一張 A4，故列印選單逐組列出。
+                ...markings.map((m, index) => ({
+                  key: `marking-${index}`,
+                  label: markings.length > 1 ? `列印嘜頭 ${index + 1}` : '列印嘜頭',
+                  sheet: <MarkingPrint marking={m} />,
+                })),
               ]}
             />
             {order.status === '草稿' && (
@@ -324,22 +327,33 @@ export function ShippingOrderDetailPage() {
         </Card>
       )}
 
-      {marking && (
+      {markings.length > 0 && (
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle className="text-base">嘜頭（帶入自表1包裝通知單）</CardTitle>
+            <CardTitle className="text-base">
+              嘜頭（帶入自表1包裝通知單{markings.length > 1 ? `，共 ${markings.length} 組` : ''}）
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <DetailGrid>
-              <DetailField label="嘜頭形狀" value={marking.shape} />
-              <DetailField label="客戶簡稱" value={customer?.shortName} />
-              <DetailField label="運送目的地" value={marking.destination || '-'} />
-              <DetailField label="毛重(Kg)" value={marking.grossWeightKg != null ? formatNumber(marking.grossWeightKg, 1) : '-'} />
-              <DetailField label="淨重(Kg)" value={marking.netWeightKg != null ? formatNumber(marking.netWeightKg, 1) : '-'} />
-              <DetailField label="成分" value={marking.composition || '-'} />
-              <DetailField label="產地" value={marking.origin || '-'} />
-              <DetailField label="小嘜頭" value={marking.hasSmallMarking ? marking.smallMarkingText || '是' : '否'} />
-            </DetailGrid>
+          <CardContent className="space-y-4">
+            {markings.map((marking, index) => (
+              <div key={index} className={markings.length > 1 ? 'rounded-lg border border-border p-3' : undefined}>
+                {markings.length > 1 && (
+                  // 序號對應列印選單的「列印嘜頭 N」，貼箱時才知道印出來的是哪一組
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</div>
+                )}
+                <DetailGrid>
+                  <DetailField label="嘜頭形狀" value={marking.shape} />
+                  <DetailField label="客戶簡稱" value={customer?.shortName} />
+                  <DetailField label="抬頭文字" value={marking.headerText || '-'} />
+                  <DetailField label="運送目的地" value={marking.destination || '-'} />
+                  <DetailField label="毛重(Kg)" value={marking.grossWeightKg != null ? formatNumber(marking.grossWeightKg, 1) : '-'} />
+                  <DetailField label="淨重(Kg)" value={marking.netWeightKg != null ? formatNumber(marking.netWeightKg, 1) : '-'} />
+                  <DetailField label="成分" value={marking.composition || '-'} />
+                  <DetailField label="產地" value={marking.origin || '-'} />
+                  <DetailField label="小嘜頭" value={marking.hasSmallMarking ? marking.smallMarkingText || '是' : '否'} />
+                </DetailGrid>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

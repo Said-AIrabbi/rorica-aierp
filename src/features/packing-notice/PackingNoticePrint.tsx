@@ -113,40 +113,46 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
         />
       </PrintSection>
 
-      <PrintSection title="嘜頭">
-        <table className="pr-table">
-          <tbody>
-            <tr>
-              <th style={{ width: '24mm' }}>嘜頭形狀</th>
-              <td>{notice.marking.shape}</td>
-              <th style={{ width: '24mm' }}>小嘜頭</th>
-              <td>
-                {notice.marking.hasSmallMarking
-                  ? `加印${notice.marking.smallMarkingText ? `：${notice.marking.smallMarkingText}` : ''}`
-                  : '不加印'}
-              </td>
-            </tr>
-            <tr>
-              <th>客戶簡稱</th>
-              <td>{customer?.shortName ?? ' '}</td>
-              <th>運送目的地</th>
-              <td>{notice.marking.destination ?? ' '}</td>
-            </tr>
-            <tr>
-              <th>毛重 (Kg)</th>
-              <td>{notice.marking.grossWeightKg ?? ' '}</td>
-              <th>淨重 (Kg)</th>
-              <td>{notice.marking.netWeightKg ?? ' '}</td>
-            </tr>
-            <tr>
-              <th>成分</th>
-              <td>{notice.marking.composition ?? ' '}</td>
-              <th>產地</th>
-              <td>{notice.marking.origin ?? ' '}</td>
-            </tr>
-          </tbody>
-        </table>
-      </PrintSection>
+      {/* 嘜頭可有多組，逐組各印一個表格；只有一組時不加序號，維持原本版面 */}
+      {notice.markings.map((marking, index) => (
+        <PrintSection
+          key={index}
+          title={notice.markings.length > 1 ? `嘜頭 ${index + 1}／${notice.markings.length}` : '嘜頭'}
+        >
+          <table className="pr-table">
+            <tbody>
+              <tr>
+                <th style={{ width: '24mm' }}>嘜頭形狀</th>
+                <td>{marking.shape}</td>
+                <th style={{ width: '24mm' }}>小嘜頭</th>
+                <td>
+                  {marking.hasSmallMarking
+                    ? `加印${marking.smallMarkingText ? `：${marking.smallMarkingText}` : ''}`
+                    : '不加印'}
+                </td>
+              </tr>
+              <tr>
+                <th>客戶簡稱</th>
+                <td>{customer?.shortName ?? ' '}</td>
+                <th>運送目的地</th>
+                <td>{marking.destination ?? ' '}</td>
+              </tr>
+              <tr>
+                <th>毛重 (Kg)</th>
+                <td>{marking.grossWeightKg ?? ' '}</td>
+                <th>淨重 (Kg)</th>
+                <td>{marking.netWeightKg ?? ' '}</td>
+              </tr>
+              <tr>
+                <th>成分</th>
+                <td>{marking.composition ?? ' '}</td>
+                <th>產地</th>
+                <td>{marking.origin ?? ' '}</td>
+              </tr>
+            </tbody>
+          </table>
+        </PrintSection>
+      ))}
 
       <PrintSection title="出貨與包裝設定">
         <table className="pr-table">

@@ -234,6 +234,17 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
   const shipMethod = faker.helpers.arrayElements(SHIP_METHODS, { min: 1, max: 2 })
   // 嘜頭形狀先決定，抬頭文字的格式（形狀內短字樣 vs A5 多行公司抬頭）要跟著它走
   const markingShape = faker.helpers.arrayElement(MARKING_SHAPES)
+  // 第二組嘜頭刻意給不同形狀，讓多組嘜頭的畫面與列印差異看得出來
+  const secondMarkingShape = faker.helpers.arrayElement(MARKING_SHAPES.filter((s) => s !== markingShape))
+  /** 抬頭文字依形狀給格式：三角形／菱形只放得下短字樣；A5大小沒有形狀、整段印在最上方，才是多行公司抬頭 */
+  const markingHeaderText = (shape: (typeof MARKING_SHAPES)[number]) =>
+    shape === 'A5大小'
+      ? [
+          customer.fullNameEN,
+          faker.helpers.arrayElement(['JEDDAH, K.S.A.', 'XIAMEN, CHINA', 'HO CHI MINH, VIETNAM']),
+          `TEL：${customer.personInChargePhone}`,
+        ].join('\n')
+      : faker.helpers.arrayElement(['FASHION', 'G.L', 'BRIDAL', 'RORICA'])
 
   const items: PackingNoticeItem[] = Array.from({ length: itemCount }).map((_, j) => {
     const product = faker.helpers.arrayElement(products)
@@ -287,24 +298,34 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
     // 數量輸入基準：實務上多數客戶以碼下單，少數以米，種子資料兩種都給，方便看出畫面呈現差異
     itemUnit: i % 4 === 0 ? 'Meter' : 'Yard',
     allowSplicing: faker.datatype.boolean({ probability: 0.2 }),
-    marking: {
-      shape: markingShape,
-      // 抬頭文字依形狀給不同格式：三角形／菱形印在形狀內，只放得下短字樣；
-      // A5大小沒有形狀、整段印在最上方，才是多行的公司抬頭
-      headerText:
-        markingShape === 'A5大小'
-          ? `${customer.fullNameEN}
-${faker.helpers.arrayElement(['JEDDAH, K.S.A.', 'XIAMEN, CHINA', 'HO CHI MINH, VIETNAM'])}
-TEL：${customer.personInChargePhone}`
-          : faker.helpers.arrayElement(['FASHION', 'G.L', 'BRIDAL', 'RORICA']),
-      destination: faker.helpers.arrayElement(['', 'LA Warehouse', 'NY Distribution Center', '']),
-      grossWeightKg: faker.number.float({ min: 20, max: 120, fractionDigits: 1 }),
-      netWeightKg: faker.number.float({ min: 18, max: 110, fractionDigits: 1 }),
-      composition: faker.helpers.arrayElement(['', '100% POLY', '']),
-      origin: faker.helpers.arrayElement(['', 'Taiwan', '']),
-      hasSmallMarking: faker.datatype.boolean(),
-      smallMarkingText: `RORICA-${customer.code}-${dayjs().format('YYYY')}`,
-    },
+    // 嘜頭可多組：多數訂單一組，部分訂單客戶會另外指定第二組（不同目的地／箱型）
+    markings: [
+      {
+        shape: markingShape,
+        headerText: markingHeaderText(markingShape),
+        destination: faker.helpers.arrayElement(['', 'LA Warehouse', 'NY Distribution Center', '']),
+        grossWeightKg: faker.number.float({ min: 20, max: 120, fractionDigits: 1 }),
+        netWeightKg: faker.number.float({ min: 18, max: 110, fractionDigits: 1 }),
+        composition: faker.helpers.arrayElement(['', '100% POLY', '']),
+        origin: faker.helpers.arrayElement(['', 'Taiwan', '']),
+        hasSmallMarking: faker.datatype.boolean(),
+        smallMarkingText: `RORICA-${customer.code}-${dayjs().format('YYYY')}`,
+      },
+      ...(i % 3 === 0
+        ? [
+            {
+              shape: secondMarkingShape,
+              headerText: markingHeaderText(secondMarkingShape),
+              destination: 'HO CHI MINH, VIETNAM',
+              grossWeightKg: faker.number.float({ min: 20, max: 120, fractionDigits: 1 }),
+              netWeightKg: faker.number.float({ min: 18, max: 110, fractionDigits: 1 }),
+              composition: '100% POLY',
+              origin: 'MADE IN TAIWAN',
+              hasSmallMarking: false,
+            },
+          ]
+        : []),
+    ],
     embossing: faker.helpers.arrayElements(EMBOSSING_OPTIONS, { min: 1, max: 2 }),
     edgeCut: faker.datatype.boolean({ probability: 0.3 }),
   }

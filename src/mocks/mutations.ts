@@ -96,7 +96,7 @@ export interface PackingNoticeInput {
   /** 明細數量的輸入單位基準（Yard／Meter），供畫面與列印比照建單時的呈現 */
   itemUnit?: 'Yard' | 'Meter'
   allowSplicing?: boolean
-  marking: PackingNoticeMarking
+  markings: PackingNoticeMarking[]
   embossing: PackingNotice['embossing']
   edgeCut: boolean
 }
@@ -360,7 +360,7 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     items: buildItems(id, input.items),
     itemUnit: input.itemUnit ?? 'Yard',
     allowSplicing: input.allowSplicing ?? false,
-    marking: input.marking,
+    markings: input.markings,
     embossing: input.embossing,
     edgeCut: input.edgeCut,
   }
@@ -397,7 +397,7 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
     items: buildItems(id, input.items),
     itemUnit: input.itemUnit ?? packingNotices[idx].itemUnit ?? 'Yard',
     allowSplicing: input.allowSplicing ?? packingNotices[idx].allowSplicing,
-    marking: input.marking,
+    markings: input.markings,
     embossing: input.embossing,
     edgeCut: input.edgeCut,
   }
