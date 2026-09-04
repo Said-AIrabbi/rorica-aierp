@@ -1,4 +1,5 @@
 import { formatNumber } from '@/lib/units'
+import { cn } from '@/lib/utils'
 import type { PackingNoticeMarking } from '@/types'
 
 /**
@@ -25,6 +26,21 @@ export function MarkingPrint({ marking }: { marking: PackingNoticeMarking }) {
         ))}
       </div>
     </section>
+  )
+}
+
+/**
+ * 嘜頭預覽（畫面用，非列印輸出）：等比縮小的單一格嘜頭。
+ *
+ * 嘜頭的列印入口在表8，但資料是在表1 填的——沒有預覽就得先建單、再跳到出貨單才看得到
+ * 抬頭文字有沒有塞進形狀裡。故表1 直接顯示同一份版面元件的縮小版，所見即所印。
+ */
+export function MarkingPreview({ marking, className }: { marking: PackingNoticeMarking; className?: string }) {
+  const isA5 = marking.shape === 'A5大小'
+  return (
+    <div className={cn('pr-mark-preview', isA5 && 'pr-mark-preview-a5', className)}>
+      <MarkCell marking={marking} />
+    </div>
   )
 }
 

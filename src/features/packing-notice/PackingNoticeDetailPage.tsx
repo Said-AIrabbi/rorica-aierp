@@ -20,6 +20,7 @@ import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { effectiveReservationStatus } from '@/lib/inventory'
 import { freezeDate, isPackingNoticeEditable, isPackingNoticeFullyShipped } from '@/lib/workflow'
+import { MarkingPreview } from './MarkingPrint'
 import type { PackingNoticeStatus } from '@/types'
 
 export function PackingNoticeDetailPage() {
@@ -119,7 +120,7 @@ export function PackingNoticeDetailPage() {
         actions={
           <>
             <StatusBadge status={notice.status} className="text-sm" />
-            {/* 嘜頭列印格式待客戶提供實際版面後再建立，此處僅列印包裝通知單本身 */}
+            {/* 嘜頭的列印入口在表8（貼箱是出貨當下的動作）；表1 只列印包裝通知單本身，嘜頭在下方以預覽呈現 */}
             <PrintActions sheets={[{ key: 'doc', label: '列印包裝通知單', sheet: <PackingNoticePrint notice={notice} /> }]} />
             {!editable && (
               <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
@@ -325,6 +326,8 @@ export function PackingNoticeDetailPage() {
             // 多組嘜頭各自獨立成一區：列印時也是逐組各印一張，序號即對應關係
             <div key={index} className="rounded-lg border border-border p-3">
               <div className="mb-2 text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</div>
+              <div className="flex flex-col gap-4 lg:flex-row">
+                <div className="flex-1">
               <DetailGrid>
                 <DetailField label="嘜頭形狀" value={marking.shape} />
                 <DetailField label="客戶簡稱" value={customer?.shortName} />
@@ -339,6 +342,13 @@ export function PackingNoticeDetailPage() {
                   value={marking.hasSmallMarking ? marking.smallMarkingText || '加印（未填內容）' : '不加印'}
                 />
               </DetailGrid>
+                </div>
+                {/* 預覽與列印共用同一份版面元件；實際列印入口在表8（貼箱是出貨當下的動作） */}
+                <div className="shrink-0 space-y-1.5">
+                  <div className="text-xs text-muted-foreground">預覽（實際列印為 A4 一張多份，入口在表8）</div>
+                  <MarkingPreview marking={marking} />
+                </div>
+              </div>
             </div>
           ))}
         </CardContent>

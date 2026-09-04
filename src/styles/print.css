@@ -450,3 +450,46 @@
   font-size: 14pt;
   line-height: 1.5;
 }
+
+/* ---------- 嘜頭預覽（表1 畫面上確認用，不會被列印） ----------
+   沿用同一組 .pr-mark-* 版面規則，只把整格等比縮到畫面尺寸；
+   字級以 px 覆寫（原規則為 pt，是給實體紙張用的），比例才不會在小框裡爆版。 */
+.pr-mark-preview {
+  width: 100%;
+  max-width: 220px;
+  /* 一格＝A4 的 1/2 寬 × 1/3 高（扣邊界後約 95mm × 91mm） */
+  aspect-ratio: 95 / 91;
+  background: #fff;
+  color: #000;
+}
+
+.pr-mark-preview-a5 {
+  max-width: 260px;
+  aspect-ratio: 190 / 136;
+}
+
+.pr-mark-preview .pr-mark-cell {
+  width: 100%;
+  height: 100%;
+  gap: 4px;
+  padding: 6px;
+  border-color: #999;
+}
+
+.pr-mark-preview .pr-mark-lines {
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.pr-mark-preview .pr-mark-cell-a5 {
+  gap: 6px;
+  padding: 10px;
+}
+
+.pr-mark-preview .pr-mark-a5-head {
+  font-size: 13px;
+}
+
+.pr-mark-preview .pr-mark-cell-a5 .pr-mark-lines {
+  font-size: 10px;
+}

@@ -29,12 +29,14 @@ import {
   PROCESSING_METHODS,
   SHIP_METHODS,
   TOLERANCE_MODES,
+  type PackingNoticeMarking,
   type ProcessingMethod,
 } from '@/types'
 import { freezeDate, isPackingNoticeEditable } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
 import { lookupColorSample } from '@/lib/colors'
+import { MarkingPreview } from './MarkingPrint'
 import { ColorLookupBadge, ColorLookupLegend } from '@/components/shared/ColorLookupBadge'
 
 function itemErrorMessages(itemErrors: Record<string, unknown> | undefined): string[] {
@@ -55,6 +57,25 @@ const EMPTY_ITEM: PackingNoticeFormValues['items'][number] = {
   processingMethod: '',
   processingMethodNote: '',
   note: '',
+}
+
+/**
+ * 表單值轉為預覽用的嘜頭資料：數字欄位在輸入過程中是字串（甚至空字串），
+ * 直接丟給版面元件會印出 NaN，故在此收斂為 number | undefined。
+ */
+function previewMarking(value: PackingNoticeFormValues['markings'][number] | undefined): PackingNoticeMarking {
+  const num = (v: unknown) => (Number(v) > 0 ? Number(v) : undefined)
+  return {
+    shape: value?.shape ?? MARKING_SHAPES[0],
+    headerText: value?.headerText,
+    destination: value?.destination,
+    composition: value?.composition,
+    origin: value?.origin,
+    grossWeightKg: num(value?.grossWeightKg),
+    netWeightKg: num(value?.netWeightKg),
+    hasSmallMarking: Boolean(value?.hasSmallMarking),
+    smallMarkingText: value?.smallMarkingText,
+  }
 }
 
 const EMPTY_MARKING: PackingNoticeFormValues['markings'][number] = {
@@ -147,6 +168,8 @@ export function PackingNoticeFormPage() {
   const embossingValues = watch('embossing') ?? []
   const labelTypeValues = watch('labelTypes') ?? []
   const itemValues = watch('items') ?? []
+  // 嘜頭預覽要跟著輸入即時更新，故取 watch 值而非 field array 的快照
+  const markingValues = watch('markings') ?? []
   const customerNameValue = watch('customerName')
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -761,7 +784,8 @@ export function PackingNoticeFormPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="flex flex-col gap-4 lg:flex-row">
+                <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>嘜頭形狀</Label>
                     <select
@@ -808,7 +832,7 @@ export function PackingNoticeFormPage() {
                     <Label>淨重 (Kg)</Label>
                     <Input type="number" step="0.1" min="0" {...register(`markings.${index}.netWeightKg`)} />
                   </div>
-                  <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-3">
+                  <div className="flex items-center gap-2 sm:col-span-2">
                     <input
                       id={`hasSmallMarking-${index}`}
                       type="checkbox"
@@ -820,11 +844,17 @@ export function PackingNoticeFormPage() {
                     </Label>
                   </div>
                   {watch(`markings.${index}.hasSmallMarking`) && (
-                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                    <div className="space-y-1.5 sm:col-span-2">
                       <Label>小嘜頭內容</Label>
                       <Input {...register(`markings.${index}.smallMarkingText`)} placeholder="例：RORICA-K2-2026" />
                     </div>
                   )}
+                </div>
+                {/* 預覽：與列印共用同一份版面元件，邊填邊看抬頭文字是否塞得進形狀 */}
+                <div className="shrink-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">預覽（實際列印為 A4 一張多份）</Label>
+                  <MarkingPreview marking={previewMarking(markingValues[index])} />
+                </div>
                 </div>
               </div>
             ))}
