@@ -15,14 +15,14 @@ import type { PackingNoticeMarking } from '@/types'
  * 資料一律取自表1 的嘜頭欄位：抬頭文字印在形狀內（A5 無形狀，整段印在最上方），
  * 其餘欄位依範例印在形狀外側，未填寫者整行不印。
  */
-export function MarkingPrint({ marking }: { marking: PackingNoticeMarking }) {
+export function MarkingPrint({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: string }) {
   const isA5 = marking.shape === 'A5大小'
   const copies = isA5 ? 2 : 6
   return (
     <section className="pr-sheet pr-mark-sheet">
       <div className={isA5 ? 'pr-mark-grid pr-mark-grid-a5' : 'pr-mark-grid'}>
         {Array.from({ length: copies }).map((_, i) => (
-          <MarkCell key={i} marking={marking} />
+          <MarkCell key={i} marking={marking} boxNo={boxNo} />
         ))}
       </div>
     </section>
@@ -35,16 +35,24 @@ export function MarkingPrint({ marking }: { marking: PackingNoticeMarking }) {
  * 嘜頭的列印入口在表8，但資料是在表1 填的——沒有預覽就得先建單、再跳到出貨單才看得到
  * 抬頭文字有沒有塞進形狀裡。故表1 直接顯示同一份版面元件的縮小版，所見即所印。
  */
-export function MarkingPreview({ marking, className }: { marking: PackingNoticeMarking; className?: string }) {
+export function MarkingPreview({
+  marking,
+  boxNo,
+  className,
+}: {
+  marking: PackingNoticeMarking
+  boxNo?: string
+  className?: string
+}) {
   const isA5 = marking.shape === 'A5大小'
   return (
     <div className={cn('pr-mark-preview', isA5 && 'pr-mark-preview-a5', className)}>
-      <MarkCell marking={marking} />
+      <MarkCell marking={marking} boxNo={boxNo} />
     </div>
   )
 }
 
-function MarkCell({ marking }: { marking: PackingNoticeMarking }) {
+function MarkCell({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: string }) {
   const isA5 = marking.shape === 'A5大小'
   // 未填寫的欄位整行不印，避免嘜頭上出現空白標題
   const lines = [
@@ -54,6 +62,8 @@ function MarkCell({ marking }: { marking: PackingNoticeMarking }) {
     marking.netWeightKg ? `N.W ${formatNumber(marking.netWeightKg, 1)} KGS` : undefined,
     // 產地照欄位字面列印：填 Taiwan 就印 Taiwan，填 MADE IN TAIWAN 就印 MADE IN TAIWAN
     marking.origin,
+    // 箱袋號來自表8（出貨當下才知道箱袋編到幾號），同樣照填寫內容原樣列印；未填則整行不印
+    boxNo,
   ].filter((l): l is string => Boolean(l && String(l).trim()))
 
   return (

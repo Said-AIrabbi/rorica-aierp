@@ -670,6 +670,8 @@ export const shippingOrders: ShippingOrder[] = packingNotices.slice(0, 6).map((p
     items,
     operatorAccountId: faker.helpers.arrayElement(accounts.filter((a) => a.roles.includes('倉管'))).id,
     purpose: faker.helpers.arrayElement(GOODS_RECEIPT_PURPOSES),
+    // 箱袋號為出貨當下人工填寫，僅供本張出貨單列印嘜頭；部分單據留空，呈現未填時整行不印
+    markingBoxNos: i % 2 === 0 ? [`C/NO 1-${(i + 1) * 10}`] : undefined,
     signatures:
       status === '已完成'
         ? {

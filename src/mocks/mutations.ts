@@ -1612,6 +1612,23 @@ export function updateShippingOrderSignatures(id: string, signatures: ShippingOr
   return delay(updated)
 }
 
+/**
+ * 箱袋號：表8 列印嘜頭用的人工輸入欄位，逐組嘜頭各自填寫。
+ * 純屬本張出貨單的列印資訊，不回寫表1、也不影響任何流程判斷。
+ */
+export function updateShippingOrderMarkingBoxNo(id: string, index: number, boxNo: string): Promise<ShippingOrder> {
+  const idx = shippingOrders.findIndex((s) => s.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const current = shippingOrders[idx]
+  const boxNos = [...(current.markingBoxNos ?? [])]
+  // 陣列以索引對位嘜頭組別，中間的空缺補空字串，避免第2組的號碼被塞到第1格
+  while (boxNos.length <= index) boxNos.push('')
+  boxNos[index] = boxNo
+  const updated: ShippingOrder = { ...current, markingBoxNos: boxNos }
+  shippingOrders[idx] = updated
+  return delay(updated)
+}
+
 export function setShippingOrderStatus(id: string, status: ShippingOrder['status']): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
