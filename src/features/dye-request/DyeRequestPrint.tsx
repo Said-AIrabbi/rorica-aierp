@@ -14,12 +14,13 @@ export function DyeRequestPrint({ request }: { request: DyeRequest }) {
   const vendor = getVendor(request.dyeVendorId)
   const product = getProduct(request.productId)
 
+  // 買方固定為「皇加」，對染整廠而言是廢話（本單就是皇加發的），故不列印
   const meta: PrintMetaItem[] = [
     { label: '打色通知單號', value: request.id },
     { label: '來源包裝通知單', value: request.parentId },
-    { label: '買方', value: request.buyer },
+    // 表頭為 4 欄格線：前四項各佔一欄剛好一列，成品規格佔 2 欄填滿第二列，不留破格
+    { label: '染整廠', value: vendorDisplayName(vendor) },
     { label: '日期', value: formatDate(request.requestDate) },
-    { label: '染整廠', value: vendorDisplayName(vendor), span: 2 },
     { label: '皇加品名', value: product?.productName ?? request.productId },
     { label: '胚布編號', value: request.greigeFabricCode ?? ' ' },
     // 成品規格是打色的目標規格，對外單據一併印出供染整廠對照
@@ -36,6 +37,10 @@ export function DyeRequestPrint({ request }: { request: DyeRequest }) {
       signatures={VENDOR_SIGNATURE_LABELS}
       footNote="色樣編號由染整廠打色後填寫，並於下方空白處黏貼實體色樣布。"
     >
+      <PrintSection title="備註">
+        <div style={{ border: '0.5pt solid #000', minHeight: '14mm', padding: '1.5mm 2mm' }}>{request.note ?? ' '}</div>
+      </PrintSection>
+
       <PrintSection
         title="色號清單"
         note="※ 每組色號下方留白為黏貼實體色樣布之用；色樣編號由染整廠提供後回填。"
@@ -56,9 +61,6 @@ export function DyeRequestPrint({ request }: { request: DyeRequest }) {
         </div>
       </PrintSection>
 
-      <PrintSection title="備註">
-        <div style={{ border: '0.5pt solid #000', minHeight: '14mm', padding: '1.5mm 2mm' }}>{request.note ?? ' '}</div>
-      </PrintSection>
     </PrintSheet>
   )
 }
