@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Users,
   Warehouse,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -70,9 +71,13 @@ function NavItem({ to, label, icon: Icon, nested = false }: { to: string; label:
   )
 }
 
-export function Sidebar({ className = '' }: { className?: string }) {
+/**
+ * 側欄內容：桌機的固定側欄與手機的抽屜共用。
+ * 手機抽屜點了連結要自動關閉，故以 onNavigate 回呼通知外層。
+ */
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <aside className={cn('hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex', className)}>
+    <div className="flex h-full flex-col" onClick={onNavigate}>
       <div className="flex h-16 items-center gap-2 border-b border-border px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">
           皇
@@ -122,6 +127,45 @@ export function Sidebar({ className = '' }: { className?: string }) {
         <div>原型展示版本</div>
         <div className="font-mono">{new Date(__BUILD_TIME__).toLocaleString('zh-TW', { hour12: false })}</div>
       </div>
+    </div>
+  )
+}
+
+export function Sidebar({ className = '' }: { className?: string }) {
+  return (
+    <aside className={cn('hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex', className)}>
+      <SidebarContent />
     </aside>
+  )
+}
+
+/**
+ * 手機／小平板（< md）的導覽抽屜：該尺寸下固定側欄會吃掉大半畫面，故收成抽屜。
+ * 不用 Dialog：導覽不是強制回應的對話，遮罩點一下即關，且要能保留頁面捲動位置。
+ */
+export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <div className={cn('md:hidden print:hidden', !open && 'pointer-events-none')} aria-hidden={!open}>
+      <div
+        className={cn('fixed inset-0 z-40 bg-ink/40 transition-opacity', open ? 'opacity-100' : 'opacity-0')}
+        onClick={onClose}
+      />
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] border-r border-border bg-surface shadow-xl transition-transform duration-200',
+          open ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="關閉導覽"
+          className="absolute right-2 top-4 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-ink"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <SidebarContent onNavigate={onClose} />
+      </aside>
+    </div>
   )
 }

@@ -43,7 +43,7 @@ export function DataTable<TData>({
   emptyText = '目前沒有資料',
   stickyHeader = true,
   pinnedColumnIds,
-  maxHeight = 'calc(100vh - 20rem)',
+  maxHeight = 'max(18rem, calc(100dvh - 20rem))',
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -111,7 +111,7 @@ export function DataTable<TData>({
 
   return (
     <div className="space-y-3">
-      <div className="relative w-full max-w-xs">
+      <div className="relative w-full sm:max-w-xs">
         <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           value={globalFilter}
@@ -127,7 +127,8 @@ export function DataTable<TData>({
         )}
         style={stickyHeader ? { maxHeight } : undefined}
       >
-        <table className="w-full caption-bottom text-sm" data-slot="table">
+        {/* min-w：欄位多，窄螢幕壓縮成斷行泥巴不如水平捲動（第一欄已固定，捲到右邊仍看得到識別欄） */}
+        <table className="w-full min-w-[48rem] caption-bottom text-sm" data-slot="table">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               // 表頭列自己上背景色：sticky 的儲存格若透明，捲動中的資料會透出來

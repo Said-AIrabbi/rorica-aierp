@@ -205,7 +205,7 @@ export function PackingNoticeDetailPage() {
         </CardHeader>
         <CardContent className="px-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[44rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>客戶品名</TableHead>
@@ -397,7 +397,7 @@ export function PackingNoticeDetailPage() {
               確認採用後才會建立庫存預留並記錄實際使用的捲號組合；改判不接疋則改為整捲＋裁切分開出貨，裁剩的零碼布留庫存等待下次湊單。
             </p>
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[44rem]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>皇加品名</TableHead>
@@ -471,7 +471,7 @@ export function PackingNoticeDetailPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[44rem]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>皇加品名</TableHead>

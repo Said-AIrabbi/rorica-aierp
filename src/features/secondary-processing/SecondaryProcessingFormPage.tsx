@@ -184,7 +184,7 @@ export function SecondaryProcessingFormPage() {
               <p className="text-sm text-muted-foreground">請先選擇來源包裝通知單。</p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[44rem]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">納入</TableHead>

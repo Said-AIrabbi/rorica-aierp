@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, RotateCcw } from 'lucide-react'
+import { Bell, Menu, RotateCcw } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,25 +21,41 @@ function resetDemoData() {
   window.location.reload()
 }
 
-export function Header({ className = '' }: { className?: string }) {
+export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
   const { data: stockReservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
   const notifications = buildNotifications(packingNotices, purchaseOrders, stockReservations)
 
   return (
-    <header className={`flex h-16 items-center justify-between border-b border-border bg-surface px-6 ${className}`}>
-      <div className="text-sm text-muted-foreground">
-        客戶：<span className="font-medium text-ink">RORICA TEXTILE CO., LTD.（皇加布業）</span>
+    <header className={`flex h-16 items-center justify-between gap-2 border-b border-border bg-surface px-4 sm:px-6 ${className}`}>
+      <div className="flex min-w-0 items-center gap-2">
+        {/* < md 沒有固定側欄，導覽入口改由此開啟抽屜 */}
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="開啟導覽"
+          className="-ml-1 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-ink md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="min-w-0 truncate text-sm text-muted-foreground">
+          {/* 螢幕窄時只留客戶名稱本身，「客戶：」與英文全名讓位給右側操作 */}
+          <span className="hidden lg:inline">客戶：</span>
+          <span className="font-medium text-ink">
+            <span className="hidden lg:inline">RORICA TEXTILE CO., LTD.（皇加布業）</span>
+            <span className="lg:hidden">皇加布業</span>
+          </span>
+        </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
           type="button"
           onClick={resetDemoData}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-ink"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-ink sm:px-2.5"
           title="清除本次測試建立/異動的單據，回到預設展示資料"
         >
-          <RotateCcw className="h-3.5 w-3.5" /> 重置模擬資料
+          <RotateCcw className="h-3.5 w-3.5" /> <span className="hidden sm:inline">重置模擬資料</span>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -54,7 +70,7 @@ export function Header({ className = '' }: { className?: string }) {
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-2rem))]">
             <DropdownMenuLabel>
               通知中心（展示用，依現有資料即時運算，非真實推播機制）
             </DropdownMenuLabel>
@@ -74,10 +90,11 @@ export function Header({ className = '' }: { className?: string }) {
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white">
             陳
           </div>
-          <div className="text-sm">
+          {/* 頭像在小螢幕已足以辨識目前身分，姓名與角色僅在 sm 以上顯示 */}
+          <div className="hidden text-sm sm:block">
             <div className="font-medium text-ink">陳美玲</div>
             <div className="text-xs text-muted-foreground">業務</div>
           </div>

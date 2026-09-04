@@ -548,7 +548,7 @@ export function AbnormalNoticeDetailPage() {
             )}
 
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[44rem]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>原條碼</TableHead>

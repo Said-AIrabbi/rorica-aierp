@@ -220,7 +220,7 @@ export function PurchaseOrderFormPage() {
               <p className="px-4 text-sm text-muted-foreground">請先選擇來源包裝通知單以帶入明細。</p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[44rem]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>客戶品名</TableHead>

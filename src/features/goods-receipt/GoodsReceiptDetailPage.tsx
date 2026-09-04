@@ -448,7 +448,7 @@ export function GoodsReceiptDetailPage() {
         </CardHeader>
         <CardContent className="px-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[44rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>疋號</TableHead>
