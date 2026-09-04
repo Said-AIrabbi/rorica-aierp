@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-table'
 import { ArrowUpDown, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
 interface DataTableProps<TData> {
@@ -19,6 +19,16 @@ interface DataTableProps<TData> {
   searchPlaceholder?: string
   onRowClick?: (row: TData) => void
   emptyText?: string
+  /**
+   * 凍結窗格：表頭固定於表格上方。啟用後表格自帶垂直捲軸（高度上限 maxHeight），
+   * 垂直捲動改在表格內發生——sticky 是相對「最近的捲動祖先」定位，
+   * 若沿用整頁捲動，表頭就會跟著整塊表格一起捲出畫面。
+   */
+  stickyHeader?: boolean
+  /** 水平捲動時要固定在左側的欄位 id（依陣列順序由左至右排列） */
+  pinnedColumnIds?: string[]
+  /** 捲動區高度上限，僅在 stickyHeader 時有效 */
+  maxHeight?: string
 }
 
 export function DataTable<TData>({
@@ -27,6 +37,9 @@ export function DataTable<TData>({
   searchPlaceholder = '搜尋...',
   onRowClick,
   emptyText = '目前沒有資料',
+  stickyHeader = false,
+  pinnedColumnIds,
+  maxHeight = 'calc(100vh - 20rem)',
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -42,6 +55,55 @@ export function DataTable<TData>({
     getFilteredRowModel: getFilteredRowModel(),
   })
 
+  // 呼叫端多半直接寫陣列字面值，每次 render 都是新參考；以字串為鍵取得穩定的相依值
+  const pinnedKey = (pinnedColumnIds ?? []).join(',')
+  const pinned = useMemo(() => (pinnedKey ? pinnedKey.split(',') : []), [pinnedKey])
+  const lastPinnedId = pinned[pinned.length - 1]
+
+  /**
+   * 固定欄的 left 位移量以實際量測的表頭寬度累加，而不是預先設定的欄寬——
+   * 欄位內容是中文品名、長度不固定，表格又是自動版面，寫死寬度會讓固定欄與
+   * 捲動中的內容錯位。改用 ResizeObserver 在欄寬變動（換資料、視窗縮放）時重算。
+   */
+  const headRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
+  const [pinOffsets, setPinOffsets] = useState<Record<string, number>>({})
+
+  useLayoutEffect(() => {
+    if (pinned.length === 0) return
+    const measure = () => {
+      let acc = 0
+      const next: Record<string, number> = {}
+      for (const id of pinned) {
+        next[id] = acc
+        acc += headRefs.current[id]?.offsetWidth ?? 0
+      }
+      setPinOffsets((prev) => {
+        const same = pinned.every((id) => prev[id] === next[id]) && Object.keys(prev).length === pinned.length
+        return same ? prev : next
+      })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    for (const id of pinned) {
+      const el = headRefs.current[id]
+      if (el) observer.observe(el)
+    }
+    return () => observer.disconnect()
+  }, [pinned, data])
+
+  /** 固定欄需要自己的背景色蓋住捲過去的資料；bg-inherit 讓它跟著整列（含 hover 態）變色 */
+  const pinnedCellClass = (columnId: string, kind: 'head' | 'cell') => {
+    if (!pinned.includes(columnId)) return undefined
+    return cn(
+      'sticky bg-inherit',
+      // 表頭的固定欄同時卡在上緣與左緣，層級要高於只固定一邊的儲存格
+      kind === 'head' ? 'z-30' : 'z-20',
+      columnId === lastPinnedId && 'shadow-[1px_0_0_var(--color-border)]',
+    )
+  }
+  const pinnedStyle = (columnId: string) =>
+    pinned.includes(columnId) ? { left: pinOffsets[columnId] ?? 0 } : undefined
+
   return (
     <div className="space-y-3">
       <div className="relative w-full max-w-xs">
@@ -53,13 +115,30 @@ export function DataTable<TData>({
           className="pl-8"
         />
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
-        <Table>
+      <div
+        className={cn(
+          'relative rounded-lg border border-border bg-card',
+          stickyHeader ? 'overflow-auto' : 'overflow-x-auto',
+        )}
+        style={stickyHeader ? { maxHeight } : undefined}
+      >
+        <table className="w-full caption-bottom text-sm" data-slot="table">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              // 表頭列自己上背景色：sticky 的儲存格若透明，捲動中的資料會透出來
+              <TableRow key={headerGroup.id} className="bg-muted hover:bg-muted">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    ref={(el) => {
+                      headRefs.current[header.column.id] = el
+                    }}
+                    className={cn(
+                      stickyHeader && 'sticky top-0 z-10 bg-inherit shadow-[inset_0_-1px_0_var(--color-border)]',
+                      pinnedCellClass(header.column.id, 'head'),
+                    )}
+                    style={pinnedStyle(header.column.id)}
+                  >
                     {header.isPlaceholder ? null : (
                       <button
                         type="button"
@@ -83,11 +162,14 @@ export function DataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={cn(onRowClick && 'cursor-pointer hover:bg-muted/60')}
+                  // 固定欄以 bg-inherit 取色，所以整列必須是不透明色，否則捲動的內容會透出來
+                  className={cn('bg-card', onRowClick && 'cursor-pointer hover:bg-muted')}
                   onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id} className={pinnedCellClass(cell.column.id, 'cell')} style={pinnedStyle(cell.column.id)}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
@@ -99,7 +181,7 @@ export function DataTable<TData>({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
     </div>
   )
