@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { PRINT_COMPANY } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 
@@ -117,12 +117,18 @@ export function PrintTable<T>({
   columns,
   rows,
   totalRow,
+  subRow,
   emptyText = '（無明細）',
 }: {
   columns: PrintColumn<T>[]
   rows: T[]
   /** 合計列：與欄位數相同長度的陣列，null 表示空白格 */
   totalRow?: ReactNode[]
+  /**
+   * 每一列的第二行（跨滿整個表寬）：欄位太長會把整張表撐爆，
+   * 改放到同一項次的下一行，視覺上仍屬同一列。回傳 null 則不輸出第二行。
+   */
+  subRow?: (row: T, index: number) => ReactNode
   emptyText?: string
 }) {
   const alignClass = (align?: PrintColumn<T>['align']) =>
@@ -147,15 +153,25 @@ export function PrintTable<T>({
             </td>
           </tr>
         ) : (
-          rows.map((row, ri) => (
-            <tr key={ri}>
-              {columns.map((col, ci) => (
-                <td key={ci} className={alignClass(col.align)}>
-                  {col.cell(row, ri)}
-                </td>
-              ))}
-            </tr>
-          ))
+          rows.map((row, ri) => {
+            const sub = subRow?.(row, ri)
+            return (
+              <Fragment key={ri}>
+                <tr>
+                  {columns.map((col, ci) => (
+                    <td key={ci} className={alignClass(col.align)}>
+                      {col.cell(row, ri)}
+                    </td>
+                  ))}
+                </tr>
+                {sub ? (
+                  <tr className="pr-subrow">
+                    <td colSpan={columns.length}>{sub}</td>
+                  </tr>
+                ) : null}
+              </Fragment>
+            )
+          })
         )}
         {totalRow && (
           <tr className="pr-total-row">

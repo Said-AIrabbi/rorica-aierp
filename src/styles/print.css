@@ -493,3 +493,11 @@
 .pr-mark-preview .pr-mark-cell-a5 .pr-mark-lines {
   font-size: 10px;
 }
+
+/* 明細列的第二行（跨滿表寬）：視覺上仍屬同一項次，故不畫上框線、字級略小 */
+.pr-table tr.pr-subrow > td {
+  border-top: 0;
+  padding-top: 0;
+  font-size: 8.5pt;
+  color: #333;
+}
