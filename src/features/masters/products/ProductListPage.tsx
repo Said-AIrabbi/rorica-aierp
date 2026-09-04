@@ -42,7 +42,7 @@ export function ProductListPage() {
         header: '所屬客戶',
         accessorFn: (row) => getCustomer(row.customerId)?.shortName ?? row.customerId,
       },
-      { accessorKey: 'material', header: '成份' },
+      { accessorKey: 'material', header: '成分' },
       { accessorKey: 'greigeSpec', header: '胚布規格' },
       { accessorKey: 'finishedSpec', header: '成品規格' },
       // 幅寬原始單位為英吋（廠商規格單位），括號附註公分換算供內部參考

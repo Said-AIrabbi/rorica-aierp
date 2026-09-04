@@ -14,7 +14,7 @@ const columns: PrintColumn<DyeOrderItem>[] = [
   { header: '顏色', cell: (r) => r.color },
   { header: '色樣編號', cell: (r) => r.sampleCode ?? '________' },
   { header: '對色標準', cell: (r) => r.colorMatchStandard ?? ' ' },
-  { header: '成份', cell: (r) => r.fabricMaterial ?? ' ' },
+  { header: '成分', cell: (r) => r.fabricMaterial ?? ' ' },
   { header: '單卷碼數', cell: (r) => (r.rollYard ? `${formatNumber(r.rollYard, 1)} Y` : ' '), align: 'right', width: '18mm' },
   { header: '指染數量', cell: (r) => formatNumber(r.inDyeQty, 1), align: 'right', width: '18mm' },
   { header: '成品數量', cell: (r) => formatNumber(r.finishedQty, 1), align: 'right', width: '18mm' },
@@ -79,10 +79,11 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
       </PrintSection>
 
 
-      {/* 備註固定輸出：沒有內容時留空框供染整廠現場手寫 */}
-      <PrintSection title="備註">
-        <div style={{ border: '0.5pt solid #000', minHeight: '12mm', padding: '1.5mm 2mm' }}>{order.note ?? ' '}</div>
-      </PrintSection>
+      {order.note && (
+        <PrintSection title="備註">
+          <div style={{ border: '0.5pt solid #000', minHeight: '12mm', padding: '1.5mm 2mm' }}>{order.note}</div>
+        </PrintSection>
+      )}
       {/* 明細放在最後：規格第二行讓每個項次佔兩行，放中間會把備註與使用胚布擠到次頁 */}
       <PrintSection title="明細">
         <PrintTable

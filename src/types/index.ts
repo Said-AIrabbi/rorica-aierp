@@ -94,7 +94,7 @@ export interface Product {
    * 會各自建為一筆商品，以此序號區分是哪一個分支，格式為兩位數流水號（01、02…）。
    */
   sortNo: string
-  /** 成份（原稱胚布材質）：自由文字（如「100% POLY/METALLIC」「N/T 42/58」），表4明細第二列自動帶入 */
+  /** 成分（原稱胚布材質）：自由文字（如「100% POLY/METALLIC」「N/T 42/58」），表4明細第二列自動帶入 */
   material: string
   /** 胚布規格：表4明細第二列自動帶入 */
   greigeSpec: string

@@ -234,7 +234,7 @@ export function ProductDetailPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
-              <Label className="text-xs">成份</Label>
+              <Label className="text-xs">成分</Label>
               <Input
                 value={draft.material}
                 onChange={(e) => set('material', e.target.value)}
