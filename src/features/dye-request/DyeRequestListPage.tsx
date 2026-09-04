@@ -31,6 +31,11 @@ export function DyeRequestListPage() {
         header: '染整廠',
         accessorFn: (row) => getVendor(row.dyeVendorId)?.name ?? row.dyeVendorId,
       },
+      {
+        id: 'vendorCode',
+        header: '廠商代碼',
+        accessorFn: (row) => getVendor(row.dyeVendorId)?.code ?? '-',
+      },
       { id: 'requestDate', header: '委託日', accessorFn: (row) => formatDate(row.requestDate) },
       {
         id: 'colorSampleConfirmedAt',

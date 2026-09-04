@@ -26,6 +26,11 @@ export function PurchaseOrderListPage() {
         header: '廠商',
         accessorFn: (row) => getVendor(row.vendorId)?.name ?? row.vendorId,
       },
+      {
+        id: 'vendorCode',
+        header: '廠商代碼',
+        accessorFn: (row) => getVendor(row.vendorId)?.code ?? '-',
+      },
       { id: 'itemCount', header: '品項數', accessorFn: (row) => row.items.length },
       { id: 'createdAt', header: '建立日', accessorFn: (row) => formatDate(row.createdAt) },
       { id: 'dueDate', header: '交期', accessorFn: (row) => formatDate(row.dueDate) },

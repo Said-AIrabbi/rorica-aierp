@@ -33,6 +33,11 @@ export function SecondaryProcessingListPage() {
         accessorFn: (row) => getVendor(row.vendorId)?.name ?? row.vendorId,
       },
       {
+        id: 'vendorCode',
+        header: '廠商代碼',
+        accessorFn: (row) => getVendor(row.vendorId)?.code ?? '-',
+      },
+      {
         id: 'methods',
         header: '加工方法',
         accessorFn: (row) => Array.from(new Set(row.items.map((i) => i.processingMethod).filter(Boolean))).join('、') || '-',
