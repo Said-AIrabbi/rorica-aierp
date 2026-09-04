@@ -25,7 +25,7 @@ import {
   updateShippingOrderSignatures,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
-import { formatNumber, yardToMeter } from '@/lib/units'
+import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
 import type { ShippingOrderItem, ShippingOrderSignatures } from '@/types'
 
@@ -108,6 +108,11 @@ export function ShippingOrderDetailPage() {
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
   const notice = packingNotices.find((n) => n.id === order.parentId)
   const marking = notice?.marking
+  // 數量以「當初下單用的單位」為主值呈現，另一單位標為換算值；沿用表1 的作法，
+  // 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的
+  const itemUnit = notice?.itemUnit ?? 'Yard'
+  const toBasis = (yard: number) => (itemUnit === 'Yard' ? yard : yardToMeter(yard))
+  const fromBasis = (value: number) => (itemUnit === 'Yard' ? value : meterToYard(value))
 
   return (
     <div>
@@ -195,8 +200,7 @@ export function ShippingOrderDetailPage() {
                   <TableHead>皇加品名</TableHead>
                   <TableHead>色號</TableHead>
                   <TableHead>布卷條碼（拼接時為捲號組合）</TableHead>
-                  <TableHead className="text-right">Yard</TableHead>
-                  <TableHead className="text-right">Meter</TableHead>
+                  <TableHead className="text-right">數量 ({itemUnit})</TableHead>
                   <TableHead className="text-right">售價 (/Y)</TableHead>
                   <TableHead className="text-right">金額</TableHead>
                   <TableHead>備註</TableHead>
@@ -214,22 +218,26 @@ export function ShippingOrderDetailPage() {
                       {itemsEditable ? (
                         <Input
                           type="number"
-                          step="1"
+                          step={itemUnit === 'Yard' ? '1' : '0.1'}
                           min="0"
                           className="w-24 text-right"
-                          value={item.yard}
+                          value={Number(toBasis(item.yard).toFixed(itemUnit === 'Yard' ? 0 : 1))}
                           onChange={(e) =>
                             setItemDraft((prev) =>
-                              prev.map((x, xi) => (xi === i ? { ...x, yard: Number(e.target.value) || 0 } : x)),
+                              prev.map((x, xi) =>
+                                xi === i ? { ...x, yard: Number(fromBasis(Number(e.target.value) || 0).toFixed(2)) } : x,
+                              ),
                             )
                           }
                         />
                       ) : (
-                        formatNumber(item.yard, 0)
+                        <div>{formatNumber(itemUnit === 'Yard' ? item.yard : item.meter, itemUnit === 'Yard' ? 0 : 1)}</div>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(itemsEditable ? yardToMeter(item.yard) : item.meter, 1)}
+                      <div className="text-xs text-muted-foreground">
+                        {itemUnit === 'Yard'
+                          ? `≈ ${formatNumber(itemsEditable ? yardToMeter(item.yard) : item.meter, 1)} 米 (Meter)`
+                          : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {itemsEditable ? (

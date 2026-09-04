@@ -2,10 +2,11 @@ import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaI
 import { PRINT_TITLES, SHIPPING_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
-import { getAccount, getCustomer } from '@/mocks/data'
+import { getAccount, getCustomer, getPackingNotice } from '@/mocks/data'
 import type { ShippingOrder, ShippingOrderItem } from '@/types'
 
-const columns: PrintColumn<ShippingOrderItem>[] = [
+/** 數量欄依來源表1 的輸入基準排序：主值在前，換算值標 ≈，避免對外單據看不出客戶實際下的數字 */
+const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<ShippingOrderItem>[] => [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
   { header: '客戶品名', cell: (r) => r.customerProductName ?? ' ' },
   { header: '皇加品名', cell: (r) => r.roricaProductName ?? ' ' },
@@ -15,8 +16,18 @@ const columns: PrintColumn<ShippingOrderItem>[] = [
     // 拼接出貨時一筆明細對應多個捲號，逐一印出供客訴回溯
     cell: (r) => (r.rollCodes.length === 0 ? ' ' : r.rollCodes.map((c) => <div key={c}>{c}</div>)),
   },
-  { header: '數量 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '18mm' },
-  { header: '(M)', cell: (r) => formatNumber(r.meter, 1), align: 'right', width: '16mm' },
+  {
+    header: unit === 'Yard' ? '數量 (Y)' : '數量 (M)',
+    cell: (r) => formatNumber(unit === 'Yard' ? r.yard : r.meter, 1),
+    align: 'right',
+    width: '18mm',
+  },
+  {
+    header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
+    cell: (r) => formatNumber(unit === 'Yard' ? r.meter : r.yard, 1),
+    align: 'right',
+    width: '16mm',
+  },
   // 售價與金額不列印：本單隨貨交付客戶，價格資訊不隨貨外流，僅保留於系統畫面
   { header: '備註', cell: (r) => r.note ?? ' ' },
 ]
@@ -30,6 +41,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
   const customer = getCustomer(order.customerId)
   const operator = order.operatorAccountId ? getAccount(order.operatorAccountId) : undefined
   const title = order.isSampleOrder ? PRINT_TITLES.shippingSample : PRINT_TITLES.shippingOrder
+  const itemUnit = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
 
   const meta: PrintMetaItem[] = [
     { label: '出貨單號', value: order.id },
@@ -41,6 +53,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
     { label: '出倉部門', value: operator?.roles.join('、') ?? ' ' },
     { label: '客戶地址', value: customer?.address ?? ' ', span: 2 },
     { label: '用途', value: order.purpose ?? ' ' },
+    { label: '數量輸入基準', value: `${itemUnit}（另一單位為換算值）` },
     { label: '狀態', value: order.status },
   ]
 
@@ -56,7 +69,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
     >
       <PrintSection title="出貨明細">
         <PrintTable
-          columns={columns}
+          columns={buildColumns(itemUnit)}
           rows={order.items}
           totalRow={[
             '合計',
@@ -64,8 +77,14 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
             null,
             null,
             null,
-            formatNumber(order.items.reduce((s, i) => s + i.yard, 0), 1),
-            formatNumber(order.items.reduce((s, i) => s + i.meter, 0), 1),
+            formatNumber(
+              order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.yard : i.meter), 0),
+              1,
+            ),
+            formatNumber(
+              order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0),
+              1,
+            ),
             null,
           ]}
         />

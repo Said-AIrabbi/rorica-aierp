@@ -920,6 +920,11 @@ export function clearSessionSnapshot(): void {
 
 restoreSessionSnapshot()
 
+/** 下游單據（表8 等）反查來源包裝通知單，主要用於取得建單時的數量輸入基準 */
+export function getPackingNotice(id: string): PackingNotice | undefined {
+  return packingNotices.find((n) => n.id === id)
+}
+
 export function getCustomer(id: string): Customer | undefined {
   return customers.find((c) => c.id === id)
 }
