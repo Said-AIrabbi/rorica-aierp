@@ -27,14 +27,9 @@ export function ProductListPage() {
 
   const columns = useMemo<ColumnDef<Product, unknown>[]>(
     () => [
-      // 欄位順序依皇加指定：品名在前（日常查找的入口），系統編號其次，再帶出客戶與規格
+      // 欄位順序依皇加指定：品名→編號→分支→客戶→成分→幅寬→碼重→米重→厚度，
+      // 其餘欄位排在厚度之後（先接規格類，再依序為分類、尺寸、價格、庫存）
       { accessorKey: 'productName', header: '皇加品名' },
-      { accessorKey: 'customerProductName', header: '客戶品名' },
-      {
-        id: 'category',
-        header: '產品類別',
-        accessorFn: (row) => getCategoryLabel(row.categoryCode),
-      },
       { accessorKey: 'id', header: '產品編號' },
       { accessorKey: 'sortNo', header: '產品序號（分支）' },
       {
@@ -43,8 +38,6 @@ export function ProductListPage() {
         accessorFn: (row) => getCustomer(row.customerId)?.shortName ?? row.customerId,
       },
       { accessorKey: 'material', header: '成分' },
-      { accessorKey: 'greigeSpec', header: '胚布規格' },
-      { accessorKey: 'finishedSpec', header: '成品規格' },
       // 幅寬原始單位為英吋（廠商規格單位），括號附註公分換算供內部參考
       {
         id: 'width',
@@ -53,6 +46,15 @@ export function ProductListPage() {
       },
       { id: 'weightGY', header: '碼重 (G/Y)', accessorFn: (row) => `${row.weightGY} ±${row.weightTolerancePct}%` },
       { id: 'weightMY', header: '米重 (G/M，自動換算)', accessorFn: (row) => row.weightMY },
+      { id: 'thickness', header: '厚度 (mm)', accessorFn: (row) => row.thicknessMm },
+      { accessorKey: 'greigeSpec', header: '胚布規格' },
+      { accessorKey: 'finishedSpec', header: '成品規格' },
+      { accessorKey: 'customerProductName', header: '客戶品名' },
+      {
+        id: 'category',
+        header: '產品類別',
+        accessorFn: (row) => getCategoryLabel(row.categoryCode),
+      },
       {
         id: 'originalRollStandardYard',
         header: '原疋標準尺寸',
