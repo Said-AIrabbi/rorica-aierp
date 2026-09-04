@@ -184,9 +184,11 @@ export function ProductDetailPage() {
                   <SelectValue placeholder="請選擇客戶" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* 已歇業客戶不從清單移除：既有商品仍掛在該客戶底下，移掉會讓欄位變空白；
+                      改為標註，讓人不會誤選來建新商品 */}
                   {customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.shortName}（{c.fullNameCN}）
+                    <SelectItem key={c.id} value={c.id} disabled={c.status === '已歇業' && draft.customerId !== c.id}>
+                      {c.shortName}（{c.fullNameCN}）{c.status === '已歇業' ? '　已歇業' : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

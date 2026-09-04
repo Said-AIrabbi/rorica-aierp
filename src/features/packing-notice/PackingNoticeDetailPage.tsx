@@ -186,8 +186,12 @@ export function PackingNoticeDetailPage() {
             <DetailGrid>
               <DetailField label="負責人" value={customer?.personInCharge} />
               <DetailField label="負責人電話" value={customer?.personInChargePhone} />
-              <DetailField label="連絡人" value={customer?.contactPerson} />
-              <DetailField label="連絡人電話" value={customer?.contactPersonPhone} />
+              {/* 客戶可有多組聯絡資訊，單據帶出主要聯絡人（第一組） */}
+              <DetailField label="連絡人" value={customer?.contacts[0]?.name} />
+              <DetailField
+                label="連絡人電話"
+                value={customer?.contacts[0]?.phone || customer?.contacts[0]?.mobile}
+              />
               <DetailField label="付款條件" value={customer?.paymentTerms} />
               <DetailField label="交期預設天數" value={`${customer?.leadTimeDays} 天`} />
             </DetailGrid>

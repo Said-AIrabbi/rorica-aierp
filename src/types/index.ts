@@ -7,6 +7,22 @@
 export const CUSTOMER_STATUSES = ['A level', 'B level', 'C level', '已歇業'] as const
 export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number]
 
+/**
+ * 客戶聯絡資訊：一個客戶可以有多組（不同窗口、不同分公司或倉庫收件人）。
+ * 陣列第一組為主要聯絡人，單據上帶出的即為這一組；主檔至少要有一組，其餘皆非必填。
+ */
+export interface CustomerContact {
+  /** 聯絡人姓名：每一組的必填欄位，其餘聯絡方式視實際有無填寫 */
+  name: string
+  email?: string
+  /** 市話 */
+  phone?: string
+  /** 手機 */
+  mobile?: string
+  /** 該窗口的地址（例如收樣地址、分公司地址），與公司地址／發票地址分開 */
+  address?: string
+}
+
 export interface Customer {
   /**
    * 系統編號（主鍵）：建檔時由系統自動產生（CUST-001…），不開放修改。
@@ -21,9 +37,11 @@ export interface Customer {
   /** 負責人：與連絡人為兩個不同角色，各自留存聯絡方式 */
   personInCharge: string
   personInChargePhone: string
-  /** 連絡人：日常對接窗口，與負責人分開存 */
-  contactPerson: string
-  contactPersonPhone: string
+  /**
+   * 連絡人：日常對接窗口，與負責人分開存；可有多組，第一組為主要聯絡人。
+   * 由表1 建單當下自動建檔的新客戶尚未填寫，故允許為空陣列，待主檔補齊。
+   */
+  contacts: CustomerContact[]
   address: string
   invoiceAddress: string
   taxId: string

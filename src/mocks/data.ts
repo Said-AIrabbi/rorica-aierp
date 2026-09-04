@@ -107,8 +107,26 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
   fullNameEN: c.en,
   personInCharge: faker.person.fullName(),
   personInChargePhone: faker.phone.number({ style: 'international' }),
-  contactPerson: faker.person.fullName(),
-  contactPersonPhone: faker.phone.number({ style: 'international' }),
+  // 聯絡資訊可有多組：第一組為主要聯絡人，部分客戶另有第二窗口（如倉庫收貨聯絡人）
+  contacts: [
+    {
+      name: faker.person.fullName(),
+      email: `${faker.internet.username().toLowerCase()}@example.com`,
+      phone: faker.phone.number({ style: 'international' }),
+      mobile: faker.phone.number({ style: 'international' }),
+      address: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號`,
+    },
+    ...(i % 2 === 0
+      ? [
+          {
+            name: faker.person.fullName(),
+            email: `${faker.internet.username().toLowerCase()}@example.com`,
+            mobile: faker.phone.number({ style: 'international' }),
+            address: `新北市五股區工商路${faker.number.int({ min: 1, max: 200 })}號（倉庫收貨）`,
+          },
+        ]
+      : []),
+  ],
   address: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號${faker.number.int({ min: 1, max: 10 })}樓`,
   invoiceAddress: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號${faker.number.int({ min: 1, max: 10 })}樓`,
   taxId: faker.string.numeric(8),

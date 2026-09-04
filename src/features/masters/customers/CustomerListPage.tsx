@@ -28,8 +28,20 @@ export function CustomerListPage() {
       { accessorKey: 'fullNameCN', header: '公司名稱' },
       { accessorKey: 'personInCharge', header: '負責人' },
       { accessorKey: 'personInChargePhone', header: '負責人電話' },
-      { accessorKey: 'contactPerson', header: '連絡人' },
-      { accessorKey: 'contactPersonPhone', header: '連絡人電話' },
+      {
+        id: 'contactPerson',
+        header: '連絡人',
+        // 客戶可有多組聯絡資訊，列表顯示主要聯絡人並標示另有幾組
+        accessorFn: (row) =>
+          row.contacts.length === 0
+            ? '-'
+            : `${row.contacts[0].name}${row.contacts.length > 1 ? `（另有 ${row.contacts.length - 1} 組）` : ''}`,
+      },
+      {
+        id: 'contactPersonPhone',
+        header: '連絡人電話',
+        accessorFn: (row) => row.contacts[0]?.phone || row.contacts[0]?.mobile || '-',
+      },
       { accessorKey: 'paymentTerms', header: '付款方式' },
       { id: 'leadTimeDays', header: '交期天數', accessorFn: (row) => `${row.leadTimeDays} 天` },
     ],

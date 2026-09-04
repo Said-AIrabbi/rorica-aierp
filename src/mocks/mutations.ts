@@ -22,6 +22,7 @@ import type {
   Account,
   ActualReceiptComparison,
   Customer,
+  CustomerContact,
   DyeOrder,
   DyeOrderItem,
   DyeRequest,
@@ -129,6 +130,10 @@ function colorRatioDisplay(colorRatio: PackingNotice['colorRatio']): string {
 function resolveCustomerByName(name: string): Customer {
   const trimmed = name.trim()
   const existing = customers.find((c) => c.shortName === trimmed || c.fullNameCN === trimmed)
+  // 已歇業客戶不可再開新單：畫面已將其排除於選單之外，此處擋下手動輸入名稱的情況
+  if (existing?.status === '已歇業') {
+    throw new Error(`客戶「${existing.shortName}」主檔狀態為已歇業，不可開立新單據`)
+  }
   if (existing) return existing
 
   const customer: Customer = {
@@ -139,16 +144,16 @@ function resolveCustomerByName(name: string): Customer {
     fullNameEN: '',
     personInCharge: '',
     personInChargePhone: '',
-    contactPerson: '',
-    contactPersonPhone: '',
+    // 聯絡資訊待主檔補齊：建單當下只知道客戶名稱
+    contacts: [],
     address: '',
     invoiceAddress: '',
     taxId: '',
     taxRate: '',
     paymentTerms: '',
     leadTimeDays: 14,
-    // 由表1 建單當下自動建檔的新客戶：等級待業務後續評定，先給 B level
-    status: 'B level',
+    // 由表1 建單當下自動建檔的新客戶：等級待業務後續評定，先給 C level
+    status: 'C level',
   }
   customers.push(customer)
   return customer
@@ -1838,8 +1843,10 @@ export function updateCustomer(id: string, input: CustomerInput): Promise<Custom
   if (customers.some((c) => c.id !== id && c.code.trim() === input.code.trim())) {
     throw new Error(`客戶代碼「${input.code}」已被其他客戶使用`)
   }
+  assertCustomerContacts(input.contacts)
 
-  const updated: Customer = { ...customers[idx], ...input }
+  // 只留下有填聯絡人姓名的組別：畫面允許先開一列空白再填，未填者不寫入主檔
+  const updated: Customer = { ...customers[idx], ...input, contacts: input.contacts.filter((c) => c.name.trim()) }
   customers[idx] = updated
   return delay(updated)
 }
@@ -2269,13 +2276,24 @@ function assertNotReferenced(label: string, refs: { where: string; ids: string[]
   }
 }
 
+/** 聯絡資訊：至少要有一組且填了聯絡人姓名，其餘組別與欄位皆非必填 */
+function assertCustomerContacts(contacts: CustomerContact[]): void {
+  const filled = contacts.filter((c) => c.name.trim())
+  if (filled.length === 0) throw new Error('請至少填寫一組聯絡資訊的聯絡人姓名')
+}
+
 export function createCustomer(input: CustomerInput): Promise<Customer> {
   if (!input.code.trim()) throw new Error('客戶代碼為必填')
   if (!input.shortName.trim()) throw new Error('客戶簡稱為必填')
+  assertCustomerContacts(input.contacts)
   if (customers.some((c) => c.code.trim() === input.code.trim())) {
     throw new Error(`客戶代碼「${input.code}」已被其他客戶使用`)
   }
-  const customer: Customer = { ...input, id: nextMasterId('CUST', customers) }
+  const customer: Customer = {
+    ...input,
+    id: nextMasterId('CUST', customers),
+    contacts: input.contacts.filter((c) => c.name.trim()),
+  }
   customers.unshift(customer)
   return delay(customer)
 }

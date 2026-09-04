@@ -381,15 +381,16 @@ export function PackingNoticeFormPage() {
                 <Combobox
                   value={customerNameValue}
                   onChange={(v) => setValue('customerName', v, { shouldValidate: true })}
-                  options={customers.map((c) => c.shortName)}
+                  // 已歇業客戶不給選：主檔保留、歷史單據照舊，但不再開新單
+                  options={customers.filter((c) => c.status !== '已歇業').map((c) => c.shortName)}
                   placeholder="輸入或搜尋客戶，全新客戶將於建立單據時自動建檔"
                   emptyText="查無客戶，可直接使用輸入內容建立新客戶"
                 />
                 {errors.customerName && <p className="text-xs text-destructive">{errors.customerName.message}</p>}
-                {/* 已歇業客戶仍可開單（可能是收尾的既有訂單），但要當場提醒，不是建完才發現 */}
+                {/* 手動輸入已歇業客戶名稱時當場擋下，不必等到送出（送出時 mutation 層亦會擋） */}
                 {matchedCustomer?.status === '已歇業' && (
                   <p className="text-xs text-destructive">
-                    此客戶主檔狀態為「已歇業」，仍可建單，但請先確認是否應改由其他客戶承接。
+                    此客戶主檔狀態為「已歇業」，不可開立新單據；如需恢復往來請先於客戶主檔調整狀態。
                   </p>
                 )}
               </div>
