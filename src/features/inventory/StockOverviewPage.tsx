@@ -104,8 +104,7 @@ export function StockOverviewPage() {
     () => [
       { accessorKey: 'productName', header: '皇加品名' },
       { accessorKey: 'color', header: '顏色' },
-      // 同品名的顏色數／該色的布卷數：不必自己逐列數
-      { id: 'colorCount', header: '顏色數（同品名）', accessorFn: (row) => `${row.colorCount} 色` },
+      // 該色目前有幾捲：捲數與逐捲長度是挑貨的依據
       { id: 'rollCount', header: '布卷數', accessorFn: (row) => `${row.rollCount} 捲` },
       { id: 'onHandQty', header: '實際庫存 (Yard)', accessorFn: (row) => formatNumber(row.onHandQty, 0) },
       { id: 'reservedQty', header: '已預留未出貨 (Yard)', accessorFn: (row) => formatNumber(row.reservedQty, 0) },

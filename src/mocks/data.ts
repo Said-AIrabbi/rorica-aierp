@@ -590,9 +590,18 @@ function nextRollCode(prefix: string): string {
   return `${prefix}-${pad(seq, 2)}`
 }
 
-export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) =>
-  gr.rolls.map((roll, i) => {
-    const product = faker.helpers.arrayElement(products)
+/**
+ * 布卷的品名／顏色／規格一律取自來源表1 明細（明細本身即選自商品資料主檔），
+ * 不另外亂數挑一個商品——庫存查的就是這些布卷，若各自亂數就會出現主檔沒有的品名，
+ * 或該品名根本沒有的顏色，與商品主檔的歷史色卡對不起來。
+ */
+export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) => {
+  const notice = packingNotices.find((n) => n.id === gr.parentId)
+  return gr.rolls.map((roll, i) => {
+    // 一張入庫單可能收多個品項，逐捲輪流對應來源明細
+    const item = notice?.items.length ? notice.items[i % notice.items.length] : undefined
+    const product = resolveProduct(item?.productId, item?.roricaProductName) ?? faker.helpers.arrayElement(products)
+    const color = item?.color ?? product.colors[0]?.color ?? faker.helpers.arrayElement(COLOR_NAMES)
     return {
       id: `${gr.id}-L${roll.rollNo}`,
       receiptId: gr.id,
@@ -600,15 +609,15 @@ export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) =>
       productName: product.productName,
       productId: product.id,
       composition: product.material,
-      color: faker.helpers.arrayElement(COLOR_NAMES),
+      color,
       width: product.width,
       batchCode: roll.batchCode,
       length: roll.length,
       unit: 'Yard',
       status: LABEL_STATUSES[i % LABEL_STATUSES.length],
     }
-  }),
-)
+  })
+})
 
 // ---------- 庫存預留（流程一：有現貨與無現貨總覽） ----------
 // 業務建立包裝通知單時，系統即時查詢庫存並判斷可用庫存（實際庫存－已預留未出貨），
