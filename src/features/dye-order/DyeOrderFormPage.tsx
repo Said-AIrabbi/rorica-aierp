@@ -264,7 +264,8 @@ export function DyeOrderFormPage() {
                         <TableCell>
                           {/* 米數換算置於輸入框右側並保留固定寬度，避免出現/消失時推移輸入框位置 */}
                           <div className="flex items-center gap-1.5">
-                            <Input type="number" min="0" className="w-20 text-right" {...register(`items.${index}.rollYard`)} />
+                            {/* 單卷碼數開放到小數點後一位：定碼長度換算成碼本來就帶小數（50M ≈ 54.7Y），只收整數會被瀏覽器擋下 */}
+                            <Input type="number" min="0" step="0.1" className="w-20 text-right" {...register(`items.${index}.rollYard`)} />
                             <span className="w-16 shrink-0 text-left text-xs whitespace-nowrap text-muted-foreground">
                               {item.rollYard ? `≈ ${formatNumber(yardToMeter(Number(item.rollYard)), 1)} 米` : ''}
                             </span>

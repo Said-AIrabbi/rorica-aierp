@@ -283,7 +283,7 @@ export function DyeOrderDetailPage() {
                     </TableCell>
                     <TableCell>{item.colorMatchStandard || '-'}</TableCell>
                     <TableCell className="text-right">
-                      {item.rollYard ?? '-'}
+                      {item.rollYard ? formatNumber(item.rollYard, 1) : '-'}
                       {item.rollYard ? (
                         <span className="ml-1 text-xs text-muted-foreground">
                           （≈ {formatNumber(yardToMeter(item.rollYard), 1)} 米）
