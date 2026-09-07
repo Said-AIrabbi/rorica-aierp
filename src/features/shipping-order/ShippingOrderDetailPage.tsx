@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -18,17 +18,19 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
 import { getAccount, getCustomer } from '@/mocks/data'
+import { GOODS_RECEIPT_PURPOSES } from '@/types'
 import {
   completeShippingOrder,
   setShippingOrderStatus,
   updateShippingOrderItems,
   updateShippingOrderMarkingBoxNo,
+  updateShippingOrderHeader,
   updateShippingOrderSignatures,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
-import type { ShippingOrderItem, ShippingOrderSignatures } from '@/types'
+import type { ShippingOrder, ShippingOrderItem, ShippingOrderSignatures } from '@/types'
 
 export function ShippingOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -48,12 +50,39 @@ export function ShippingOrderDetailPage() {
   const [itemDraft, setItemDraft] = useState<ShippingOrderItem[]>([])
   // 箱/袋號輸入草稿：鍵為嘜頭組別索引；打字時只更新草稿，離開欄位才寫入，避免每個字都送一次
   const [boxNoDraft, setBoxNoDraft] = useState<Record<number, string>>({})
+  /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
+  const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '' })
   useEffect(() => {
     if (order) setItemDraft(order.items)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, order?.items])
 
+  useEffect(() => {
+    if (order) {
+      setHeadDraft({
+        shipDate: order.shipDate.slice(0, 10),
+        isSampleOrder: order.isSampleOrder,
+        purpose: order.purpose ?? '',
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id])
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['shippingOrders'] })
+
+  const saveHeadMutation = useMutation({
+    mutationFn: () =>
+      updateShippingOrderHeader(id!, {
+        shipDate: headDraft.shipDate,
+        isSampleOrder: headDraft.isSampleOrder,
+        purpose: (headDraft.purpose || undefined) as ShippingOrder['purpose'],
+      }),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('單頭資訊已儲存')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   const boxNoMutation = useMutation({
     mutationFn: ({ index, boxNo }: { index: number; boxNo: string }) =>
@@ -187,23 +216,79 @@ export function ShippingOrderDetailPage() {
         <CardContent>
           <DetailGrid>
             <DetailField label="客戶" value={customer?.shortName} />
-            <DetailField
-              label="類型"
-              value={
-                order.isSampleOrder ? (
-                  <Badge variant="outline" className="border-accent-blue text-accent-blue">
-                    樣品單
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">一般出貨</Badge>
-                )
-              }
-            />
-            <DetailField label="出貨日" value={formatDate(order.shipDate)} />
+            {itemsEditable ? (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">類型</label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={headDraft.isSampleOrder ? 'sample' : 'normal'}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, isSampleOrder: e.target.value === 'sample' }))}
+                >
+                  <option value="normal">一般出貨</option>
+                  <option value="sample">樣品單</option>
+                </select>
+              </div>
+            ) : (
+              <DetailField
+                label="類型"
+                value={
+                  order.isSampleOrder ? (
+                    <Badge variant="outline" className="border-accent-blue text-accent-blue">
+                      樣品單
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">一般出貨</Badge>
+                  )
+                }
+              />
+            )}
+            {itemsEditable ? (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">出貨日</label>
+                <Input
+                  type="date"
+                  value={headDraft.shipDate}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, shipDate: e.target.value }))}
+                />
+              </div>
+            ) : (
+              <DetailField label="出貨日" value={formatDate(order.shipDate)} />
+            )}
             <DetailField label="倉管人員" value={operator?.name ?? '-'} />
             <DetailField label="出倉部門" value={operator?.roles[0] ?? '-'} />
-            <DetailField label="用途" value={order.purpose ?? '-'} />
+            {itemsEditable ? (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">用途</label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={headDraft.purpose}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, purpose: e.target.value }))}
+                >
+                  <option value="">請選擇</option>
+                  {GOODS_RECEIPT_PURPOSES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <DetailField label="用途" value={order.purpose ?? '-'} />
+            )}
           </DetailGrid>
+          {itemsEditable && (
+            <div className="mt-3 flex justify-end">
+              {/* 手動儲存：沒按就維持原狀 */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saveHeadMutation.isPending || !headDraft.shipDate}
+                onClick={() => saveHeadMutation.mutate()}
+              >
+                <Save className="mr-1 h-4 w-4" /> 儲存單頭資訊
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -530,6 +530,30 @@ export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraft
 }
 
 /**
+ * 表2 草稿的手動儲存：欄位與送出時相同，但不改狀態、不寫生效日。
+ * 使用者可分多次補齊資料，沒按儲存就維持原狀（送出另走 completePurchaseOrderDraft）。
+ */
+export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftCompletionInput): Promise<PurchaseOrder> {
+  const idx = purchaseOrders.findIndex((p) => p.id === id)
+  if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
+  const current = purchaseOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  const updated: PurchaseOrder = {
+    ...current,
+    type: input.type,
+    hasDyeVendor: input.type === '胚布' ? Boolean(input.hasDyeVendor) : undefined,
+    // 賣方在草稿階段允許留空（系統自動建立的草稿本來就沒有賣方，待生管補齊）
+    vendorId: input.vendorId,
+    dyeVendorId: input.type === '胚布' && input.hasDyeVendor ? input.dyeVendorId : undefined,
+    dueDate: input.dueDate,
+    note: input.note,
+    items: current.items.map((item) => ({ ...item, unitPrice: input.itemUnitPrices[item.id] ?? item.unitPrice })),
+  }
+  purchaseOrders[idx] = updated
+  return delay(updated)
+}
+
+/**
  * 大貨樣確認送樣（成品類型專用）：比照表4，退回不設次數上限，
  * 通過後記錄大貨樣確認日，作為訂購單進入「已完成」狀態的判定條件。
  */
@@ -906,6 +930,28 @@ export function applyDyeRequestFinishedSpec(id: string): Promise<Product> {
   return delay(updated)
 }
 
+export interface DyeRequestDraftInput {
+  dyeVendorId: string
+  requestDate: string
+  note?: string
+}
+
+/** 表3 草稿階段的單頭手動更新：送出染整廠後即固定，不再開放修改 */
+export function updateDyeRequestDraft(id: string, input: DyeRequestDraftInput): Promise<DyeRequest> {
+  const idx = dyeRequests.findIndex((r) => r.id === id)
+  if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
+  const current = dyeRequests[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  const updated: DyeRequest = {
+    ...current,
+    dyeVendorId: input.dyeVendorId,
+    requestDate: input.requestDate,
+    note: input.note?.trim() ? input.note : undefined,
+  }
+  dyeRequests[idx] = updated
+  return delay(updated)
+}
+
 export function createDyeRequest(input: DyeRequestInput): Promise<DyeRequest> {
   // 表3的子序號為 -C{n}，與表4染單的 -D{n} 分開，避免同一主號下單號相撞
   const id = nextDyeRequestId(input.parentId)
@@ -1104,6 +1150,32 @@ export function updateDyeOrderSampleCodes(id: string, sampleCodeByItem: Record<s
  * 染單建立當下不需要胚布已到貨，要等胚布實際到廠確認才真正扣帳（待染→指染），
  * 見 confirmGreigeArrival。
  */
+export interface DyeOrderDraftInput {
+  dueDate: string
+  vendorId: string
+  shippingSampleQty?: number
+  internalContact?: string
+  note?: string
+}
+
+/** 表4 草稿階段的單頭手動更新：確認正式建單（轉生效）後回復唯讀 */
+export function updateDyeOrderDraft(id: string, input: DyeOrderDraftInput): Promise<DyeOrder> {
+  const idx = dyeOrders.findIndex((o) => o.id === id)
+  if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
+  const current = dyeOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  const updated: DyeOrder = {
+    ...current,
+    dueDate: input.dueDate,
+    vendorId: input.vendorId,
+    shippingSampleQty: input.shippingSampleQty,
+    internalContact: input.internalContact?.trim() ? input.internalContact : undefined,
+    note: input.note?.trim() ? input.note : undefined,
+  }
+  dyeOrders[idx] = updated
+  return delay(updated)
+}
+
 export function confirmDyeOrder(id: string): Promise<DyeOrder> {
   const idx = dyeOrders.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
@@ -1639,6 +1711,28 @@ export function updateShippingOrderItems(id: string, items: ShippingOrderItem[])
 }
 
 /** 簽名欄：處理人／倉管／出貨／業務，比照紙本單據四個簽名欄位 */
+export interface ShippingOrderHeaderInput {
+  shipDate: string
+  isSampleOrder: boolean
+  purpose?: ShippingOrder['purpose']
+}
+
+/** 表8 草稿階段的單頭手動更新：確認建單後回復唯讀（比照明細） */
+export function updateShippingOrderHeader(id: string, input: ShippingOrderHeaderInput): Promise<ShippingOrder> {
+  const idx = shippingOrders.findIndex((o) => o.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const current = shippingOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  const updated: ShippingOrder = {
+    ...current,
+    shipDate: input.shipDate,
+    isSampleOrder: input.isSampleOrder,
+    purpose: input.purpose,
+  }
+  shippingOrders[idx] = updated
+  return delay(updated)
+}
+
 export function updateShippingOrderSignatures(id: string, signatures: ShippingOrder['signatures']): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)

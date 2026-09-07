@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -11,10 +11,18 @@ import { DyeOrderPrint } from './DyeOrderPrint'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getVendor } from '@/mocks/data'
-import { confirmDyeOrder, createDyeRequest, submitDyeOrderLargeSample, updateDyeOrderSampleCodes } from '@/mocks/mutations'
+import { getVendor, vendorDisplayName } from '@/mocks/data'
+import {
+  confirmDyeOrder,
+  createDyeRequest,
+  submitDyeOrderLargeSample,
+  updateDyeOrderDraft,
+  updateDyeOrderSampleCodes,
+} from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
 import { rollYardUpperLimit } from '@/lib/workflow'
@@ -25,10 +33,19 @@ export function DyeOrderDetailPage() {
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
+  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const order = data.find((d) => d.id === id)
   const [rejectReason, setRejectReason] = useState('')
   // 色樣編號在染單結案前皆可修改，不限於表3回填的時機
   const [sampleCodeDraft, setSampleCodeDraft] = useState<Record<string, string>>({})
+  /** 單頭草稿：僅草稿階段可改，確認正式建單後回復唯讀 */
+  const [headDraft, setHeadDraft] = useState({
+    dueDate: '',
+    vendorId: '',
+    shippingSampleQty: '',
+    internalContact: '',
+    note: '',
+  })
 
   useEffect(() => {
     if (order) {
@@ -36,6 +53,35 @@ export function DyeOrderDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, order?.items])
+
+  useEffect(() => {
+    if (order) {
+      setHeadDraft({
+        dueDate: order.dueDate.slice(0, 10),
+        vendorId: order.vendorId,
+        shippingSampleQty: order.shippingSampleQty != null ? String(order.shippingSampleQty) : '',
+        internalContact: order.internalContact ?? '',
+        note: order.note ?? '',
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id])
+
+  const saveHeadMutation = useMutation({
+    mutationFn: () =>
+      updateDyeOrderDraft(id!, {
+        dueDate: headDraft.dueDate,
+        vendorId: headDraft.vendorId,
+        shippingSampleQty: headDraft.shippingSampleQty.trim() === '' ? undefined : Number(headDraft.shippingSampleQty),
+        internalContact: headDraft.internalContact,
+        note: headDraft.note,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['dyeOrders'] })
+      toast.success(`${id} 單頭資訊已儲存`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   const invalidateAll = async () => {
     // 染整單完成時依明細有無加工方法，建立表5二次加工單或表6入庫單草稿，並回頭結案對應的表2訂購單（胚布送染整路徑）
@@ -189,6 +235,78 @@ export function DyeOrderDetailPage() {
           </DetailGrid>
         </CardContent>
       </Card>
+
+      {order.status === '草稿' && (
+        <Card className="mt-4 border-brand/30">
+          <CardHeader>
+            <CardTitle className="text-base">草稿編輯（確認正式建單後回復唯讀）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">交期</Label>
+                <Input
+                  type="date"
+                  value={headDraft.dueDate}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, dueDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">委託加工廠</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={headDraft.vendorId}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, vendorId: e.target.value }))}
+                >
+                  {vendors
+                    .filter((v) => v.types.includes('染整廠'))
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {vendorDisplayName(v)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">出貨檢樣（{order.unit}）</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={headDraft.shippingSampleQty}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, shippingSampleQty: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">皇加聯絡窗口</Label>
+                <Input
+                  value={headDraft.internalContact}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, internalContact: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+                <Label className="text-xs">備註</Label>
+                <Textarea
+                  rows={2}
+                  value={headDraft.note}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, note: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              {/* 手動儲存：沒按就維持原狀，離開頁面不會自動寫入 */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saveHeadMutation.isPending || !headDraft.dueDate || !headDraft.vendorId}
+                onClick={() => saveHeadMutation.mutate()}
+              >
+                <Save className="mr-1 h-4 w-4" /> 儲存單頭資訊
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {staleItems.length > 0 && (
         <div className="mt-4 flex flex-wrap items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">

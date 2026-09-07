@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -13,12 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { getProduct, getVendor } from '@/mocks/data'
+import { getProduct, getVendor, vendorDisplayName } from '@/mocks/data'
 import {
   applyDyeRequestFinishedSpec,
   sendDyeRequest,
   submitDyeRequestColorSample,
   updateDyeRequestColors,
+  updateDyeRequestDraft,
   updateDyeRequestFinishedSpec,
   type DyeRequestColorInput,
 } from '@/mocks/mutations'
@@ -29,10 +30,13 @@ export function DyeRequestDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['dyeRequests'], queryFn: api.dyeRequests })
+  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const request = data.find((d) => d.id === id)
   const [rejectReason, setRejectReason] = useState('')
-  // 成品規格草稿：打字時只更新草稿，離開欄位才寫入
+  // 成品規格草稿：改動只留在本地，按「儲存成品規格」才寫入（未儲存則維持原狀）
   const [specDraft, setSpecDraft] = useState<string | undefined>(undefined)
+  /** 單頭草稿：染整廠／委託日／備註，僅草稿狀態可改 */
+  const [headDraft, setHeadDraft] = useState({ dyeVendorId: '', requestDate: '', note: '' })
   // 色號清單為可編輯草稿：染整廠回覆後由生管補填色樣編號，或因重新覆色追加新列
   const [colorDraft, setColorDraft] = useState<DyeRequestColorInput[]>([])
 
@@ -42,6 +46,18 @@ export function DyeRequestDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.id, request?.colors])
+
+  useEffect(() => {
+    if (request) {
+      setHeadDraft({
+        dyeVendorId: request.dyeVendorId,
+        requestDate: request.requestDate.slice(0, 10),
+        note: request.note ?? '',
+      })
+      setSpecDraft(undefined)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.id])
 
   const invalidate = () =>
     Promise.all([
@@ -85,6 +101,15 @@ export function DyeRequestDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const saveHeadMutation = useMutation({
+    mutationFn: () => updateDyeRequestDraft(id!, headDraft),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success(`${id} 單頭資訊已儲存`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const saveColorsMutation = useMutation({
     mutationFn: () => updateDyeRequestColors(id!, colorDraft.filter((c) => c.color.trim())),
     onSuccess: async () => {
@@ -112,6 +137,8 @@ export function DyeRequestDetailPage() {
   const colorsEditable = request.status !== '已完成'
   // 成品規格同樣在結案前可修改；結案後改為唯讀，並開放「納入商品主檔」
   const specEditable = request.status !== '已完成'
+  /** 單頭僅草稿階段可改：送出染整廠後對方已收到單，內容不應再變動 */
+  const headEditable = request.status === '草稿'
 
   return (
     <div>
@@ -156,28 +183,77 @@ export function DyeRequestDetailPage() {
             <DetailField label="買方" value={request.buyer} />
             <DetailField label="皇加品名" value={product?.productName ?? request.productId} />
             <DetailField label="胚布編號" value={request.greigeFabricCode} />
-            <DetailField label="染整廠" value={vendor?.name} />
+            {headEditable ? (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">染整廠</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={headDraft.dyeVendorId}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, dyeVendorId: e.target.value }))}
+                >
+                  {vendors
+                    .filter((v) => v.types.includes('染整廠'))
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {vendorDisplayName(v)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : (
+              <DetailField label="染整廠" value={vendor?.name} />
+            )}
             <DetailField label="染整廠聯絡人" value={vendor?.contactPerson} />
-            <DetailField label="委託日" value={formatDate(request.requestDate)} />
+            {headEditable ? (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">委託日</Label>
+                <Input
+                  type="date"
+                  value={headDraft.requestDate}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, requestDate: e.target.value }))}
+                />
+              </div>
+            ) : (
+              <DetailField label="委託日" value={formatDate(request.requestDate)} />
+            )}
             <DetailField label="色卡確認日" value={formatDate(request.colorSampleConfirmedAt)} />
-            <DetailField label="備註" value={request.note || '-'} />
+            {headEditable ? (
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">備註</Label>
+                <Input
+                  value={headDraft.note}
+                  placeholder="例：色號太久重新覆色"
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, note: e.target.value }))}
+                />
+              </div>
+            ) : (
+              <DetailField label="備註" value={request.note || '-'} />
+            )}
             {/* 成品規格：打色過程中才確定，故於本單手動登記；結案後可人工納入商品主檔 */}
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs text-muted-foreground">成品規格（手動輸入）</Label>
               {specEditable ? (
-                <Input
-                  value={specDraft ?? request.finishedSpec ?? ''}
-                  placeholder="例：60&quot; 120G/Y 緞布，打色確認版"
-                  onChange={(e) => setSpecDraft(e.target.value)}
-                  onBlur={() => {
-                    if (specDraft !== undefined && specDraft !== (request.finishedSpec ?? '')) {
-                      saveSpecMutation.mutate(specDraft)
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    className="max-w-md"
+                    value={specDraft ?? request.finishedSpec ?? ''}
+                    placeholder="例：60&quot; 120G/Y 緞布，打色確認版"
+                    onChange={(e) => setSpecDraft(e.target.value)}
+                  />
+                  {/* 手動儲存：未按儲存則維持原值 */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      saveSpecMutation.isPending ||
+                      specDraft === undefined ||
+                      specDraft === (request.finishedSpec ?? '')
                     }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur()
-                  }}
-                />
+                    onClick={() => saveSpecMutation.mutate(specDraft ?? '')}
+                  >
+                    <Save className="mr-1 h-4 w-4" /> 儲存成品規格
+                  </Button>
+                </div>
               ) : (
                 <div className="text-sm text-ink-body">{request.finishedSpec || '-'}</div>
               )}
@@ -198,6 +274,18 @@ export function DyeRequestDetailPage() {
               )}
             </div>
           </DetailGrid>
+          {headEditable && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saveHeadMutation.isPending || !headDraft.dyeVendorId || !headDraft.requestDate}
+                onClick={() => saveHeadMutation.mutate()}
+              >
+                <Save className="mr-1 h-4 w-4" /> 儲存單頭資訊
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

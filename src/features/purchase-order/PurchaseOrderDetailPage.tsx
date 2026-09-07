@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Lock } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Lock, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
-import { completePurchaseOrderDraft, signPurchaseOrder, submitPurchaseOrderLargeSample, triggerPurchaseOrderFulfillment } from '@/mocks/mutations'
+import { savePurchaseOrderDraft, completePurchaseOrderDraft, signPurchaseOrder, submitPurchaseOrderLargeSample, triggerPurchaseOrderFulfillment } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
@@ -56,13 +56,29 @@ export function PurchaseOrderDetailPage() {
   const [draftDyeVendorId, setDraftDyeVendorId] = useState('')
   const [draftDueDate, setDraftDueDate] = useState('')
   const [draftNote, setDraftNote] = useState('')
+  /** 明細單價：訂購單專屬的可編輯欄位，草稿階段隨單頭一起儲存 */
+  const [draftUnitPrices, setDraftUnitPrices] = useState<Record<string, string>>({})
 
+  // 草稿欄位一律由單據現值帶入：草稿可以分多次補齊，重新進頁面要看到上次存的內容
   useEffect(() => {
     if (order && order.status === '草稿') {
+      setDraftType(order.type)
+      setDraftHasDyeVendor(Boolean(order.hasDyeVendor))
+      setDraftVendorId(order.vendorId ?? '')
+      setDraftDyeVendorId(order.dyeVendorId ?? '')
       setDraftDueDate(order.dueDate.slice(0, 10))
+      setDraftNote(order.note ?? '')
+      setDraftUnitPrices(
+        Object.fromEntries(order.items.map((i) => [i.id, i.unitPrice != null ? String(i.unitPrice) : ''])),
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id])
+
+  const draftPricePayload = () =>
+    Object.fromEntries(
+      Object.entries(draftUnitPrices).map(([k, v]) => [k, v.trim() === '' ? undefined : Number(v)]),
+    )
 
   const invalidateAll = async () => {
     await Promise.all([
@@ -104,6 +120,24 @@ export function PurchaseOrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const saveDraftMutation = useMutation({
+    mutationFn: () =>
+      savePurchaseOrderDraft(id!, {
+        type: draftType,
+        hasDyeVendor: draftHasDyeVendor,
+        vendorId: draftVendorId,
+        dyeVendorId: draftDyeVendorId || undefined,
+        dueDate: draftDueDate,
+        note: draftNote,
+        itemUnitPrices: draftPricePayload(),
+      }),
+    onSuccess: async (updated) => {
+      await invalidateAll()
+      toast.success(`${updated.id} 草稿已儲存`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const completeDraftMutation = useMutation({
     mutationFn: () =>
       completePurchaseOrderDraft(id!, {
@@ -113,7 +147,7 @@ export function PurchaseOrderDetailPage() {
         dyeVendorId: draftDyeVendorId || undefined,
         dueDate: draftDueDate,
         note: draftNote,
-        itemUnitPrices: {},
+        itemUnitPrices: draftPricePayload(),
       }),
     onSuccess: async (updated) => {
       await invalidateAll()
@@ -291,10 +325,19 @@ export function PurchaseOrderDetailPage() {
                 <Textarea rows={2} value={draftNote} onChange={(e) => setDraftNote(e.target.value)} />
               </div>
             </div>
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              {/* 儲存與送出分開：草稿可以只存不送，沒按儲存則維持原狀 */}
+              <Button
+                variant="outline"
+                disabled={saveDraftMutation.isPending || completeDraftMutation.isPending}
+                onClick={() => saveDraftMutation.mutate()}
+              >
+                <Save className="mr-1 h-4 w-4" /> 儲存草稿
+              </Button>
               <Button
                 className="bg-brand hover:bg-brand-dark"
                 disabled={
+                  saveDraftMutation.isPending ||
                   completeDraftMutation.isPending ||
                   !draftVendorId ||
                   !draftDueDate ||
@@ -431,7 +474,22 @@ export function PurchaseOrderDetailPage() {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell className="text-right">{item.unitPrice != null ? formatNumber(item.unitPrice, 1) : '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {order.status === '草稿' ? (
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className="ml-auto w-24 text-right"
+                          value={draftUnitPrices[item.id] ?? ''}
+                          onChange={(e) => setDraftUnitPrices((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      ) : item.unitPrice != null ? (
+                        formatNumber(item.unitPrice, 1)
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{item.note || '-'}</TableCell>
                   </TableRow>
                 ))}

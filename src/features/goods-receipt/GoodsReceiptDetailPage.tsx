@@ -58,6 +58,8 @@ export function GoodsReceiptDetailPage() {
 
   const [rolls, setRolls] = useState<GoodsReceiptRoll[]>([])
   const [pledgedQty, setPledgedQty] = useState('')
+  /** 用途草稿：選了不會立刻寫入，按「儲存用途」才生效 */
+  const [purposeDraft, setPurposeDraft] = useState('')
   const [vendorId, setVendorId] = useState('')
   const [vendorShipmentNo, setVendorShipmentNo] = useState('')
   const [vendorShipDate, setVendorShipDate] = useState('')
@@ -74,6 +76,11 @@ export function GoodsReceiptDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receipt?.id])
+
+  useEffect(() => {
+    if (receipt) setPurposeDraft(receipt.purpose ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receipt?.id, receipt?.purpose])
 
   const editable = receipt?.status === '草稿'
 
@@ -315,10 +322,12 @@ export function GoodsReceiptDetailPage() {
               label="用途"
               value={
                 editable ? (
+                  // 改動先留在本地草稿，按儲存才寫入；未儲存則維持原值
+                  <div className="flex flex-wrap items-center gap-2">
                   <select
                     className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                    value={receipt.purpose ?? ''}
-                    onChange={(e) => savePurposeMutation.mutate((e.target.value || undefined) as GoodsReceipt['purpose'])}
+                    value={purposeDraft}
+                    onChange={(e) => setPurposeDraft(e.target.value)}
                   >
                     <option value="">請選擇</option>
                     {GOODS_RECEIPT_PURPOSES.map((p) => (
@@ -327,6 +336,15 @@ export function GoodsReceiptDetailPage() {
                       </option>
                     ))}
                   </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={savePurposeMutation.isPending || purposeDraft === (receipt.purpose ?? '')}
+                    onClick={() => savePurposeMutation.mutate((purposeDraft || undefined) as GoodsReceipt['purpose'])}
+                  >
+                    儲存用途
+                  </Button>
+                  </div>
                 ) : (
                   (receipt.purpose ?? '-')
                 )
