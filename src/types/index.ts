@@ -104,9 +104,10 @@ export interface Product {
   thicknessMm: number
   characteristics: string
   width: number
+  /** 幅寬容許誤差（%）：決策97 起與碼重統一為 ±5%（原為 ±3%） */
   widthTolerancePct: number
   weightGY: number
-  /** 碼重容許誤差（%）：來源客戶產品表附帶的 ±5%，與幅寬 ±3% 同層級 */
+  /** 碼重容許誤差（%）：來源客戶產品表附帶的 ±5%，與幅寬同層級 */
   weightTolerancePct: number
   /** 米重（G/M）：由碼重自動換算（碼重÷0.9144），唯讀不可手動輸入，隨碼重連動 */
   weightMY: number

@@ -55,8 +55,8 @@ function emptyInput(): ProductInput {
     thicknessMm: 0,
     characteristics: '',
     width: 60,
-    // 容許誤差沿用全公司慣例：幅寬 ±3%、碼重 ±5%
-    widthTolerancePct: 3,
+    // 容許誤差沿用全公司慣例：幅寬與碼重皆為 ±5%（決策97 統一）
+    widthTolerancePct: 5,
     weightGY: 0,
     weightTolerancePct: 5,
     originalRollStandardYard: 100,

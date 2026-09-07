@@ -226,7 +226,7 @@ export const products: Product[] = PRODUCT_BUILD_LIST.map((name, i) => {
     thicknessMm: faker.number.float({ min: 0.1, max: 1.2, fractionDigits: 2 }),
     characteristics: faker.helpers.arrayElement(['垂墜感佳', '硬挺澎度足', '輕薄透氣', '光澤度高', '彈性佳', '手感柔軟']),
     width,
-    widthTolerancePct: 3,
+    widthTolerancePct: 5,
     weightGY,
     weightTolerancePct: 5,
     weightMY: Number(yardWeightToMeterWeight(weightGY).toFixed(2)),
