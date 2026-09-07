@@ -23,7 +23,6 @@ import {
   completeShippingOrder,
   setShippingOrderStatus,
   updateShippingOrderItems,
-  updateShippingOrderMarkingBoxNo,
   updateShippingOrderHeader,
   updateShippingOrderSignatures,
 } from '@/mocks/mutations'
@@ -48,7 +47,7 @@ export function ShippingOrderDetailPage() {
 
   // 明細由包裝通知單帶入後可微調／刪除，供倉管於確認建單前調整實際出貨內容
   const [itemDraft, setItemDraft] = useState<ShippingOrderItem[]>([])
-  // 箱/袋號輸入草稿：鍵為嘜頭組別索引；打字時只更新草稿，離開欄位才寫入，避免每個字都送一次
+  // 箱/袋號輸入草稿：鍵為嘜頭組別索引；與單頭一起按「儲存單頭資訊」寫入，未儲存則維持原狀
   const [boxNoDraft, setBoxNoDraft] = useState<Record<number, string>>({})
   /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
   const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '' })
@@ -64,6 +63,7 @@ export function ShippingOrderDetailPage() {
         isSampleOrder: order.isSampleOrder,
         purpose: order.purpose ?? '',
       })
+      setBoxNoDraft(Object.fromEntries((order.markingBoxNos ?? []).map((v, i) => [i, v])))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id])
@@ -76,20 +76,11 @@ export function ShippingOrderDetailPage() {
         shipDate: headDraft.shipDate,
         isSampleOrder: headDraft.isSampleOrder,
         purpose: (headDraft.purpose || undefined) as ShippingOrder['purpose'],
+        markingBoxNos: markingBoxNoPayload(),
       }),
     onSuccess: async () => {
       await invalidate()
       toast.success('單頭資訊已儲存')
-    },
-    onError: (error: Error) => toast.error(error.message),
-  })
-
-  const boxNoMutation = useMutation({
-    mutationFn: ({ index, boxNo }: { index: number; boxNo: string }) =>
-      updateShippingOrderMarkingBoxNo(id!, index, boxNo),
-    onSuccess: async () => {
-      await invalidate()
-      setBoxNoDraft({})
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -150,13 +141,10 @@ export function ShippingOrderDetailPage() {
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
   const notice = packingNotices.find((n) => n.id === order.parentId)
   const markings = notice?.markings ?? []
-  // 箱/袋號：逐組嘜頭各一個，草稿階段填寫；離開欄位即自動儲存，不需要另外按儲存
+  // 箱/袋號：逐組嘜頭各一個，草稿階段填寫，與單頭一起手動儲存
   const boxNoOf = (index: number) => boxNoDraft[index] ?? order?.markingBoxNos?.[index] ?? ''
-  const saveBoxNo = (index: number) => {
-    const next = boxNoDraft[index]
-    if (next === undefined || next === (order?.markingBoxNos?.[index] ?? '')) return
-    boxNoMutation.mutate({ index, boxNo: next })
-  }
+  /** 送出時以嘜頭組數為長度，缺的補空字串，避免索引與嘜頭組別錯位 */
+  const markingBoxNoPayload = () => markings.map((_, i) => boxNoOf(i))
   // 數量以「當初下單用的單位」為主值呈現，另一單位標為換算值；沿用表1 的作法，
   // 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的
   const itemUnit = notice?.itemUnit ?? 'Yard'
@@ -191,7 +179,8 @@ export function ShippingOrderDetailPage() {
                 ...markings.map((m, index) => ({
                   key: `marking-${index}`,
                   label: markings.length > 1 ? `列印嘜頭 ${index + 1}` : '列印嘜頭',
-                  sheet: <MarkingPrint marking={m} boxNo={boxNoOf(index)} />,
+                  // 列印取已儲存的箱/袋號：未按儲存的輸入不應印到對外的嘜頭上
+                  sheet: <MarkingPrint marking={m} boxNo={order.markingBoxNos?.[index] ?? ''} />,
                 })),
               ]}
             />
@@ -447,7 +436,7 @@ export function ShippingOrderDetailPage() {
                   <div className="mb-2 text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</div>
                 )}
                 {/* 箱/袋號是出貨當下才知道的資訊（箱袋編到幾號），故在表8 填寫；
-                    草稿階段可輸入，離開欄位即自動儲存，確認建立後轉為唯讀 */}
+                    草稿階段可輸入，與單頭一起儲存，確認建立後轉為唯讀 */}
                 <div className="mb-3 space-y-1">
                   <Label className="text-xs">箱/袋號（列印嘜頭用）</Label>
                   {itemsEditable ? (
@@ -456,13 +445,12 @@ export function ShippingOrderDetailPage() {
                       value={boxNoOf(index)}
                       placeholder="非必填，例：C/NO 1-20"
                       onChange={(e) => setBoxNoDraft((prev) => ({ ...prev, [index]: e.target.value }))}
-                      onBlur={() => saveBoxNo(index)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') e.currentTarget.blur()
-                      }}
                     />
                   ) : (
                     <div className="text-sm text-ink-body">{order.markingBoxNos?.[index] || '-'}</div>
+                  )}
+                  {itemsEditable && (
+                    <p className="text-xs text-muted-foreground">填寫後請按單頭資訊的「儲存單頭資訊」一併儲存</p>
                   )}
                 </div>
                 <DetailGrid>
