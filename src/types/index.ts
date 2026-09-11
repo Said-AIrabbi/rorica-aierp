@@ -192,6 +192,8 @@ export type ProcessingMethod = (typeof PROCESSING_METHODS)[number]
 
 export interface PackingNoticeItem {
   id: string
+  /** 彩條：最多 3 組「客人指定」內容，隨品項新增／刪減；空陣列或未填＝空白 */
+  colorRatios?: string[]
   customerProductName: string
   roricaProductName: string
   /**
@@ -218,7 +220,12 @@ export interface PackingNoticeItem {
 export const MARKING_SHAPES = ['正三角形', '菱形', 'A5大小'] as const
 export const EMBOSSING_OPTIONS = ['布邊', '布頭', '否'] as const
 export const SHIP_METHODS = ['海運', '空運', '小三通', '其他'] as const
-export const COLOR_RATIO_MODES = ['空白', '客人指定'] as const
+/**
+ * 彩條上限：一個品項最多 3 組「客人指定」內容（客人指定1／2／3）。
+ * 彩條原為表頭的單選欄位，已改為明細層級——同一張表1 的不同品項（不同顏色／材質）
+ * 各自可能有不同的彩條要求，放表頭只能記一組。空陣列／未填即為「空白」。
+ */
+export const COLOR_RATIO_MAX = 3
 export const LABEL_TYPES = ['皇加標籤', '客人指定標籤', '工廠原標籤'] as const
 export const PACKAGING_TYPES = ['只貼嘜頭不裝袋', '防水PP袋', '一般PP袋', '可混色裝箱', '不可混色裝箱'] as const
 export const TOLERANCE_MODES = ['±5%', '±10%', '其他'] as const
@@ -238,12 +245,6 @@ export interface PackingNoticeMarking {
   origin?: string
   hasSmallMarking: boolean
   smallMarkingText?: string
-}
-
-/** 彩條：空白，或客人指定並附文字說明 */
-export interface PackingNoticeColorRatio {
-  mode: (typeof COLOR_RATIO_MODES)[number]
-  customText?: string
 }
 
 /** 生產數量容許誤差：±5%／±10%，或其他並附文字說明 */
@@ -278,7 +279,6 @@ export interface PackingNotice {
   /** 出貨方式為「其他」時的文字說明 */
   shipMethodNote?: string
   /** 彩條：空白，或客人指定並附文字說明 */
-  colorRatio: PackingNoticeColorRatio
   /** 標籤類型：皇加標籤/客人指定標籤/工廠原標籤，多選，預設全選 */
   labelTypes: (typeof LABEL_TYPES)[number][]
   /** 出貨包裝：只貼嘜頭不裝袋/防水PP袋/一般PP袋/可混色裝箱/不可混色裝箱 */
@@ -362,6 +362,8 @@ export type PurchaseOrderType = '成品' | '胚布'
 /** 明細與表1包裝通知單完全一致，逐列（1:1）帶入，包裝單有幾筆明細訂購單就對應產生幾筆；單價為訂購單專屬可編輯欄位，其餘唯讀 */
 export interface PurchaseOrderItem {
   id: string
+  /** 彩條：唯讀，1:1 帶入自包裝單明細（最多 3 組） */
+  colorRatios?: string[]
   customerProductName: string
   roricaProductName: string
   /** 產品編號：唯讀，帶入自包裝單，指向明細選定的產品分支 */
@@ -406,9 +408,8 @@ export interface PurchaseOrder {
   dueDate: string
   note: string
   items: PurchaseOrderItem[]
-  /** 燙金／彩條：唯讀，數值帶入自表單1包裝通知單 */
+  /** 燙金：唯讀，數值帶入自表單1包裝通知單（彩條已改為明細逐筆帶入） */
   embossing: string
-  colorRatioNote: string
   /** 大貨樣確認送樣：僅「成品」類型適用，比照表4送樣退回迴圈，退回不設次數上限 */
   largeSampleConfirmedAt?: string
   largeSampleSubmissions?: LargeSampleSubmission[]
@@ -469,6 +470,8 @@ export interface LargeSampleSubmission {
  */
 export interface DyeOrderItem {
   id: string
+  /** 彩條：唯讀，帶入自表1 該筆明細（最多 3 組） */
+  colorRatios?: string[]
   /**
    * 來源表1 明細的 id：一張表1 的品項可能含多種顏色／材質，需分批開多張表4，
    * 故記住這一列是表1 的哪一筆明細，才能在下一次建單時提示該品項已建單。
@@ -511,9 +514,8 @@ export interface DyeOrder {
   productName: string
   /** 產品編號：帶入表1明細選定的產品分支，歷史色號查詢與規格帶入皆優先以此解析 */
   productId?: string
-  /** 燙金／彩條：唯讀，數值帶入自表單1包裝通知單 */
+  /** 燙金：唯讀，數值帶入自表單1包裝通知單（彩條已改為明細逐筆帶入） */
   embossing: string
-  colorRatioNote: string
   vendorId: string
   /** 皇加聯絡窗口：既有欄位，自由文字 */
   internalContact?: string
@@ -697,6 +699,8 @@ export type SecondaryProcessingStatus = '草稿' | '生效' | '已完成'
 
 export interface SecondaryProcessingItem {
   id: string
+  /** 彩條：唯讀，帶入自表1 該筆明細（最多 3 組） */
+  colorRatios?: string[]
   /** 來源表1明細列 id：一張二次加工單只挑出需要加工的品項，非全部帶入 */
   sourceItemId: string
   customerProductName: string

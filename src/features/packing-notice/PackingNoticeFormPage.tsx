@@ -19,7 +19,7 @@ import { productBranchLabel, resolveProduct, vendorDisplayName } from '@/mocks/d
 import { createPackingNotice, updatePackingNotice } from '@/mocks/mutations'
 import { packingNoticeFormSchema, type PackingNoticeFormValues } from './schema'
 import {
-  COLOR_RATIO_MODES,
+  COLOR_RATIO_MAX,
   EMBOSSING_OPTIONS,
   FIXED_ROLL_PACKING_METHODS,
   LABEL_TYPES,
@@ -119,7 +119,6 @@ export function PackingNoticeFormPage() {
       sampleQtyNote: '',
       shipMethod: [SHIP_METHODS[0]],
       shipMethodNote: '',
-      colorRatio: { mode: COLOR_RATIO_MODES[0], customText: '' },
       labelTypes: [...LABEL_TYPES],
       packagingType: PACKAGING_TYPES[0],
       tolerance: { mode: TOLERANCE_MODES[0], customText: '' },
@@ -140,11 +139,11 @@ export function PackingNoticeFormPage() {
           sampleQtyNote: existing.sampleQtyNote ?? '',
           shipMethod: existing.shipMethod,
           shipMethodNote: existing.shipMethodNote ?? '',
-          colorRatio: existing.colorRatio,
           labelTypes: existing.labelTypes,
           packagingType: existing.packagingType,
           tolerance: existing.tolerance,
           items: existing.items.map((item) => ({
+            colorRatios: item.colorRatios ?? [],
             customerProductName: item.customerProductName,
             roricaProductName: item.roricaProductName,
             productId: item.productId,
@@ -165,7 +164,6 @@ export function PackingNoticeFormPage() {
   })
 
   const shipMethodValues = watch('shipMethod') ?? []
-  const colorRatioMode = watch('colorRatio.mode')
   const toleranceMode = watch('tolerance.mode')
   const embossingValues = watch('embossing') ?? []
   const labelTypeValues = watch('labelTypes') ?? []
@@ -173,6 +171,25 @@ export function PackingNoticeFormPage() {
   // 嘜頭預覽要跟著輸入即時更新，故取 watch 值而非 field array 的快照
   const markingValues = watch('markings') ?? []
   const customerNameValue = watch('customerName')
+
+  /** 彩條以字串陣列存放（客人指定1～3），故不另開 field array，直接改寫該列的陣列 */
+  const setItemColorRatios = (index: number, next: string[]) =>
+    setValue(`items.${index}.colorRatios`, next, { shouldValidate: true })
+  const addColorRatio = (index: number) => {
+    const current = itemValues[index]?.colorRatios ?? []
+    if (current.length >= COLOR_RATIO_MAX) return
+    setItemColorRatios(index, [...current, ''])
+  }
+  const setColorRatio = (index: number, ratioIndex: number, value: string) => {
+    const current = [...(itemValues[index]?.colorRatios ?? [])]
+    current[ratioIndex] = value
+    setItemColorRatios(index, current)
+  }
+  const removeColorRatio = (index: number, ratioIndex: number) =>
+    setItemColorRatios(
+      index,
+      (itemValues[index]?.colorRatios ?? []).filter((_, i) => i !== ratioIndex),
+    )
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
   // 嘜頭比照明細可多組：一張訂單可能有不同目的地／箱型的嘜頭
@@ -558,6 +575,40 @@ export function PackingNoticeFormPage() {
                       )}
                     </div>
                   </div>
+                  {/* 彩條：此品項最多 3 組客人指定；未填任何一組即為空白。
+                      同一張單的不同品項（不同顏色／材質）彩條要求可能不同，故放在明細而非表頭 */}
+                  <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+                    <Label className="text-xs">彩條（非必填，最多 {COLOR_RATIO_MAX} 組）</Label>
+                    <div className="space-y-1.5">
+                      {(itemValues[index]?.colorRatios ?? []).map((value, ri) => (
+                        <div key={ri} className="flex gap-1.5">
+                          <Input
+                            value={value}
+                            placeholder={`客人指定${ri + 1} 內容`}
+                            onChange={(e) => setColorRatio(index, ri, e.target.value)}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 text-destructive hover:text-destructive"
+                            title="刪除這組彩條"
+                            onClick={() => removeColorRatio(index, ri)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      {(itemValues[index]?.colorRatios?.length ?? 0) < COLOR_RATIO_MAX ? (
+                        <Button type="button" variant="outline" size="sm" onClick={() => addColorRatio(index)}>
+                          <Plus className="mr-1 h-3.5 w-3.5" /> 新增彩條（客人指定
+                          {(itemValues[index]?.colorRatios?.length ?? 0) + 1}）
+                        </Button>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">已達 {COLOR_RATIO_MAX} 組上限</p>
+                      )}
+                    </div>
+                  </div>
                   <div className="space-y-1 sm:col-span-2 lg:col-span-3">
                     <Label className="text-xs">明細備註</Label>
                     <div className="flex gap-1.5">
@@ -661,25 +712,6 @@ export function PackingNoticeFormPage() {
                   <Input {...register('shipMethodNote')} placeholder="請輸入出貨方式說明" className="mt-1.5" />
                 )}
                 {errors.shipMethodNote && <p className="text-xs text-destructive">{errors.shipMethodNote.message}</p>}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>彩條（非必填）</Label>
-                <label className="flex items-center gap-1.5 text-sm font-normal">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={colorRatioMode === '客人指定'}
-                    onChange={(e) => {
-                      setValue('colorRatio.mode', e.target.checked ? '客人指定' : '空白')
-                      if (!e.target.checked) setValue('colorRatio.customText', '')
-                    }}
-                  />
-                  客人指定
-                </label>
-                {colorRatioMode === '客人指定' && (
-                  <Input {...register('colorRatio.customText')} placeholder="請輸入客人指定內容" className="mt-1.5" />
-                )}
               </div>
 
               <div className="space-y-1.5">

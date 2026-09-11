@@ -1,6 +1,7 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
 import { PRINT_TITLES } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
+import { colorRatioText } from '@/lib/workflow'
 import { formatNumber } from '@/lib/units'
 import { getCustomer, productBranchSuffix } from '@/mocks/data'
 import type { PackingNotice, PackingNoticeItem } from '@/types'
@@ -8,9 +9,6 @@ import type { PackingNotice, PackingNoticeItem } from '@/types'
 /** 出貨方式／彩條／容許誤差在資料層皆為「模式＋自訂文字」，列印時攤平為單一文字 */
 export function shipMethodText(notice: PackingNotice): string {
   return notice.shipMethod.map((m) => (m === '其他' ? `其他：${notice.shipMethodNote || ''}` : m)).join('、')
-}
-export function colorRatioText(notice: PackingNotice): string {
-  return notice.colorRatio.mode === '客人指定' ? `客人指定：${notice.colorRatio.customText || ''}` : '空白'
 }
 export function toleranceText(notice: PackingNotice): string {
   return notice.tolerance.mode === '其他' ? `其他：${notice.tolerance.customText || ''}` : notice.tolerance.mode
@@ -46,6 +44,8 @@ const buildItemColumns = (unit: 'Yard' | 'Meter'): PrintColumn<PackingNoticeItem
       </>
     ),
   },
+  // 彩條：逐品項最多 3 組客人指定，顯示文字集中於 lib/workflow
+  { header: '彩條', cell: (r) => colorRatioText(r.colorRatios) },
   {
     header: '加工方法',
     cell: (r) =>
@@ -165,11 +165,10 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
               <th style={{ width: '30mm' }}>出貨方式</th>
               <td>{shipMethodText(notice)}</td>
             </tr>
+            {/* 彩條已改為明細逐筆（決策105），不再印於包裝設定 */}
             <tr>
-              <th>彩條</th>
-              <td>{colorRatioText(notice)}</td>
               <th>燙金</th>
-              <td>{notice.embossing.join('、')}</td>
+              <td colSpan={3}>{notice.embossing.join('、')}</td>
             </tr>
             <tr>
               <th>標籤類型</th>

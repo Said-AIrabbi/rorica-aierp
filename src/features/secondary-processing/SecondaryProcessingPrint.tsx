@@ -7,6 +7,7 @@ import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } f
 import { basisQtyColumns } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { SecondaryProcessingItem, SecondaryProcessingOrder } from '@/types'
+import { colorRatioText } from '@/lib/workflow'
 
 /** 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈ */
 const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] => [
@@ -37,6 +38,7 @@ const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] =>
     align: 'right',
     width: '18mm',
   },
+  { header: '彩條', cell: (r) => colorRatioText(r.colorRatios) },
   { header: '備註', cell: (r) => r.note ?? ' ' },
 ]
 

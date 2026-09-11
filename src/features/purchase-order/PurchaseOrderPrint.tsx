@@ -6,6 +6,7 @@ import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } f
 import { basisQtyColumns } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { PurchaseOrder, PurchaseOrderItem } from '@/types'
+import { colorRatioText } from '@/lib/workflow'
 
 /**
  * 訂購明細欄位。
@@ -34,6 +35,8 @@ const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOr
           ),
         },
       ]),
+  // 彩條與包裝方式同屬包裝要求：胚布單不印（顏色、包裝方式同樣不印，見決策92）
+  ...(isGreige ? [] : [{ header: '彩條', cell: (r: PurchaseOrderItem) => colorRatioText(r.colorRatios) }]),
   { header: '單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
   {
     header: '金額',
@@ -67,7 +70,6 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
       ? [{ label: '染整廠（名稱＋廠點）', value: vendorDisplayName(dyeVendor), span: 2 as const }]
       : []),
     { label: '燙金', value: order.embossing },
-    { label: '彩條', value: order.colorRatioNote },
   ]
 
   return (

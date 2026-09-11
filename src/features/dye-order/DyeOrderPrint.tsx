@@ -4,6 +4,7 @@ import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import type { DyeOrder, DyeOrderItem } from '@/types'
+import { colorRatioText } from '@/lib/workflow'
 
 /**
  * 胚布規格與成品規格字串長（如「100% POLY 75D/72F × 150D/48F」），
@@ -21,11 +22,14 @@ const columns: PrintColumn<DyeOrderItem>[] = [
   { header: '加工單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
 ]
 
-/** 同一項次的第二行：只印有值的規格，兩者皆空則不輸出第二行 */
+/** 同一項次的第二行：只印有值的規格與彩條，皆空則不輸出第二行 */
 const specSubRow = (item: DyeOrderItem) => {
+  const ratios = (item.colorRatios ?? []).filter((v) => v.trim())
   const parts = [
     item.fabricSpec ? `胚布規格：${item.fabricSpec}` : undefined,
     item.finishedSpec ? `成品規格：${item.finishedSpec}` : undefined,
+    // 彩條為明細層級（決策105），與規格同列在第二行，避免表頭再橫向增欄
+    ratios.length > 0 ? `彩條：${colorRatioText(item.colorRatios)}` : undefined,
   ].filter(Boolean)
   return parts.length > 0 ? parts.join('　／　') : null
 }
@@ -50,7 +54,6 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
     { label: '單位', value: order.unit },
     { label: '出貨檢樣', value: order.shippingSampleQty ? `${order.shippingSampleQty} Y` : ' ' },
     { label: '燙金', value: order.embossing },
-    { label: '彩條', value: order.colorRatioNote },
   ]
 
   return (

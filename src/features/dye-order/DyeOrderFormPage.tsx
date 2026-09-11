@@ -202,14 +202,7 @@ export function DyeOrderFormPage() {
                 <Input value={notice?.embossing.join('、') ?? ''} disabled placeholder="請先選擇包裝通知單" />
               </div>
 
-              <div className="space-y-1.5">
-                <Label>彩條（唯讀，帶入表1）</Label>
-                <Input
-                  value={notice ? (notice.colorRatio.mode === '客人指定' ? `客人指定：${notice.colorRatio.customText ?? ''}` : '空白') : ''}
-                  disabled
-                  placeholder="請先選擇包裝通知單"
-                />
-              </div>
+              {/* 彩條已改為明細層級（決策105）：逐筆唯讀帶入，見下方明細區塊 */}
 
               <div className="space-y-1.5">
                 <Label>交期（可手動修改）</Label>

@@ -25,7 +25,7 @@ import {
 } from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { rollYardUpperLimit } from '@/lib/workflow'
+import { colorRatioText, rollYardUpperLimit } from '@/lib/workflow'
 
 export function DyeOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -224,7 +224,6 @@ export function DyeOrderDetailPage() {
             <DetailField label="交期" value={formatDate(order.dueDate)} />
             <DetailField label="品名" value={order.productName} />
             <DetailField label="燙金" value={order.embossing} />
-            <DetailField label="彩條" value={order.colorRatioNote} />
             <DetailField label="生效日" value={formatDate(order.effectiveAt)} />
             {/* 胚布到貨由胚布訂單的表6入庫單結案時觸發，非染單自身的人工動作 */}
             <DetailField
@@ -345,6 +344,7 @@ export function DyeOrderDetailPage() {
                   <TableHead>色樣編號</TableHead>
                   <TableHead>對色標準</TableHead>
                   <TableHead className="text-right">單卷碼數</TableHead>
+                  <TableHead>彩條</TableHead>
                   <TableHead>成分</TableHead>
                   <TableHead>胚布規格</TableHead>
                   <TableHead>成品規格</TableHead>
@@ -408,6 +408,8 @@ export function DyeOrderDetailPage() {
                         </span>
                       ) : null}
                     </TableCell>
+                    {/* 彩條：唯讀帶入自表1 該筆明細（最多 3 組） */}
+                    <TableCell className="text-xs">{colorRatioText(item.colorRatios)}</TableCell>
                     <TableCell>{item.fabricMaterial || '-'}</TableCell>
                     <TableCell>{item.fabricSpec || '-'}</TableCell>
                     <TableCell>{item.finishedSpec || '-'}</TableCell>

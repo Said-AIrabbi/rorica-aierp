@@ -23,7 +23,7 @@ import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { BasisQty } from '@/components/shared/BasisQty'
 import { formatNumber, meterToYard } from '@/lib/units'
-import {
+import { colorRatioText,
   effectivePurchaseOrderStatus,
   freezeDate,
   isPurchaseOrderEditable,
@@ -367,7 +367,6 @@ export function PurchaseOrderDetailPage() {
             )}
             <DetailField label="廠商聯絡人" value={vendor?.contactPerson} />
             <DetailField label="燙金" value={order.embossing} />
-            <DetailField label="彩條" value={order.colorRatioNote} />
             <DetailField label="建立日" value={formatDate(order.createdAt)} />
             <DetailField label="簽回日" value={formatDate(order.signedAt)} />
             <DetailField label="交期" value={formatDate(order.dueDate)} />
@@ -423,6 +422,7 @@ export function PurchaseOrderDetailPage() {
                   <TableHead>色號查詢</TableHead>
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
+                  <TableHead>彩條</TableHead>
                   <TableHead>加工方法</TableHead>
                   <TableHead className="text-right">單價</TableHead>
                   <TableHead>備註</TableHead>
@@ -462,6 +462,7 @@ export function PurchaseOrderDetailPage() {
                         ? `${formatNumber(item.fixedLengthMeter, 1)}M ／ ${formatNumber(meterToYard(item.fixedLengthMeter), 1)}Y`
                         : '-'}
                     </TableCell>
+                    <TableCell className="text-xs">{colorRatioText(item.colorRatios)}</TableCell>
                     <TableCell>
                       {item.processingMethod ? (
                         <span className="text-xs">

@@ -114,6 +114,24 @@ export function isPackingNoticeFullyShipped(
 }
 
 /**
+ * 彩條顯示文字：最多 3 組客人指定內容，未填即為「空白」。
+ * 下游（表2／表4／表5）一律唯讀帶入，顯示格式集中在此，不各自拼字串。
+ */
+export function colorRatioText(colorRatios: string[] | undefined): string {
+  const list = (colorRatios ?? []).map((v) => v.trim()).filter(Boolean)
+  if (list.length === 0) return '空白'
+  return list.map((v, i) => `客人指定${i + 1}：${v}`).join('／')
+}
+
+/**
+ * 包裝設定區塊（表5／表8）的彩條摘要：彩條已是明細層級，表頭記不了代表全部的單一值，
+ * 故只標明有無指定、細節看明細，避免印出與明細不一致的值。
+ */
+export function colorRatioSummary(items: { colorRatios?: string[] }[]): string {
+  return items.some((i) => (i.colorRatios ?? []).some((v) => v.trim())) ? '逐品項指定（詳見明細）' : '空白'
+}
+
+/**
  * 表4 染單「單卷不可超過＿＿Y」提示文字的數值：依表1包裝通知單該筆明細的
  * 「定碼長度（米）」換算為碼後，再套用該單的「生產數量容許誤差」上限，無條件進位取整。
  * 例：定碼 50M ≈ 54.7Y，容許誤差 ±10% → 54.7 × 1.1 ≈ 60.2 → 單卷不可超過 61Y。
@@ -172,8 +190,7 @@ export function buildSecondaryProcessingPackaging(notice: PackingNotice): Second
     packagingType: notice.packagingType,
     shipMethod: notice.shipMethod,
     shipMethodNote: notice.shipMethodNote,
-    colorRatioNote:
-      notice.colorRatio.mode === '客人指定' ? `客人指定：${notice.colorRatio.customText ?? ''}` : '空白',
+    colorRatioNote: colorRatioSummary(notice.items),
     toleranceNote: notice.tolerance.mode === '其他' ? (notice.tolerance.customText ?? '其他') : notice.tolerance.mode,
     labelTypes: notice.labelTypes,
     embossing: notice.embossing.join('、'),

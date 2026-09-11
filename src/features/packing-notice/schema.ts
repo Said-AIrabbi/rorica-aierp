@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  COLOR_RATIO_MODES,
+  COLOR_RATIO_MAX,
   EMBOSSING_OPTIONS,
   FIXED_ROLL_PACKING_METHODS,
   LABEL_TYPES,
@@ -27,6 +27,11 @@ export const packingNoticeMarkingSchema = z.object({
 
 export const packingNoticeItemSchema = z
   .object({
+    /**
+     * 彩條：最多 3 組「客人指定」內容，隨品項新增／刪減（決策105）。
+     * 空白＝沒有任何一組；UI 以逐筆輸入框呈現，送出前會清掉空字串。
+     */
+    colorRatios: z.array(z.string()).max(COLOR_RATIO_MAX, `彩條最多 ${COLOR_RATIO_MAX} 組`).optional(),
     customerProductName: z.string().min(1, '請輸入客戶品名'),
     roricaProductName: z.string().min(1, '請輸入皇加品名'),
     /** 產品編號：選定產品分支時記錄，全新品項留空 */
@@ -46,11 +51,6 @@ export const packingNoticeItemSchema = z
     { message: '定碼ROLL包裝方式需輸入定碼長度（米）', path: ['fixedLengthMeter'] },
   )
 
-export const packingNoticeColorRatioSchema = z.object({
-  mode: z.enum(COLOR_RATIO_MODES),
-  customText: z.string().optional(),
-})
-
 export const packingNoticeToleranceSchema = z.object({
   mode: z.enum(TOLERANCE_MODES),
   customText: z.string().optional(),
@@ -68,7 +68,6 @@ export const packingNoticeFormSchema = z
     shipMethod: z.array(z.enum(SHIP_METHODS)).min(1, '請至少選擇一種出貨方式'),
     // 出貨方式勾選「其他」時需另外文字說明
     shipMethodNote: z.string().optional(),
-    colorRatio: packingNoticeColorRatioSchema,
     labelTypes: z.array(z.enum(LABEL_TYPES)).min(1, '請至少選擇一種標籤類型'),
     packagingType: z.enum(PACKAGING_TYPES),
     tolerance: packingNoticeToleranceSchema,

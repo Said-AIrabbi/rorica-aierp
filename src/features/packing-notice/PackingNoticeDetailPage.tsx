@@ -19,7 +19,7 @@ import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { effectiveReservationStatus } from '@/lib/inventory'
-import { freezeDate, isPackingNoticeEditable, isPackingNoticeFullyShipped } from '@/lib/workflow'
+import { colorRatioText, freezeDate, isPackingNoticeEditable, isPackingNoticeFullyShipped } from '@/lib/workflow'
 import { MarkingPreview } from './MarkingPrint'
 import type { PackingNoticeStatus } from '@/types'
 
@@ -216,6 +216,7 @@ export function PackingNoticeDetailPage() {
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
                   <TableHead>加工方法</TableHead>
+                  <TableHead>彩條</TableHead>
                   <TableHead>備註</TableHead>
                 </TableRow>
               </TableHeader>
@@ -282,6 +283,8 @@ export function PackingNoticeDetailPage() {
                         '-'
                       )}
                     </TableCell>
+                    {/* 彩條：逐品項最多 3 組客人指定，未填即為空白 */}
+                    <TableCell className="text-xs">{colorRatioText(item.colorRatios)}</TableCell>
                     <TableCell>{item.note || '-'}</TableCell>
                   </TableRow>
                 ))}
@@ -307,10 +310,6 @@ export function PackingNoticeDetailPage() {
               value={notice.shipMethod
                 .map((m) => (m === '其他' ? `其他：${notice.shipMethodNote || ''}` : m))
                 .join('、')}
-            />
-            <DetailField
-              label="彩條"
-              value={notice.colorRatio.mode === '客人指定' ? `客人指定：${notice.colorRatio.customText || ''}` : '空白'}
             />
             <DetailField
               label="生產數量容許誤差"

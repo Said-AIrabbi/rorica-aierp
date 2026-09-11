@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
+import { COLOR_RATIO_MAX } from '@/types'
 import {
   allocateWholeRolls,
   availableFabricLabels,
@@ -91,7 +92,6 @@ export interface PackingNoticeInput {
   sampleQtyNote?: string
   shipMethod: PackingNotice['shipMethod']
   shipMethodNote?: string
-  colorRatio: PackingNotice['colorRatio']
   labelTypes: PackingNotice['labelTypes']
   packagingType: PackingNotice['packagingType']
   tolerance: PackingNotice['tolerance']
@@ -109,17 +109,14 @@ function buildItems(id: string, items: PackingNoticeItemInput[]): PackingNoticeI
     ...item,
     id: `${id}-L${i + 1}`,
     meter: Number(yardToMeter(item.yard).toFixed(1)),
+    // 彩條：空字串不存，最多 3 組（客人指定1～3）
+    colorRatios: (item.colorRatios ?? []).map((v) => v.trim()).filter(Boolean).slice(0, COLOR_RATIO_MAX),
   }))
 }
 
 /** 燙金（多選）帶入表2/表4時，以頓號連接顯示 */
 function embossingDisplay(embossing: PackingNotice['embossing']): string {
   return embossing.join('、')
-}
-
-/** 彩條帶入表2/表4時的顯示文字 */
-function colorRatioDisplay(colorRatio: PackingNotice['colorRatio']): string {
-  return colorRatio.mode === '客人指定' ? `客人指定：${colorRatio.customText ?? ''}` : '空白'
 }
 
 /**
@@ -329,6 +326,8 @@ function autoCreatePurchaseOrderDraft(notice: PackingNotice, outOfStockItems: Pa
     fixedLengthMeter: item.fixedLengthMeter,
     processingMethod: item.processingMethod,
     processingMethodNote: item.processingMethodNote,
+    // 彩條唯讀帶入自表1 該筆明細
+    colorRatios: item.colorRatios,
     note: item.note,
   }))
   const draft: PurchaseOrder = {
@@ -342,7 +341,6 @@ function autoCreatePurchaseOrderDraft(notice: PackingNotice, outOfStockItems: Pa
     note: '',
     items,
     embossing: embossingDisplay(notice.embossing),
-    colorRatioNote: colorRatioDisplay(notice.colorRatio),
   }
   purchaseOrders.unshift(draft)
 }
@@ -363,7 +361,6 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     sampleQtyNote: input.sampleQtyNote?.trim() || undefined,
     shipMethod: input.shipMethod,
     shipMethodNote: input.shipMethod.includes('其他') ? input.shipMethodNote : undefined,
-    colorRatio: input.colorRatio,
     labelTypes: input.labelTypes,
     packagingType: input.packagingType,
     tolerance: input.tolerance,
@@ -401,7 +398,6 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
     sampleQtyNote: input.sampleQtyNote?.trim() || undefined,
     shipMethod: input.shipMethod,
     shipMethodNote: input.shipMethod.includes('其他') ? input.shipMethodNote : undefined,
-    colorRatio: input.colorRatio,
     labelTypes: input.labelTypes,
     packagingType: input.packagingType,
     tolerance: input.tolerance,
@@ -468,6 +464,8 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
     fixedLengthMeter: item.fixedLengthMeter,
     processingMethod: item.processingMethod,
     processingMethodNote: item.processingMethodNote,
+    // 彩條唯讀帶入自表1 該筆明細
+    colorRatios: item.colorRatios,
     unitPrice: input.itemUnitPrices[item.id],
     note: item.note,
   }))
@@ -487,7 +485,6 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
     note: input.note,
     items,
     embossing: embossingDisplay(notice.embossing),
-    colorRatioNote: colorRatioDisplay(notice.colorRatio),
   }
   purchaseOrders.unshift(order)
   return delay(order)
@@ -650,6 +647,8 @@ function autoCreateSecondaryProcessingDraft(parentId: string, sourceItems: Packi
       meter: item.meter,
       processingMethod: item.processingMethod,
       processingMethodNote: item.processingMethodNote,
+      // 彩條唯讀帶入自表1 該筆明細
+      colorRatios: item.colorRatios,
       note: item.note,
     })),
     packaging: buildSecondaryProcessingPackaging(notice),
@@ -795,6 +794,7 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
         )
         return {
           id: `${dyeOrderId}-L${i + 1}`,
+          colorRatios: item.colorRatios,
           // 表2 明細與表1 為 1:1，但依產品分支重新分組後順序已變，故以欄位回頭對出來源明細
           sourceItemId: notice?.items.find(
             (ni) => ni.productId === item.productId && ni.color === item.color && ni.yard === item.yard,
@@ -823,7 +823,6 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
         productName,
         productId,
         embossing: order.embossing,
-        colorRatioNote: order.colorRatioNote,
         vendorId: dyeVendorId,
         items,
         unit: 'Yard',
@@ -1090,6 +1089,8 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
     return {
       id: `${id}-L${i + 1}`,
       sourceItemId: item.sourceItemId,
+      // 彩條唯讀：一律回頭取來源表1 明細的值，不接受畫面傳入
+      colorRatios: notice.items.find((ni) => ni.id === item.sourceItemId)?.colorRatios,
       color: item.color,
       sampleCode: resolved.sampleCode,
       sampleCodeLastUsedAt: resolved.lastUsedAt,
@@ -1114,7 +1115,6 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
     productName: input.productName,
     productId: input.productId,
     embossing: embossingDisplay(notice.embossing),
-    colorRatioNote: colorRatioDisplay(notice.colorRatio),
     vendorId: input.vendorId,
     internalContact: input.internalContact,
     note: input.note,
@@ -1921,6 +1921,8 @@ export function createSecondaryProcessingOrder(input: SecondaryProcessingInput):
       meter: item.meter,
       processingMethod: item.processingMethod,
       processingMethodNote: item.processingMethodNote,
+      // 彩條唯讀帶入自表1 該筆明細
+      colorRatios: item.colorRatios,
       unitPrice: input.itemUnitPrices[item.id],
       note: item.note,
     })),

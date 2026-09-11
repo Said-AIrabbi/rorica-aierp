@@ -23,7 +23,6 @@ import type {
   VendorType,
 } from '@/types'
 import {
-  COLOR_RATIO_MODES,
   EMBOSSING_OPTIONS,
   FIXED_ROLL_PACKING_METHODS,
   GOODS_RECEIPT_PURPOSES,
@@ -288,6 +287,15 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
       // 加工方法為單選且非必填：約半數品項不指定加工
       processingMethod,
       processingMethodNote: processingMethod ? PROCESSING_METHOD_NOTE_SAMPLES[processingMethod] : undefined,
+      // 彩條改為明細層級（決策105）：不同顏色／材質的品項各自可能有不同彩條要求，
+      // 最多 3 組；多數品項為空白（不指定）
+      colorRatios: faker.helpers.arrayElement([
+        [],
+        [],
+        ['依訂單指定色比±5%'],
+        ['彩條 3cm 紅／白', '邊條 1cm 金'],
+        ['主條 5cm 藍', '副條 2cm 白', '邊條 1cm 銀'],
+      ]),
       note: faker.helpers.arrayElement(['', '', '客戶指定紙管顏色', '']),
     }
   })
@@ -310,10 +318,6 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
     ]),
     shipMethod,
     shipMethodNote: shipMethod.includes('其他') ? '客戶指定貨運行代收' : undefined,
-    colorRatio:
-      faker.helpers.arrayElement(COLOR_RATIO_MODES) === '客人指定'
-        ? { mode: '客人指定' as const, customText: '依訂單指定色比±5%' }
-        : { mode: '空白' as const },
     labelTypes: faker.helpers.arrayElements(LABEL_TYPES, { min: 1, max: LABEL_TYPES.length }),
     packagingType: faker.helpers.arrayElement(PACKAGING_TYPES),
     tolerance:
@@ -379,6 +383,7 @@ export const purchaseOrders: PurchaseOrder[] = packingNotices
       fixedLengthMeter: item.fixedLengthMeter,
       processingMethod: item.processingMethod,
       processingMethodNote: item.processingMethodNote,
+      colorRatios: item.colorRatios,
       unitPrice: faker.number.float({ min: 20, max: 80, fractionDigits: 1 }),
       note: item.note,
     }))
@@ -407,7 +412,6 @@ export const purchaseOrders: PurchaseOrder[] = packingNotices
       note: faker.helpers.arrayElement(['配合染整廠排缸', '含備份用量5%', '', '客戶指定廠商']),
       items,
       embossing: pn.embossing.join('、'),
-      colorRatioNote: pn.colorRatio.mode === '客人指定' ? `客人指定：${pn.colorRatio.customText ?? ''}` : '空白',
       largeSampleConfirmedAt,
       largeSampleSubmissions: largeSampleConfirmedAt
         ? [{ id: `${id}-SAMPLE1`, submittedAt: largeSampleConfirmedAt, result: '通過' as const }]
@@ -473,6 +477,7 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
     return {
       id: `${id}-L${j + 1}`,
       sourceItemId: item.id,
+      colorRatios: item.colorRatios,
       color: item.color,
       sampleCode: `${id}-L${j + 1}-SAMPLE`,
       colorMatchStandard: faker.helpers.arrayElement(['依客戶留樣', '依上批色差±3%', '依標準色卡']),
@@ -497,7 +502,6 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
     productName: pn.items[0]?.roricaProductName ?? '',
     productId: pn.items[0]?.productId,
     embossing: pn.embossing.join('、'),
-    colorRatioNote: pn.colorRatio.mode === '客人指定' ? `客人指定：${pn.colorRatio.customText ?? ''}` : '空白',
     vendorId: faker.helpers.arrayElement(vendors.filter((v) => v.types.includes('染整廠'))).id,
     internalContact: faker.helpers.arrayElement(['陳美玲', '林志豪']),
     note: faker.helpers.arrayElement(['厚染', '', '厚染，需加強色牢度', '']),
@@ -741,6 +745,7 @@ export const secondaryProcessingOrders: SecondaryProcessingOrder[] = packingNoti
         meter: item.meter,
         processingMethod: item.processingMethod,
         processingMethodNote: item.processingMethodNote,
+        colorRatios: item.colorRatios,
         unitPrice: faker.number.float({ min: 3, max: 20, fractionDigits: 1 }),
         note: item.note,
       })),
