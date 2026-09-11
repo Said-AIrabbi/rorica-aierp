@@ -251,3 +251,18 @@ export function pendingAbnormalHandlings(notice: AbnormalNotice): string[] {
   if (other && !other.note.trim()) pending.push('其他補償：需填寫說明')
   return pending
 }
+
+/** 小嘜頭上固定會印的產地字樣：不需使用者輸入，列印時自動帶入 */
+export const SMALL_MARKING_FIXED_LINE = 'MADE IN TAIWAN'
+
+/**
+ * 小嘜頭的內容行：第一行為固定的產地字樣，其餘取自表1 的小嘜頭文字窗格，
+ * 逐行原樣列印（空行略過）。列印與畫面顯示共用此函式，兩邊看到的內容才會一致。
+ */
+export function smallMarkingLines(text: string | undefined): string[] {
+  const custom = (text ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  return [SMALL_MARKING_FIXED_LINE, ...custom]
+}

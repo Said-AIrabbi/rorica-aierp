@@ -340,7 +340,8 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
         composition: faker.helpers.arrayElement(['', '100% POLY', '']),
         origin: faker.helpers.arrayElement(['', 'Taiwan', '']),
         hasSmallMarking: faker.datatype.boolean(),
-        smallMarkingText: `RORICA-${customer.code}-${dayjs().format('YYYY')}`,
+        // 小嘜頭只寫產地與成份規格；產地（MADE IN TAIWAN）為列印時自動帶入的固定文字，此處只填成份
+        smallMarkingText: faker.helpers.arrayElement(['100% NYLON', '100% POLYESTER', '95% POLY\n5% SPANDEX']),
       },
       ...(i % 3 === 0
         ? [

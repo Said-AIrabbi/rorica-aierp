@@ -20,7 +20,8 @@ import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { effectiveReservationStatus } from '@/lib/inventory'
 import { colorRatioText, freezeDate, isPackingNoticeEditable, isPackingNoticeFullyShipped } from '@/lib/workflow'
-import { MarkingPreview } from './MarkingPrint'
+import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
+import { smallMarkingLines } from '@/lib/workflow'
 import type { PackingNoticeStatus } from '@/types'
 
 export function PackingNoticeDetailPage() {
@@ -345,7 +346,7 @@ export function PackingNoticeDetailPage() {
                 <DetailField label="產地" value={marking.origin || '-'} />
                 <DetailField
                   label="小嘜頭"
-                  value={marking.hasSmallMarking ? marking.smallMarkingText || '加印（未填內容）' : '不加印'}
+                  value={marking.hasSmallMarking ? smallMarkingLines(marking.smallMarkingText).join('／') : '不加印'}
                 />
               </DetailGrid>
                 </div>
@@ -353,6 +354,12 @@ export function PackingNoticeDetailPage() {
                 <div className="shrink-0 space-y-1.5">
                   <div className="text-xs text-muted-foreground">預覽（實際列印為 A4 一張多份，入口在表8）</div>
                   <MarkingPreview marking={marking} />
+                  {marking.hasSmallMarking && (
+                    <>
+                      <div className="pt-1 text-xs text-muted-foreground">小嘜頭預覽（A4 一張 24 份）</div>
+                      <SmallMarkingPreview marking={marking} />
+                    </>
+                  )}
                 </div>
               </div>
             </div>

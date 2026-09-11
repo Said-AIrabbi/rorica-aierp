@@ -1,4 +1,5 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
+import { smallMarkingLines } from '@/lib/workflow'
 import { PRINT_TITLES } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { colorRatioText } from '@/lib/workflow'
@@ -127,7 +128,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
                 <th style={{ width: '24mm' }}>小嘜頭</th>
                 <td>
                   {marking.hasSmallMarking
-                    ? `加印${marking.smallMarkingText ? `：${marking.smallMarkingText}` : ''}`
+                    ? `加印：${smallMarkingLines(marking.smallMarkingText).join('／')}`
                     : '不加印'}
                 </td>
               </tr>

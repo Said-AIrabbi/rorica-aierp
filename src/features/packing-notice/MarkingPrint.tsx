@@ -1,4 +1,5 @@
 import { formatNumber } from '@/lib/units'
+import { smallMarkingLines } from '@/lib/workflow'
 import { cn } from '@/lib/utils'
 import type { PackingNoticeMarking } from '@/types'
 
@@ -140,5 +141,55 @@ function MarkShape({ shape, text }: { shape: PackingNoticeMarking['shape']; text
         </text>
       ))}
     </svg>
+  )
+}
+
+/**
+ * 小嘜頭：縫在布疋上的水洗標式小標，只寫產地與成份規格（依皇加提供的實際樣張重製）。
+ *
+ * 與嘜頭同樣不是對外單據，故不套用單據抬頭。版面為 3 欄 × 8 列＝一張 A4 印滿 24 份；
+ * 份數不在系統設定——要印幾張由瀏覽器列印對話框的份數決定。
+ */
+const SMALL_MARKING_COLUMNS = 3
+const SMALL_MARKING_ROWS = 8
+
+export function SmallMarkingPrint({ marking }: { marking: PackingNoticeMarking }) {
+  const lines = smallMarkingLines(marking.smallMarkingText)
+  return (
+    <section className="pr-sheet pr-smallmark-sheet">
+      <div className="pr-smallmark-grid">
+        {Array.from({ length: SMALL_MARKING_COLUMNS * SMALL_MARKING_ROWS }).map((_, i) => (
+          <SmallMarkCell key={i} lines={lines} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * 小嘜頭預覽（畫面用）：比照嘜頭，表1 填寫時即可確認內容，所見即所印。
+ * 列印為一整頁 24 份，預覽只顯示單一格（每格內容完全相同）。
+ */
+export function SmallMarkingPreview({
+  marking,
+  className,
+}: {
+  marking: PackingNoticeMarking
+  className?: string
+}) {
+  return (
+    <div className={cn('pr-smallmark-preview', className)}>
+      <SmallMarkCell lines={smallMarkingLines(marking.smallMarkingText)} />
+    </div>
+  )
+}
+
+function SmallMarkCell({ lines }: { lines: string[] }) {
+  return (
+    <div className="pr-smallmark-cell">
+      {lines.map((line, i) => (
+        <div key={i}>{line}</div>
+      ))}
+    </div>
   )
 }

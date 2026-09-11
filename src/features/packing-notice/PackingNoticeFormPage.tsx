@@ -36,7 +36,7 @@ import { freezeDate, isPackingNoticeEditable } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
 import { lookupColorSample } from '@/lib/colors'
-import { MarkingPreview } from './MarkingPrint'
+import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
 import { ColorLookupBadge, ColorLookupLegend } from '@/components/shared/ColorLookupBadge'
 
 function itemErrorMessages(itemErrors: Record<string, unknown> | undefined): string[] {
@@ -891,7 +891,16 @@ export function PackingNoticeFormPage() {
                   {watch(`markings.${index}.hasSmallMarking`) && (
                     <div className="space-y-1.5 sm:col-span-2">
                       <Label>小嘜頭內容</Label>
-                      <Input {...register(`markings.${index}.smallMarkingText`)} placeholder="例：RORICA-K2-2026" />
+                      {/* 多行輸入：小嘜頭除了固定的產地字樣外，通常還要印成份規格（可不只一行） */}
+                      <Textarea
+                        rows={2}
+                        {...register(`markings.${index}.smallMarkingText`)}
+                        placeholder={'例：100% NYLON（一行一項，MADE IN TAIWAN 為固定文字，系統自動列印）'}
+                      />
+                      <div className="space-y-1.5 pt-1">
+                        <Label className="text-xs text-muted-foreground">小嘜頭預覽（實際列印為 A4 一張 24 份）</Label>
+                        <SmallMarkingPreview marking={previewMarking(markingValues[index])} />
+                      </div>
                     </div>
                   )}
                 </div>

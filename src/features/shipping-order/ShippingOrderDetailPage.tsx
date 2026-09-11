@@ -8,7 +8,8 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { ShippingOrderPrint } from './ShippingOrderPrint'
-import { MarkingPrint } from '@/features/packing-notice/MarkingPrint'
+import { MarkingPrint, SmallMarkingPrint } from '@/features/packing-notice/MarkingPrint'
+import { smallMarkingLines } from '@/lib/workflow'
 import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -182,6 +183,18 @@ export function ShippingOrderDetailPage() {
                   // 列印取已儲存的箱/袋號：未按儲存的輸入不應印到對外的嘜頭上
                   sheet: <MarkingPrint marking={m} boxNo={order.markingBoxNos?.[index] ?? ''} />,
                 })),
+                // 小嘜頭縫在布疋上，只有勾選加印的嘜頭組別才有，故僅就這些組別提供入口
+                ...markings.flatMap((m, index) =>
+                  m.hasSmallMarking
+                    ? [
+                        {
+                          key: `small-marking-${index}`,
+                          label: markings.length > 1 ? `列印小嘜頭 ${index + 1}` : '列印小嘜頭',
+                          sheet: <SmallMarkingPrint marking={m} />,
+                        },
+                      ]
+                    : [],
+                ),
               ]}
             />
             {order.status === '草稿' && (
@@ -462,7 +475,10 @@ export function ShippingOrderDetailPage() {
                   <DetailField label="淨重(Kg)" value={marking.netWeightKg != null ? formatNumber(marking.netWeightKg, 1) : '-'} />
                   <DetailField label="成分" value={marking.composition || '-'} />
                   <DetailField label="產地" value={marking.origin || '-'} />
-                  <DetailField label="小嘜頭" value={marking.hasSmallMarking ? marking.smallMarkingText || '是' : '否'} />
+                  <DetailField
+                    label="小嘜頭"
+                    value={marking.hasSmallMarking ? smallMarkingLines(marking.smallMarkingText).join('／') : '否'}
+                  />
                 </DetailGrid>
               </div>
             ))}
