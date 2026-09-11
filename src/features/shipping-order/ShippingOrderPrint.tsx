@@ -1,5 +1,7 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
+import { PackagingPrintSection } from '@/components/print/PackagingPrintSection'
 import { PRINT_TITLES, SHIPPING_SIGNATURE_LABELS } from '@/lib/print'
+import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getAccount, getCustomer, getPackingNotice } from '@/mocks/data'
@@ -41,7 +43,10 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
   const customer = getCustomer(order.customerId)
   const operator = order.operatorAccountId ? getAccount(order.operatorAccountId) : undefined
   const title = order.isSampleOrder ? PRINT_TITLES.shippingSample : PRINT_TITLES.shippingOrder
-  const itemUnit = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
+  const notice = getPackingNotice(order.parentId)
+  const itemUnit = notice?.itemUnit ?? 'Yard'
+  // 包裝設定原樣帶入自表1：倉管依此出貨、客戶也照此驗收，與表5 共用同一份版面
+  const packaging = notice ? buildSecondaryProcessingPackaging(notice) : undefined
 
   const meta: PrintMetaItem[] = [
     { label: '出貨單號', value: order.id },
@@ -65,7 +70,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
       date={order.shipDate}
       meta={meta}
       signatures={SHIPPING_SIGNATURE_LABELS}
-      footNote="數量一律同時記錄 Yard 與 Meter；拼接出貨之捲號組合完整列於明細。"
+      footNote="數量一律同時記錄 Yard 與 Meter；拼接出貨之捲號組合完整列於明細；包裝要求源自客戶原始訂單。"
     >
       <PrintSection title="出貨明細">
         <PrintTable
@@ -89,6 +94,8 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
           ]}
         />
       </PrintSection>
+
+      {packaging && <PackagingPrintSection packaging={packaging} />}
     </PrintSheet>
   )
 }

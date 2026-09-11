@@ -1,4 +1,5 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
+import { PackagingPrintSection } from '@/components/print/PackagingPrintSection'
 import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
@@ -46,7 +47,6 @@ const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] =>
 export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessingOrder }) {
   const vendor = getVendor(order.vendorId)
   const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
-  const pk = order.packaging
   // 數量以來源表1 的建單基準為主值：加工廠看到的數字要跟客戶下單的單位一致
   const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
 
@@ -89,42 +89,7 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
         />
       </PrintSection>
 
-      <PrintSection title="包裝設定（帶入自表1包裝通知單）">
-        <table className="pr-table">
-          <tbody>
-            <tr>
-              <th style={{ width: '28mm' }}>出貨樣數量</th>
-              <td>
-                {pk.sampleQty} 碼{pk.sampleQtyNote ? `（${pk.sampleQtyNote}）` : ''}
-              </td>
-              <th style={{ width: '28mm' }}>出貨包裝</th>
-              <td>{pk.packagingType}</td>
-            </tr>
-            <tr>
-              <th>出貨方式</th>
-              <td>
-                {pk.shipMethod.map((m) => (m === '其他' ? `其他：${pk.shipMethodNote || ''}` : m)).join('、')}
-              </td>
-              <th>彩條</th>
-              <td>{pk.colorRatioNote}</td>
-            </tr>
-            <tr>
-              <th>生產數量容許誤差</th>
-              <td>{pk.toleranceNote}</td>
-              <th>標籤類型</th>
-              <td>{pk.labelTypes.join('、')}</td>
-            </tr>
-            <tr>
-              <th>燙金</th>
-              <td>{pk.embossing}</td>
-              <th>裁邊／可接疋</th>
-              <td>
-                {pk.edgeCut ? '裁邊' : '不裁邊'}／{pk.allowSplicing ? '可接疋' : '不可接疋'}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </PrintSection>
+      <PackagingPrintSection packaging={order.packaging} />
 
       {order.note && (
         <PrintSection title="備註">
