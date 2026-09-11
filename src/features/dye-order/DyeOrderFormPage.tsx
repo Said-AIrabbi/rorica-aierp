@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -77,6 +77,35 @@ export function DyeOrderFormPage() {
     : []
   const rollLimit = rollLimits.length > 0 ? Math.max(...rollLimits) : null
 
+  /**
+   * 同一張表1 的品項可能含多種顏色／材質，需分批開多張表4。
+   * 已被其他表4 取用的表1 明細在此標記，避免同一批布重複送染。
+   * 舊資料沒有 sourceItemId 時退回以顏色比對，至少不會完全失去提示。
+   */
+  const usedSourceItems = new Map<string, { orderId: string; status: string }>()
+  const usedColors = new Map<string, { orderId: string; status: string }>()
+  dyeOrders
+    .filter((d) => d.parentId === parentId)
+    .forEach((d) => {
+      d.items.forEach((i) => {
+        const mark = { orderId: d.id, status: d.status }
+        if (i.sourceItemId) usedSourceItems.set(i.sourceItemId, mark)
+        else usedColors.set(i.color, mark)
+      })
+    })
+  const usedBy = (item: { sourceItemId?: string; color: string }) =>
+    (item.sourceItemId ? usedSourceItems.get(item.sourceItemId) : undefined) ?? usedColors.get(item.color)
+  /** 已完成的染單不是「正在染整中」，用詞跟著狀態走 */
+  const usedLabel = (status: string) => (status === '已完成' ? '已建單並完成染整' : '已建單正在染整中')
+
+  /** 清除品項：只代表這張表4 不做這一筆，表1 與其他單據不受影響 */
+  const removeItem = (index: number) =>
+    setValue(
+      'items',
+      items.filter((_, i) => i !== index),
+      { shouldValidate: true },
+    )
+
   useEffect(() => {
     if (!notice) return
     setValue(
@@ -85,6 +114,8 @@ export function DyeOrderFormPage() {
         // 成分／胚布規格／成品規格自商品資料主檔依皇加品名自動帶入，帶入後仍可修改
         const product = resolveProduct(item.productId, item.roricaProductName)
         return {
+          // 來源表1 明細 id：供「已建單」標記與分批建單判斷
+          sourceItemId: item.id,
           color: item.color,
           sampleCode: '',
           noSampleCode: false,
@@ -205,7 +236,12 @@ export function DyeOrderFormPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">明細（依表1明細1:1帶入，逐色/逐批填寫加工資訊）</CardTitle>
+            <CardTitle className="text-base">
+              明細（依表1明細1:1帶入，逐色/逐批填寫加工資訊）
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                一張表1 可分批開多張表4；本單不做的品項請按右側「清除」移除，不影響表1 與其他單據
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-0">
             {!notice ? (
@@ -225,12 +261,28 @@ export function DyeOrderFormPage() {
                       <TableHead className="text-right">加工單價</TableHead>
                       <TableHead className="text-right">待染數量</TableHead>
                       <TableHead className="text-right">指染數量</TableHead>
+                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell className="whitespace-nowrap">{item.color}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {item.color}
+                          {(() => {
+                            const used = usedBy(item)
+                            if (!used) return null
+                            return (
+                              <span
+                                className="mt-1 flex items-center gap-1 text-xs font-medium text-warning"
+                                title={`來源表4：${used.orderId}（${used.status}）`}
+                              >
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                {usedLabel(used.status)}
+                              </span>
+                            )
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <Input
                             className="w-32"
@@ -291,6 +343,19 @@ export function DyeOrderFormPage() {
                         <TableCell className="text-right">
                           <Input type="number" className="w-20 text-right" {...register(`items.${index}.inDyeQty`)} />
                         </TableCell>
+                        <TableCell>
+                          {/* 清除僅作用於本張表4：表1 明細與其他單據不受影響 */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            title="本單不做此品項（不影響表1）"
+                            onClick={() => removeItem(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {/* 合計列放在明細區塊內：兩個數量欄各自加總，逐列填寫時可即時對總數 */}
@@ -300,6 +365,7 @@ export function DyeOrderFormPage() {
                       </TableCell>
                       <TableCell className="text-right">{totalPendingDyeQty}</TableCell>
                       <TableCell className="text-right">{totalInDyeQty}</TableCell>
+                      <TableCell />
                     </TableRow>
                   </TableBody>
                 </Table>

@@ -472,6 +472,7 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
     const product = resolveProduct(item.productId, item.roricaProductName)
     return {
       id: `${id}-L${j + 1}`,
+      sourceItemId: item.id,
       color: item.color,
       sampleCode: `${id}-L${j + 1}-SAMPLE`,
       colorMatchStandard: faker.helpers.arrayElement(['依客戶留樣', '依上批色差±3%', '依標準色卡']),

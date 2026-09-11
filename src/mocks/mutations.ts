@@ -795,6 +795,10 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
         )
         return {
           id: `${dyeOrderId}-L${i + 1}`,
+          // 表2 明細與表1 為 1:1，但依產品分支重新分組後順序已變，故以欄位回頭對出來源明細
+          sourceItemId: notice?.items.find(
+            (ni) => ni.productId === item.productId && ni.color === item.color && ni.yard === item.yard,
+          )?.id,
           color: item.color,
           sampleCode: resolved.sampleCode,
           sampleCodeLastUsedAt: resolved.lastUsedAt,
@@ -1031,6 +1035,8 @@ export function submitDyeRequestColorSample(id: string, result: '通過' | '退�
 
 /** 明細單列輸入：僅需輸入色彩與各項描述性欄位，三段式庫存以「待染數量」起算 */
 export interface DyeOrderItemInput {
+  /** 來源表1 明細 id：分批建單時用於標記哪些品項已開過染單 */
+  sourceItemId?: string
   color: string
   sampleCode?: string
   /** 勾選「無色號」：明確表示此列尚無色號，跳過歷史色號查詢，亦不自動觸發表3 */
@@ -1083,6 +1089,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
           )
     return {
       id: `${id}-L${i + 1}`,
+      sourceItemId: item.sourceItemId,
       color: item.color,
       sampleCode: resolved.sampleCode,
       sampleCodeLastUsedAt: resolved.lastUsedAt,

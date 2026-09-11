@@ -469,6 +469,11 @@ export interface LargeSampleSubmission {
  */
 export interface DyeOrderItem {
   id: string
+  /**
+   * 來源表1 明細的 id：一張表1 的品項可能含多種顏色／材質，需分批開多張表4，
+   * 故記住這一列是表1 的哪一筆明細，才能在下一次建單時提示該品項已建單。
+   */
+  sourceItemId?: string
   color: string
   /** 色樣編號：可留空（不受表3卡控），查得到歷史色號則自動帶入，結案前皆可修改 */
   sampleCode?: string
