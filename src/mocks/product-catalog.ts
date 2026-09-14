@@ -4,9 +4,10 @@
  * 每列格式：類別碼|產品序號|ITEM|COMPOSITION|碼重(G/Y)|米重(G/M)|幅寬|厚度(mm)|產品特性
  * 空欄即原表為空白，一律照原表轉錄，不自行補值。
  *
+ * 第二欄「產品序號」為原表的舊編號，經皇加確認為不再使用的舊序號，故**只保留在此處的原始轉錄中
+ * 供日後與原表對行，不匯入商品主檔**（系統的產品分支序號一律由建檔時自動指派）。
+ *
  * 轉錄注意事項（皆為原表內容，刻意不修正，以免與客戶手上的表對不起來）：
- * - 「產品序號」為原表既有的「類別-流水」編號，與系統的產品分支序號是兩回事（見 Product.catalogSortNo）
- * - 部分品項的序號前綴與所在類別不符（如第二類的 20-60、第四類的 20-59、第九類的 20-46～20-52）
  * - COMPOSITION 拼字與加總照抄：SI-3966 的「PLOYESTER」、JQ788 的成分合計 105%
  * - 原表 NO. 欄在第十八類重新編號，與第十七類重號，故不作識別鍵，識別一律用 ITEM
  * - 米重欄雖有原表值，系統仍由碼重自動換算（兩者經核對一致，僅個位數四捨五入差），故此處不取用
@@ -165,8 +166,6 @@ const CATALOG_TSV = `
 /** 皇加產品表的一列（原表欄位，未經加工） */
 export interface ProductCatalogRow {
   categoryCode: string
-  /** 原表「產品序號」：類別-流水格式，非系統的產品分支序號 */
-  catalogSortNo: string
   /** 原表 ITEM，即皇加品名 */
   item: string
   /** 原表 COMPOSITION，即成分 */
@@ -199,7 +198,7 @@ export const PRODUCT_CATALOG: ProductCatalogRow[] = CATALOG_TSV.trim()
     const widthSpec = str(cells[6])
     return {
       categoryCode: cells[0].trim(),
-      catalogSortNo: cells[1].trim(),
+      // cells[1] 為原表舊序號，不匯入
       item: cells[2].trim(),
       composition: cells[3].trim(),
       weightGY: num(cells[4]),

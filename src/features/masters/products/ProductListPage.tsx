@@ -60,8 +60,6 @@ export function ProductListPage() {
       },
       { id: 'weightMY', header: '米重 (G/M，自動換算)', accessorFn: (row) => row.weightMY || '-' },
       { id: 'thickness', header: '厚度 (mm)', accessorFn: (row) => row.thicknessMm || '-' },
-      // 產品表序號：對照客戶手上的產品表用，非系統識別鍵，故排在指定欄位之後
-      { id: 'catalogSortNo', header: '產品表序號', accessorFn: (row) => row.catalogSortNo ?? '-' },
       { accessorKey: 'greigeSpec', header: '胚布規格' },
       { accessorKey: 'finishedSpec', header: '成品規格' },
       { accessorKey: 'customerProductName', header: '客戶品名' },

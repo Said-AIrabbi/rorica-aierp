@@ -1847,8 +1847,6 @@ export interface ProductInput {
   weightGY: number
   weightTolerancePct: number
   originalRollStandardYard: number
-  /** 產品表序號：對照客戶產品表用，非系統識別鍵 */
-  catalogSortNo?: string
   costPrice?: number
   sellPrice?: number
 }

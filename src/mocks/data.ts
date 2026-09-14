@@ -204,7 +204,6 @@ export const products: Product[] = PRODUCT_CATALOG.map((row, i) => {
     greigeFabricCode: `T${faker.string.numeric(7)}`,
     categoryCode: category.code,
     sortNo: pad(branchNo, 2),
-    catalogSortNo: row.catalogSortNo,
     material: row.composition,
     greigeSpec: [row.composition, faker.helpers.arrayElement(GREIGE_YARN_SPECS)].filter(Boolean).join(' '),
     finishedSpec: [row.widthSpec, weightGY ? `${weightGY}G/Y` : '', category.zh].filter(Boolean).join(' '),

@@ -37,7 +37,6 @@ function toInput(product: Product): ProductInput {
     weightGY: product.weightGY,
     weightTolerancePct: product.weightTolerancePct,
     originalRollStandardYard: product.originalRollStandardYard,
-    catalogSortNo: product.catalogSortNo,
     costPrice: product.costPrice,
     sellPrice: product.sellPrice,
   }
@@ -63,7 +62,6 @@ function emptyInput(): ProductInput {
     weightGY: 0,
     weightTolerancePct: 5,
     originalRollStandardYard: 100,
-    catalogSortNo: '',
     costPrice: undefined,
     sellPrice: undefined,
   }
@@ -168,16 +166,6 @@ export function ProductDetailPage() {
               <Label className="text-xs">產品序號（產品分支，唯讀）</Label>
               <Input value={isNew ? '建立後自動指派' : product!.sortNo} disabled />
               <p className="text-xs text-muted-foreground">同一皇加品名規格略有差異時，以此序號區分分支</p>
-            </div>
-            <div className="space-y-1">
-              {/* 產品表序號與上方的產品分支序號是兩回事：這是皇加既有產品表上的編號，
-                  只為對照客戶手上的表，系統不以此做任何關聯，故可自由輸入 */}
-              <Label className="text-xs">產品表序號</Label>
-              <Input
-                value={draft.catalogSortNo ?? ''}
-                onChange={(e) => set('catalogSortNo', e.target.value)}
-                placeholder="皇加產品表編號，如 1-11"
-              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">皇加品名</Label>
