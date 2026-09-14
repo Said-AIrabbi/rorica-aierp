@@ -47,11 +47,21 @@ export function ProductListPage() {
       {
         id: 'width',
         header: '幅寬',
-        accessorFn: (row) => `${row.width}" ±${row.widthTolerancePct}%（≈ ${formatNumber(inchToCm(row.width), 1)} cm）`,
+        // 產品表的幅寬多為範圍寫法（58/60"），故以原文呈現，括號附註低標的公分換算
+        accessorFn: (row) =>
+          row.widthSpec
+            ? `${row.widthSpec} ±${row.widthTolerancePct}%（≈ ${formatNumber(inchToCm(row.width), 1)} cm 起）`
+            : '-',
       },
-      { id: 'weightGY', header: '碼重 (G/Y)', accessorFn: (row) => `${row.weightGY} ±${row.weightTolerancePct}%` },
-      { id: 'weightMY', header: '米重 (G/M，自動換算)', accessorFn: (row) => row.weightMY },
-      { id: 'thickness', header: '厚度 (mm)', accessorFn: (row) => row.thicknessMm },
+      {
+        id: 'weightGY',
+        header: '碼重 (G/Y)',
+        accessorFn: (row) => (row.weightGY ? `${row.weightGY} ±${row.weightTolerancePct}%` : '-'),
+      },
+      { id: 'weightMY', header: '米重 (G/M，自動換算)', accessorFn: (row) => row.weightMY || '-' },
+      { id: 'thickness', header: '厚度 (mm)', accessorFn: (row) => row.thicknessMm || '-' },
+      // 產品表序號：對照客戶手上的產品表用，非系統識別鍵，故排在指定欄位之後
+      { id: 'catalogSortNo', header: '產品表序號', accessorFn: (row) => row.catalogSortNo ?? '-' },
       { accessorKey: 'greigeSpec', header: '胚布規格' },
       { accessorKey: 'finishedSpec', header: '成品規格' },
       { accessorKey: 'customerProductName', header: '客戶品名' },

@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
 import { reservationExpiresAt } from '@/lib/inventory'
 import { buildSecondaryProcessingPackaging, defaultRollYard } from '@/lib/workflow'
+import { PRODUCT_CATALOG } from './product-catalog'
 import type {
   AbnormalNotice,
   Account,
@@ -46,15 +47,6 @@ const CUSTOMER_NAMES = [
   { short: '雅緻服飾', cn: '雅緻服飾製造股份有限公司', en: 'Elegance Garment Mfg Co., Ltd.' },
   { short: 'Chantilly', cn: '香緹麗禮服有限公司', en: 'Chantilly Couture Co., Ltd.' },
 ]
-
-const PRODUCT_NAME_POOL = [
-  '珠光緞', '柔光緞', '重磅緞', '彈性緞', '手感緞', '亮面緞',
-  '色織千鳥格', '色織條紋', '米卡多光澤布', '山東綢紋理布',
-  '塔夫塔硬挺布', '裡布素面', '雪紡輕柔', '雪紡雙層',
-  '歐根紗硬挺', '花朵蕾絲網', '六角網紗', '硬網澎裙用', '彈性網', '變化提花網', '拉舍爾蕾絲',
-]
-
-const MATERIALS = ['100% POLY', '100% POLY/METALLIC', '95% POLY/5% SPANDEX', '100% NYLON', '100% POLY/SILK LOOK']
 
 /** 胚布規格常見的經緯紗支數寫法，供商品資料主檔「胚布規格」欄位模擬用 */
 const GREIGE_YARN_SPECS = ['75D/72F × 150D/48F', '50D/24F × 75D/36F', '30D/24F × 50D/48F', '100D/144F × 100D/144F']
@@ -165,35 +157,33 @@ export const accounts: Account[] = ACCOUNT_SEED.map((a, i) => ({
 }))
 
 /**
- * 商品建檔清單：同一個皇加品名若規格有些微差異，會各自建為一筆商品，
- * 由「產品序號（產品分支）」區分。此處刻意讓幾個品名各有兩個分支，供展示分支機制。
+ * 商品資料主檔：直接建自皇加產品表（見 product-catalog.ts），不再產生虛構品名。
+ *
+ * 產品表沒有的欄位（所屬客戶、客戶品名、胚布編號、胚布規格、歷史色卡、原疋標準尺寸）
+ * 仍為展示用模擬值；產品表有的欄位一律照原表，不補值、不修正。
+ * 牌價兩欄在原表為空白，故進價／售價一律留空，畫面上顯示「-」。
  */
-const PRODUCT_BUILD_LIST = PRODUCT_NAME_POOL.flatMap((name, i) =>
-  i % 7 === 0 ? [name, name] : [name],
-)
 
-/** 產品分支序號：同一皇加品名底下由 01 開始遞增 */
+/** 產品分支序號：同一皇加品名底下由 01 開始遞增（產品表中 N120 有 60"／120" 兩個分支） */
 const branchCounter = new Map<string, number>()
 
-/** 同一皇加品名的各分支共用類別、所屬客戶與材質，差異只在規格數值 */
+/** 同一皇加品名的各分支共用所屬客戶與客戶品名，差異只在規格數值 */
 const productBaseByName = new Map(
-  PRODUCT_NAME_POOL.map((name, i) => [
-    name,
-    {
-      category: PRODUCT_CATEGORIES[i % PRODUCT_CATEGORIES.length],
-      customer: faker.helpers.arrayElement(customers),
-      material: faker.helpers.arrayElement(MATERIALS),
-    },
-  ]),
+  [...new Set(PRODUCT_CATALOG.map((row) => row.item))].map((item) => {
+    const customer = faker.helpers.arrayElement(customers)
+    return [item, { customer, customerProductName: `${customer.shortName}#${faker.string.alphanumeric(4).toUpperCase()}` }]
+  }),
 )
 
-export const products: Product[] = PRODUCT_BUILD_LIST.map((name, i) => {
-  const base = productBaseByName.get(name)!
-  const category = base.category
-  const branchNo = (branchCounter.get(name) ?? 0) + 1
-  branchCounter.set(name, branchNo)
+export const products: Product[] = PRODUCT_CATALOG.map((row, i) => {
+  const base = productBaseByName.get(row.item)!
+  const category = PRODUCT_CATEGORIES.find((c) => c.code === row.categoryCode)!
+  const branchNo = (branchCounter.get(row.item) ?? 0) + 1
+  branchCounter.set(row.item, branchNo)
   const customer = base.customer
-  const weightGY = faker.number.float({ min: 60, max: 220, fractionDigits: 1 })
+  // 產品表未列碼重／幅寬／厚度者（法國蕾絲、繽紛系列、部分 300CM 產品、配件）以 0 表示未提供，畫面顯示「-」
+  const weightGY = row.weightGY ?? 0
+  const width = row.width ?? 0
   const colorCount = faker.number.int({ min: 1, max: 4 })
   const colors = faker.helpers
     .arrayElements(COLOR_NAMES, colorCount)
@@ -206,35 +196,41 @@ export const products: Product[] = PRODUCT_BUILD_LIST.map((name, i) => {
       sampleCode: `T${faker.string.numeric(7)}-${ci + 1}A`,
     }))
 
-  // 幅寬原始單位為英吋（廠商規格單位），如標籤範例 72"；分支間的差異即在此類規格數值
-  const width = faker.helpers.arrayElement([44, 58, 60, 72])
-  const material = base.material
-
   return {
     id: `PROD-${pad(i + 1)}`,
     customerId: customer.id,
-    productName: name,
-    customerProductName: `${customer.shortName}#${faker.string.alphanumeric(4).toUpperCase()}`,
+    productName: row.item,
+    customerProductName: base.customerProductName,
     greigeFabricCode: `T${faker.string.numeric(7)}`,
     categoryCode: category.code,
     sortNo: pad(branchNo, 2),
-    material,
-    greigeSpec: `${material} ${faker.helpers.arrayElement(GREIGE_YARN_SPECS)}`,
-    finishedSpec: `${width}" ${weightGY}G/Y ${category.zh}`,
+    catalogSortNo: row.catalogSortNo,
+    material: row.composition,
+    greigeSpec: [row.composition, faker.helpers.arrayElement(GREIGE_YARN_SPECS)].filter(Boolean).join(' '),
+    finishedSpec: [row.widthSpec, weightGY ? `${weightGY}G/Y` : '', category.zh].filter(Boolean).join(' '),
     colors,
-    thicknessMm: faker.number.float({ min: 0.1, max: 1.2, fractionDigits: 2 }),
-    characteristics: faker.helpers.arrayElement(['垂墜感佳', '硬挺澎度足', '輕薄透氣', '光澤度高', '彈性佳', '手感柔軟']),
+    thicknessMm: row.thicknessMm ?? 0,
+    characteristics: row.characteristics ?? '',
     width,
+    widthSpec: row.widthSpec,
     widthTolerancePct: 5,
     weightGY,
     weightTolerancePct: 5,
-    weightMY: Number(yardWeightToMeterWeight(weightGY).toFixed(2)),
+    weightMY: weightGY ? Number(yardWeightToMeterWeight(weightGY).toFixed(2)) : 0,
     // 原疋標準尺寸必然大於客戶要求的捲長（表1需求多為 40~65 碼），故取 80 碼以上
     originalRollStandardYard: faker.helpers.arrayElement([80, 100, 120]),
-    costPrice: faker.number.float({ min: 20, max: 80, fractionDigits: 1 }),
-    sellPrice: faker.number.float({ min: 90, max: 220, fractionDigits: 1 }),
+    // 產品表的牌價(Y)／牌價(M) 兩欄整份為空白，故不給展示值
+    costPrice: undefined,
+    sellPrice: undefined,
   }
 })
+
+/**
+ * 可下單的商品：產品表中尚未提供碼重／幅寬的品項（法國蕾絲、繽紛系列、部分 300CM 產品、配件）
+ * 規格不全，開單與布卷標籤都算不出數量，故展示資料只從有完整規格者挑選。
+ * 這些品項仍在商品主檔中，可於主檔頁面查閱。
+ */
+const orderableProducts = products.filter((p) => p.width > 0 && p.weightGY > 0)
 
 function randomOrderId(index: number, daysAgo: number) {
   const date = dayjs().subtract(daysAgo, 'day')
@@ -266,7 +262,7 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
       : faker.helpers.arrayElement(['FASHION', 'G.L', 'BRIDAL', 'RORICA'])
 
   const items: PackingNoticeItem[] = Array.from({ length: itemCount }).map((_, j) => {
-    const product = faker.helpers.arrayElement(products)
+    const product = faker.helpers.arrayElement(orderableProducts)
     const color = faker.helpers.arrayElement(product.colors)?.color ?? faker.helpers.arrayElement(COLOR_NAMES)
     const yard = faker.number.int({ min: 100, max: 2000 })
     const packingMethod = faker.helpers.arrayElement(PACKING_METHODS)
@@ -427,7 +423,7 @@ export const dyeRequests: DyeRequest[] = packingNotices.slice(0, 7).flatMap((pn,
   return Array.from({ length: count }).map((_, j) => {
     const createdAt = dayjs(pn.createdAt).add(1, 'day')
     const status = DYE_REQUEST_STATUSES[(i + j) % DYE_REQUEST_STATUSES.length]
-    const product = faker.helpers.arrayElement(products)
+    const product = faker.helpers.arrayElement(orderableProducts)
     // 表3的子序號為 -C{n}（Color card），與表4染單的 -D{n} 分開，避免同一主號下單號相撞
     const id = `${pn.id}-C${j + 1}`
     const colorNames = faker.helpers.arrayElements(COLOR_NAMES, { min: 1, max: 3 })
@@ -606,7 +602,7 @@ export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) => {
   return gr.rolls.map((roll, i) => {
     // 一張入庫單可能收多個品項，逐捲輪流對應來源明細
     const item = notice?.items.length ? notice.items[i % notice.items.length] : undefined
-    const product = resolveProduct(item?.productId, item?.roricaProductName) ?? faker.helpers.arrayElement(products)
+    const product = resolveProduct(item?.productId, item?.roricaProductName) ?? faker.helpers.arrayElement(orderableProducts)
     const color = item?.color ?? product.colors[0]?.color ?? faker.helpers.arrayElement(COLOR_NAMES)
     return {
       id: `${gr.id}-L${roll.rollNo}`,

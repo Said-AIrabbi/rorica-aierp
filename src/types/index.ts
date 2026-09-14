@@ -65,6 +65,14 @@ export const PRODUCT_CATEGORIES = [
   { code: '9', zh: '硬網／彈網', en: 'Hard & Stretch Tulle' },
   { code: '10', zh: '變化網', en: 'Design Tulle' },
   { code: '11', zh: '拉西魯', en: 'Raschel' },
+  { code: '12', zh: '緹花', en: 'Jacquards' },
+  { code: '13', zh: '針織', en: 'Knit' },
+  { code: '14', zh: '印花／壓摺', en: 'Printing & Crinkle' },
+  { code: '15', zh: '環保系列產品／膚麗娟', en: 'Eco Friendly' },
+  { code: '16', zh: '法國蕾絲', en: 'French Lace' },
+  { code: '17', zh: '皇加300CM產品', en: 'RORICA 300CM' },
+  { code: '18', zh: '繽紛系列', en: 'Fancy Fabric' },
+  { code: '19', zh: '材料配件', en: 'Accessories' },
 ] as const
 
 export interface ColorRecord {
@@ -94,6 +102,12 @@ export interface Product {
    * 會各自建為一筆商品，以此序號區分是哪一個分支，格式為兩位數流水號（01、02…）。
    */
   sortNo: string
+  /**
+   * 產品表序號：皇加既有產品表上的「產品序號」（如 1-11、20-60、17-1-1），格式為「類別-流水」。
+   * 與上方系統自動指派的產品分支序號是兩回事——此欄只為對照客戶手上的紙本／Excel 產品表，
+   * 故照原表原樣保存（含前綴與所在類別不符的品項），系統本身不依賴它做任何關聯。
+   */
+  catalogSortNo?: string
   /** 成分（原稱胚布材質）：自由文字（如「100% POLY/METALLIC」「N/T 42/58」），表4明細第二列自動帶入 */
   material: string
   /** 胚布規格：表4明細第二列自動帶入 */
@@ -104,6 +118,11 @@ export interface Product {
   thicknessMm: number
   characteristics: string
   width: number
+  /**
+   * 幅寬原文：產品表上的幅寬多為範圍寫法（58/60"、118/120"），單一數值存不下來。
+   * 上方 width 取範圍低標供接疋與規格運算，此欄保留原文供畫面與列印呈現；未提供者為 undefined。
+   */
+  widthSpec?: string
   /** 幅寬容許誤差（%）：決策97 起與碼重統一為 ±5%（原為 ±3%） */
   widthTolerancePct: number
   weightGY: number

@@ -32,10 +32,12 @@ function toInput(product: Product): ProductInput {
     thicknessMm: product.thicknessMm,
     characteristics: product.characteristics,
     width: product.width,
+    widthSpec: product.widthSpec,
     widthTolerancePct: product.widthTolerancePct,
     weightGY: product.weightGY,
     weightTolerancePct: product.weightTolerancePct,
     originalRollStandardYard: product.originalRollStandardYard,
+    catalogSortNo: product.catalogSortNo,
     costPrice: product.costPrice,
     sellPrice: product.sellPrice,
   }
@@ -55,11 +57,13 @@ function emptyInput(): ProductInput {
     thicknessMm: 0,
     characteristics: '',
     width: 60,
+    widthSpec: '58/60"',
     // 容許誤差沿用全公司慣例：幅寬與碼重皆為 ±5%（決策97 統一）
     widthTolerancePct: 5,
     weightGY: 0,
     weightTolerancePct: 5,
     originalRollStandardYard: 100,
+    catalogSortNo: '',
     costPrice: undefined,
     sellPrice: undefined,
   }
@@ -166,6 +170,16 @@ export function ProductDetailPage() {
               <p className="text-xs text-muted-foreground">同一皇加品名規格略有差異時，以此序號區分分支</p>
             </div>
             <div className="space-y-1">
+              {/* 產品表序號與上方的產品分支序號是兩回事：這是皇加既有產品表上的編號，
+                  只為對照客戶手上的表，系統不以此做任何關聯，故可自由輸入 */}
+              <Label className="text-xs">產品表序號</Label>
+              <Input
+                value={draft.catalogSortNo ?? ''}
+                onChange={(e) => set('catalogSortNo', e.target.value)}
+                placeholder="皇加產品表編號，如 1-11"
+              />
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs">皇加品名</Label>
               <Input value={draft.productName} onChange={(e) => set('productName', e.target.value)} />
             </div>
@@ -268,7 +282,17 @@ export function ProductDetailPage() {
               />
             </div>
             <div className="space-y-1">
+              {/* 產品表上的幅寬多為範圍（58/60"），故原文與低標數值分開存：
+                  原文供畫面與列印呈現，低標數值供接疋與規格運算 */}
               <Label className="text-xs">幅寬（英吋）約有 ±5% 誤差</Label>
+              <Input
+                value={draft.widthSpec ?? ''}
+                onChange={(e) => set('widthSpec', e.target.value)}
+                placeholder={'原文寫法，如 58/60" 或 120"'}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">幅寬計算基準（英吋）</Label>
               <div className="flex items-center gap-1.5">
                 <Input
                   type="number"
