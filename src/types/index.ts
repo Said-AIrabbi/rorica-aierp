@@ -19,8 +19,16 @@ export interface CustomerContact {
   phone?: string
   /** 手機 */
   mobile?: string
-  /** 該窗口的地址（例如收樣地址、分公司地址），與公司地址／發票地址分開 */
-  address?: string
+  /**
+   * 收貨地址：該窗口實際收貨的地點（倉庫、分公司、收樣地址），與公司地址／發票地址分開。
+   * 同一客戶不同窗口常收在不同地方，故隨聯絡資訊逐組記錄，而非客戶層級單一欄位。
+   */
+  shippingAddress?: string
+  /**
+   * 銀行帳戶：該窗口對應的收付款帳戶（銀行／分行／戶名／帳號，自由文字）。
+   * 與收貨地址同理逐組記錄——客戶可能依採購單位不同而用不同帳戶結帳。
+   */
+  bankAccount?: string
 }
 
 export interface Customer {
@@ -45,6 +53,11 @@ export interface Customer {
   address: string
   invoiceAddress: string
   taxId: string
+  /**
+   * TAX ID（國外稅務統編）：國外客戶的稅務識別號（如 VAT No.、EIN），與台灣統一編號分開存。
+   * 兩者格式與用途皆不同，且國外客戶多半沒有台灣統編，合併一欄會無法區分。
+   */
+  foreignTaxId?: string
   /** 稅率：如「5%」，客戶主檔編輯視窗欄位 */
   taxRate: string
   paymentTerms: string

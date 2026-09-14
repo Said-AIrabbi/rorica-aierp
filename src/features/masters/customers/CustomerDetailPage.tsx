@@ -18,7 +18,14 @@ function toInput(customer: Customer): CustomerInput {
   return rest
 }
 
-const EMPTY_CONTACT: CustomerContact = { name: '', email: '', phone: '', mobile: '', address: '' }
+const EMPTY_CONTACT: CustomerContact = {
+  name: '',
+  email: '',
+  phone: '',
+  mobile: '',
+  shippingAddress: '',
+  bankAccount: '',
+}
 
 /** 新增時的空白表單：代碼先給下一個流水號當預設值，使用者可自行改寫 */
 function emptyInput(): CustomerInput {
@@ -34,6 +41,7 @@ function emptyInput(): CustomerInput {
     address: '',
     invoiceAddress: '',
     taxId: '',
+    foreignTaxId: '',
     taxRate: '5%',
     paymentTerms: '',
     // 交期預設天數：全公司統一 14 天
@@ -170,7 +178,16 @@ export function CustomerDetailPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">統一編號</Label>
-              <Input value={draft.taxId} onChange={(e) => set('taxId', e.target.value)} />
+              <Input value={draft.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="台灣統編，8 碼" />
+            </div>
+            <div className="space-y-1">
+              {/* 國外客戶多半沒有台灣統編，兩者格式與用途都不同，故分開兩欄 */}
+              <Label className="text-xs">TAX ID（國外稅務統編）</Label>
+              <Input
+                value={draft.foreignTaxId ?? ''}
+                onChange={(e) => set('foreignTaxId', e.target.value)}
+                placeholder="非必填，國外客戶適用，如 VAT No."
+              />
             </div>
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs">公司名稱（中）</Label>
@@ -269,11 +286,19 @@ export function CustomerDetailPage() {
                     />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <Label className="text-xs">地址</Label>
+                    <Label className="text-xs">收貨地址</Label>
                     <Input
-                      value={contact.address ?? ''}
-                      onChange={(e) => setContact(index, { address: e.target.value })}
-                      placeholder="非必填，如收樣或倉庫收貨地址"
+                      value={contact.shippingAddress ?? ''}
+                      onChange={(e) => setContact(index, { shippingAddress: e.target.value })}
+                      placeholder="非必填，該窗口實際收貨地點"
+                    />
+                  </div>
+                  <div className="space-y-1 lg:col-span-3">
+                    <Label className="text-xs">銀行帳戶</Label>
+                    <Input
+                      value={contact.bankAccount ?? ''}
+                      onChange={(e) => setContact(index, { bankAccount: e.target.value })}
+                      placeholder="非必填，如「第一銀行 圓山分行 123-45678901 皇加布業」"
                     />
                   </div>
                 </div>

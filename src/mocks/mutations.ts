@@ -146,6 +146,7 @@ function resolveCustomerByName(name: string): Customer {
     address: '',
     invoiceAddress: '',
     taxId: '',
+    foreignTaxId: '',
     taxRate: '',
     paymentTerms: '',
     leadTimeDays: 14,

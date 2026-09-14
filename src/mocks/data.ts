@@ -105,7 +105,8 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
       email: `${faker.internet.username().toLowerCase()}@example.com`,
       phone: faker.phone.number({ style: 'international' }),
       mobile: faker.phone.number({ style: 'international' }),
-      address: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號`,
+      shippingAddress: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號`,
+      bankAccount: `第一銀行 圓山分行 ${faker.string.numeric(3)}-${faker.string.numeric(8)}`,
     },
     ...(i % 2 === 0
       ? [
@@ -113,7 +114,7 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
             name: faker.person.fullName(),
             email: `${faker.internet.username().toLowerCase()}@example.com`,
             mobile: faker.phone.number({ style: 'international' }),
-            address: `新北市五股區工商路${faker.number.int({ min: 1, max: 200 })}號（倉庫收貨）`,
+            shippingAddress: `新北市五股區工商路${faker.number.int({ min: 1, max: 200 })}號（倉庫收貨）`,
           },
         ]
       : []),
@@ -121,6 +122,8 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
   address: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號${faker.number.int({ min: 1, max: 10 })}樓`,
   invoiceAddress: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號${faker.number.int({ min: 1, max: 10 })}樓`,
   taxId: faker.string.numeric(8),
+  // 國外稅務統編：僅國外客戶有，故只給英文名客戶（展示兩種情況的畫面呈現）
+  foreignTaxId: /^[A-Za-z]/.test(c.short) ? `VAT-${faker.string.alphanumeric(9).toUpperCase()}` : undefined,
   taxRate: '5%',
   paymentTerms: faker.helpers.arrayElement(['月結30天', '月結45天', '月結60天', '訂金30%/出貨前付清']),
   leadTimeDays: 14,
