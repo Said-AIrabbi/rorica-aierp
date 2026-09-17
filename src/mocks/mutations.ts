@@ -2501,11 +2501,17 @@ export function createProduct(input: ProductInput): Promise<Product> {
   if (!input.customerId) throw new Error('請選擇所屬客戶')
   const branchNo =
     products.filter((p) => p.productName === input.productName.trim() && p.customerId === input.customerId).length + 1
+  // 同一皇加品名的新分支沿用既有產品編號；全新品名才給該類別的下一個編號
+  const sibling = products.find(
+    (p) => p.productName === input.productName.trim() && p.customerId === input.customerId,
+  )
+  const productCode = sibling?.productCode ?? nextProductCode(input.categoryCode)
+  const sortNo = pad(branchNo, 2)
   const product: Product = {
     ...input,
-    // 產品編號即主鍵：依所選類別自動給該類別的下一個流水號
-    id: nextProductCode(input.categoryCode),
-    sortNo: pad(branchNo, 2),
+    id: `${productCode}-${sortNo}`,
+    productCode,
+    sortNo,
     // 歷史色號由表3／表4 實際使用時累積，新建商品一律從空的色卡開始
     colors: [],
     weightMY: Number(yardWeightToMeterWeight(input.weightGY).toFixed(2)),
@@ -2585,11 +2591,11 @@ export function deleteAccount(id: string): Promise<{ id: string }> {
  */
 function nextProductCode(categoryCode: string): string {
   const used = products
-    .filter((p) => p.id.startsWith(`${categoryCode}-`))
-    .map((p) => Number(p.id.slice(categoryCode.length + 1).split('-')[0]))
+    .filter((p) => p.productCode.startsWith(`${categoryCode}-`))
+    .map((p) => Number(p.productCode.slice(categoryCode.length + 1).split('-')[0]))
     .filter((n) => Number.isFinite(n))
   let next = (used.length > 0 ? Math.max(...used) : 0) + 1
-  while (products.some((p) => p.id === `${categoryCode}-${next}`)) next += 1
+  while (products.some((p) => p.productCode === `${categoryCode}-${next}`)) next += 1
   return `${categoryCode}-${next}`
 }
 

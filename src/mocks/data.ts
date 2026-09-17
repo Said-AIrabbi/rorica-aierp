@@ -178,27 +178,6 @@ const productBaseByName = new Map(
   }),
 )
 
-/**
- * 產品編號即主鍵，故必須唯一。產品表中 N120 一列內有 60" 與 120" 兩組規格，
- * 兩者在系統中是兩筆商品，不能共用同一個編號——第二筆改給該類別的下一個流水號。
- */
-const usedProductIds = new Set<string>()
-function uniqueProductId(code: string, categoryCode: string): string {
-  if (!usedProductIds.has(code)) {
-    usedProductIds.add(code)
-    return code
-  }
-  const maxNo = PRODUCT_CATALOG.filter((r) => r.productCode.startsWith(`${categoryCode}-`)).reduce((m, r) => {
-    const n = Number(r.productCode.slice(categoryCode.length + 1).split('-')[0])
-    return Number.isFinite(n) ? Math.max(m, n) : m
-  }, 0)
-  let next = maxNo + 1
-  while (usedProductIds.has(`${categoryCode}-${next}`)) next += 1
-  const id = `${categoryCode}-${next}`
-  usedProductIds.add(id)
-  return id
-}
-
 export const products: Product[] = PRODUCT_CATALOG.map((row) => {
   const base = productBaseByName.get(row.item)!
   const category = PRODUCT_CATEGORIES.find((c) => c.code === row.categoryCode)!
@@ -221,7 +200,9 @@ export const products: Product[] = PRODUCT_CATALOG.map((row) => {
     }))
 
   return {
-    id: uniqueProductId(row.productCode, row.categoryCode),
+    // 記錄識別碼＝產品編號-產品序號：N120 的 60" 與 120" 同為 8-13，靠分支序號區分
+    id: `${row.productCode}-${pad(branchNo, 2)}`,
+    productCode: row.productCode,
     customerId: customer.id,
     productName: row.item,
     customerProductName: base.customerProductName,
@@ -925,7 +906,8 @@ batchDefectLabels.forEach((label) => {
   }
 })
 
-const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v1'
+// 版號隨資料結構調整遞增：舊快照的欄位已不相容（如產品編號改制），沿用會讓畫面顯示舊資料
+const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v2'
 
 interface SessionSnapshot {
   packingNotices: PackingNotice[]

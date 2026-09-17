@@ -35,7 +35,7 @@ export function ProductListPage() {
         header: '產品類別',
         accessorFn: (row) => getCategoryLabel(row.categoryCode),
       },
-      { accessorKey: 'id', header: '產品編號' },
+      { accessorKey: 'productCode', header: '產品編號' },
       { accessorKey: 'sortNo', header: '產品序號（分支）' },
       {
         id: 'customer',

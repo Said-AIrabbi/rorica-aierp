@@ -1,6 +1,6 @@
 import { Barcode } from '@/components/print/Barcode'
 import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
-import { productBranchSuffix } from '@/mocks/data'
+import { getProduct, productBranchSuffix } from '@/mocks/data'
 import type { FabricLabel } from '@/types'
 
 /**
@@ -42,7 +42,7 @@ export function FabricLabelPrint({ label }: { label: FabricLabel }) {
             <dt>批</dt>
             <dd>{label.batchCode ?? '—'}</dd>
             <dt>產品編號</dt>
-            <dd>{label.productId ?? '—'}</dd>
+            <dd>{(label.productId ? getProduct(label.productId)?.productCode : undefined) ?? label.productId ?? '—'}</dd>
             <dt>長度</dt>
             <dd>
               {label.unit === 'Yard'

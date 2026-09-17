@@ -183,11 +183,11 @@ export function ProductDetailPage() {
               {/* 產品編號即主鍵：建檔時依類別自動給號，不開放修改 */}
               <Label className="text-xs">產品編號（唯讀）</Label>
               <Input
-                value={isNew ? `建立後自動產生（預計 ${masterDefaults.productCode(draft.categoryCode)}）` : product!.id}
+                value={isNew ? `建立後自動產生（預計 ${masterDefaults.productCode(draft.categoryCode)}）` : product!.productCode}
                 disabled
               />
               <p className="text-xs text-muted-foreground">
-                皇加編碼「類別-流水號」（1-11 ＝ 第一類的第 11 個產品），建檔時自動編號，單據以此關聯
+                皇加編碼「類別-流水號」（1-11 ＝ 第一類的第 11 個產品），建檔時自動編號；同品名的規格分支共用同一個編號
               </p>
             </div>
             <div className="space-y-1">

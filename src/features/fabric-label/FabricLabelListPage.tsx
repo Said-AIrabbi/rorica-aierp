@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { api } from '@/mocks/api'
+import { getProduct } from '@/mocks/data'
 import { rollLengthText } from '@/components/shared/BasisQty'
 import type { FabricLabel } from '@/types'
 
@@ -17,7 +18,12 @@ export function FabricLabelListPage() {
   const columns = useMemo<ColumnDef<FabricLabel, unknown>[]>(
     () => [
       { accessorKey: 'rollCode', header: '布卷條碼（胚布編號-流水號）' },
-      { id: 'productId', header: '產品編號', accessorFn: (row) => row.productId ?? '-' },
+      {
+        // 布卷存的是記錄識別碼（產品編號-分支），畫面只顯示產品編號，分支已由品名後綴呈現
+        id: 'productCode',
+        header: '產品編號',
+        accessorFn: (row) => (row.productId ? (getProduct(row.productId)?.productCode ?? row.productId) : '-'),
+      },
       { accessorKey: 'receiptId', header: '來源入庫單' },
       { accessorKey: 'productName', header: '皇加品名' },
       { id: 'composition', header: '成分', accessorFn: (row) => row.composition ?? '-' },
