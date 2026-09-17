@@ -469,7 +469,7 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
   const status = DYE_ORDER_STATUSES[i % DYE_ORDER_STATUSES.length]
   const id = `${pn.id}-D1`
 
-  // 生效中的單以單號奇偶模擬「胚布尚未到廠（全待染）」與「已到廠投入染整（全指染）」兩種狀態
+  // 生效中的單以單號奇偶模擬「胚布尚未到廠（指染 0）」與「已到廠投入染整（全數指染中）」兩種狀態
   const greigeArrived = status === '生效' ? i % 2 === 0 : status === '已完成'
   const items = pn.items.map((item, j) => {
     const totalQty = item.yard
@@ -488,10 +488,9 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
       fabricSpec: product?.greigeSpec ?? '',
       finishedSpec: product?.finishedSpec ?? '',
       unitPrice: faker.number.float({ min: 15, max: 45, fractionDigits: 1 }),
-      // 三段式庫存：胚布到廠確認前一律為待染，到廠後轉指染，大貨樣通過後轉成品
-      pendingDyeQty: status === '已完成' || greigeArrived ? 0 : totalQty,
+      // 兩段式：成品數量為該列應產出量（固定不變）；指染數量只在胚布到廠、尚未結案期間有值
+      finishedQty: totalQty,
       inDyeQty: status === '生效' && greigeArrived ? totalQty : 0,
-      finishedQty: status === '已完成' ? totalQty : 0,
     }
   })
 
@@ -510,7 +509,7 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
     greigeFabricCode: `T${faker.string.numeric(7)}`,
     shippingSampleQty: 0.5,
     effectiveAt: status === '草稿' ? undefined : createdAt.add(1, 'day').toISOString(),
-    // 胚布直送染整廠，到廠確認的當下才把待染轉為指染
+    // 胚布直送染整廠，到廠確認的當下才登記為指染中
     greigeArrivedAt: greigeArrived ? createdAt.add(2, 'day').toISOString() : undefined,
     // 大貨樣「通過」即結案，故僅已完成單有確認日與送樣紀錄；生效中的單尚未通過
     largeSampleConfirmedAt: status === '已完成' ? createdAt.add(4, 'day').toISOString() : undefined,

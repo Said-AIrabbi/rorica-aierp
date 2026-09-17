@@ -157,11 +157,10 @@ export function DyeOrderDetailPage() {
   const vendor = getVendor(order.vendorId)
   const totals = order.items.reduce(
     (acc, item) => ({
-      pendingDyeQty: acc.pendingDyeQty + item.pendingDyeQty,
-      inDyeQty: acc.inDyeQty + item.inDyeQty,
       finishedQty: acc.finishedQty + item.finishedQty,
+      inDyeQty: acc.inDyeQty + item.inDyeQty,
     }),
-    { pendingDyeQty: 0, inDyeQty: 0, finishedQty: 0 },
+    { finishedQty: 0, inDyeQty: 0 },
   )
   // 查得到色號但超過12個月未使用＝「重新覆色」情境：系統僅提醒，不自動開立表3
   const staleItems = order.items.filter((item) => isColorStale(item.sampleCodeLastUsedAt))
@@ -228,7 +227,7 @@ export function DyeOrderDetailPage() {
             {/* 胚布到貨由胚布訂單的表6入庫單結案時觸發，非染單自身的人工動作 */}
             <DetailField
               label="胚布到貨日（入庫單觸發）"
-              value={order.greigeArrivedAt ? formatDate(order.greigeArrivedAt) : '胚布尚未到貨（全數待染）'}
+              value={order.greigeArrivedAt ? formatDate(order.greigeArrivedAt) : '胚布尚未到貨（尚未投入染整）'}
             />
             <DetailField label="大貨樣確認日" value={formatDate(order.largeSampleConfirmedAt)} />
           </DetailGrid>
@@ -349,9 +348,8 @@ export function DyeOrderDetailPage() {
                   <TableHead>胚布規格</TableHead>
                   <TableHead>成品規格</TableHead>
                   <TableHead className="text-right">加工單價</TableHead>
-                  <TableHead className="text-right">待染數量</TableHead>
-                  <TableHead className="text-right">指染數量</TableHead>
                   <TableHead className="text-right">成品數量</TableHead>
+                  <TableHead className="text-right">指染數量</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -414,9 +412,8 @@ export function DyeOrderDetailPage() {
                     <TableCell>{item.fabricSpec || '-'}</TableCell>
                     <TableCell>{item.finishedSpec || '-'}</TableCell>
                     <TableCell className="text-right">{item.unitPrice != null ? formatNumber(item.unitPrice, 1) : '-'}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.pendingDyeQty, 0)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.inDyeQty, 0)}</TableCell>
                     <TableCell className="text-right">{formatNumber(item.finishedQty, 0)}</TableCell>
+                    <TableCell className="text-right">{formatNumber(item.inDyeQty, 0)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -424,8 +421,7 @@ export function DyeOrderDetailPage() {
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-4">
             <p className="text-xs text-muted-foreground">
-              合計：待染 {formatNumber(totals.pendingDyeQty, 0)} ／ 指染 {formatNumber(totals.inDyeQty, 0)} ／ 成品{' '}
-              {formatNumber(totals.finishedQty, 0)} {order.unit}
+              合計：成品 {formatNumber(totals.finishedQty, 0)} ／ 指染 {formatNumber(totals.inDyeQty, 0)} {order.unit}
             </p>
             {sampleCodeEditable && (
               <Button
@@ -465,7 +461,7 @@ export function DyeOrderDetailPage() {
         <CardContent>
           <DetailGrid>
             <DetailField label="收布編號" value={order.greigeFabricCode} />
-            <DetailField label="待染數量" value={`${formatNumber(totals.pendingDyeQty, 0)} ${order.unit}`} />
+            <DetailField label="成品數量" value={`${formatNumber(totals.finishedQty, 0)} ${order.unit}`} />
             <DetailField
               label="出貨檢樣"
               value={order.shippingSampleQty != null ? `${order.shippingSampleQty} ${order.unit}` : '-'}

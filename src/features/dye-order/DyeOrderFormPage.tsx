@@ -58,9 +58,9 @@ export function DyeOrderFormPage() {
   const unit = watch('unit')
   const items = watch('items')
   // 兩個數量欄的合計：明細區塊內與「使用胚布」區塊共用同一組數字，不各算一次
-  const sumOf = (key: 'pendingDyeQty' | 'inDyeQty') =>
+  const sumOf = (key: 'finishedQty' | 'inDyeQty') =>
     items.reduce((sum, item) => sum + (Number(item[key]) || 0), 0)
-  const totalPendingDyeQty = sumOf('pendingDyeQty')
+  const totalFinishedQty = sumOf('finishedQty')
   const totalInDyeQty = sumOf('inDyeQty')
   const notice = packingNotices.find((n) => n.id === parentId)
   // 有訂購單時，受託加工廠依訂購單選定的加工廠自動帶入且唯讀；「有胚」無訂購單情境才人工選擇
@@ -127,7 +127,7 @@ export function DyeOrderFormPage() {
           fabricSpec: product?.greigeSpec ?? '',
           finishedSpec: product?.finishedSpec ?? '',
           unitPrice: undefined,
-          pendingDyeQty: item.yard,
+          finishedQty: item.yard,
           // 指染數量預設 0：建單當下胚布通常還沒到廠，可由使用者自行填寫
           inDyeQty: 0,
         }
@@ -252,7 +252,7 @@ export function DyeOrderFormPage() {
                       <TableHead>胚布規格</TableHead>
                       <TableHead>成品規格</TableHead>
                       <TableHead className="text-right">加工單價</TableHead>
-                      <TableHead className="text-right">待染數量</TableHead>
+                      <TableHead className="text-right">成品數量</TableHead>
                       <TableHead className="text-right">指染數量</TableHead>
                       <TableHead />
                     </TableRow>
@@ -331,7 +331,7 @@ export function DyeOrderFormPage() {
                           <Input type="number" step="0.1" className="w-20 text-right" {...register(`items.${index}.unitPrice`)} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className="w-20 text-right" {...register(`items.${index}.pendingDyeQty`)} />
+                          <Input type="number" className="w-20 text-right" {...register(`items.${index}.finishedQty`)} />
                         </TableCell>
                         <TableCell className="text-right">
                           <Input type="number" className="w-20 text-right" {...register(`items.${index}.inDyeQty`)} />
@@ -356,7 +356,7 @@ export function DyeOrderFormPage() {
                       <TableCell colSpan={8} className="text-right">
                         合計
                       </TableCell>
-                      <TableCell className="text-right">{totalPendingDyeQty}</TableCell>
+                      <TableCell className="text-right">{totalFinishedQty}</TableCell>
                       <TableCell className="text-right">{totalInDyeQty}</TableCell>
                       <TableCell />
                     </TableRow>
@@ -396,8 +396,8 @@ export function DyeOrderFormPage() {
                 <Input {...register('greigeFabricCode')} placeholder="例：T3268305" />
               </div>
               <div className="space-y-1.5">
-                <Label>待染數量合計（唯讀，各列加總）</Label>
-                <Input disabled value={totalPendingDyeQty} />
+                <Label>成品數量合計（唯讀，各列加總）</Label>
+                <Input disabled value={totalFinishedQty} />
               </div>
               <div className="space-y-1.5">
                 <Label>出貨檢樣</Label>

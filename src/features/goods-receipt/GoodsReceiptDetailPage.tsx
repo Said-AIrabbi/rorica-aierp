@@ -410,7 +410,7 @@ export function GoodsReceiptDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-xs text-muted-foreground">
-              縮率＝（投胚量－本次入庫總碼數）÷投胚量。優先取 OCR 辨識廠商單據標示值，若無則取染單「使用胚布」的待染數量，此處為人工覆核／輸入介面。
+              縮率＝（投胚量－本次入庫總碼數）÷投胚量。優先取 OCR 辨識廠商單據標示值，若無則取染單「使用胚布」的成品數量，此處為人工覆核／輸入介面。
             </p>
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1.5">

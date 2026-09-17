@@ -37,11 +37,11 @@ const specSubRow = (item: DyeOrderItem) => {
 /**
  * 表4 染單－委託加工通知單列印版面：送染整廠的對外單據。
  * 依 PRD 版面順序，明細區塊在上、使用胚布區塊在下；
- * 三段式庫存的「待染數量」屬於使用胚布區塊，指染／成品數量則列於明細。
+ * 「成品數量」的合計屬於使用胚布區塊，逐列的成品／指染數量則列於明細。
  */
 export function DyeOrderPrint({ order }: { order: DyeOrder }) {
   const vendor = getVendor(order.vendorId)
-  const pendingTotal = order.items.reduce((sum, i) => sum + i.pendingDyeQty, 0)
+  const finishedTotal = order.items.reduce((sum, i) => sum + i.finishedQty, 0)
 
   // 狀態、廠商地址、胚布到貨日、皇加聯絡窗口不列印：皆為內部流程資訊，
   // 對收單的染整廠沒有作業意義（地址是他們自己的、狀態與到貨日是皇加系統內的追蹤）
@@ -72,9 +72,9 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
             <tr>
               <th style={{ width: '28mm' }}>收布編號</th>
               <td>{order.greigeFabricCode ?? ' '}</td>
-              <th style={{ width: '28mm' }}>待染數量</th>
+              <th style={{ width: '28mm' }}>成品數量</th>
               <td className="pr-num">
-                {formatNumber(pendingTotal, 1)} {order.unit}
+                {formatNumber(finishedTotal, 1)} {order.unit}
               </td>
             </tr>
           </tbody>

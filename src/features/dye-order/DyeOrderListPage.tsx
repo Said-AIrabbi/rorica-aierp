@@ -39,17 +39,16 @@ export function DyeOrderListPage() {
       },
       {
         id: 'quantity',
-        header: '待染/指染/成品',
+        header: '成品/指染',
         accessorFn: (row) => {
           const totals = row.items.reduce(
             (acc, item) => ({
-              pendingDyeQty: acc.pendingDyeQty + item.pendingDyeQty,
-              inDyeQty: acc.inDyeQty + item.inDyeQty,
               finishedQty: acc.finishedQty + item.finishedQty,
+              inDyeQty: acc.inDyeQty + item.inDyeQty,
             }),
-            { pendingDyeQty: 0, inDyeQty: 0, finishedQty: 0 },
+            { finishedQty: 0, inDyeQty: 0 },
           )
-          return `${formatNumber(totals.pendingDyeQty, 0)}／${formatNumber(totals.inDyeQty, 0)}／${formatNumber(totals.finishedQty, 0)} ${row.unit}`
+          return `${formatNumber(totals.finishedQty, 0)}／${formatNumber(totals.inDyeQty, 0)} ${row.unit}`
         },
       },
       {

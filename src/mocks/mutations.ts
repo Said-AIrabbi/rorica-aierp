@@ -810,10 +810,9 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
           fabricSpec: product?.greigeSpec,
           finishedSpec: product?.finishedSpec,
           unitPrice: item.unitPrice,
-          // 胚布尚未投入染整前一律為待染；到廠確認後才轉指染
-          pendingDyeQty: item.yard,
+          // 成品數量＝該列應產出量；胚布到廠確認後才登記指染數量
+          finishedQty: item.yard,
           inDyeQty: 0,
-          finishedQty: 0,
         }
       })
       dyeOrders.unshift({
@@ -1033,7 +1032,7 @@ export function submitDyeRequestColorSample(id: string, result: '通過' | '退�
 
 // ---------- 表4 染整單 ----------
 
-/** 明細單列輸入：僅需輸入色彩與各項描述性欄位，三段式庫存以「待染數量」起算 */
+/** 明細單列輸入：僅需輸入色彩與各項描述性欄位，數量以該列應產出的「成品數量」起算 */
 export interface DyeOrderItemInput {
   /** 來源表1 明細 id：分批建單時用於標記哪些品項已開過染單 */
   sourceItemId?: string
@@ -1047,8 +1046,9 @@ export interface DyeOrderItemInput {
   fabricSpec?: string
   finishedSpec?: string
   unitPrice?: number
-  pendingDyeQty: number
-  /** 指染數量：建單時可手動填寫（胚布已到廠即可投染）；未填為 0，之後由「胚布到貨」把待染整批轉入 */
+  /** 成品數量：該列應產出的成品數量（原稱待染數量） */
+  finishedQty: number
+  /** 指染數量：建單時可手動填寫（胚布已到廠即可投染）；未填為 0，之後由「胚布到貨」整批登記 */
   inDyeQty?: number
 }
 
@@ -1103,9 +1103,8 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
       fabricSpec: item.fabricSpec,
       finishedSpec: item.finishedSpec,
       unitPrice: item.unitPrice,
-      pendingDyeQty: item.pendingDyeQty,
+      finishedQty: item.finishedQty,
       inDyeQty: item.inDyeQty ?? 0,
-      finishedQty: 0,
     }
   })
   const order: DyeOrder = {
@@ -1155,7 +1154,7 @@ export function updateDyeOrderSampleCodes(id: string, sampleCodeByItem: Record<s
 /**
  * 生管確認後正式建單：狀態變為生效，此時才觸發委外加工。
  * 三段式庫存此時「不」變動——委外染整路徑的胚布直送染整廠、不經皇加倉庫，
- * 染單建立當下不需要胚布已到貨，要等胚布實際到廠確認才真正扣帳（待染→指染），
+ * 染單建立當下不需要胚布已到貨，要等胚布實際到廠確認才登記指染數量，
  * 見 confirmGreigeArrival。
  */
 export interface DyeOrderDraftInput {
@@ -1196,7 +1195,7 @@ export function confirmDyeOrder(id: string): Promise<DyeOrder> {
   dyeOrders[idx] = updated
 
   // 染單晚於入庫單建立時（胚布已先買進來放庫存的「有胚」情境），
-  // 轉生效當下依關聯胚布訂單的到貨日補扣待染→指染，不必再等下一張入庫單
+  // 轉生效當下依關聯胚布訂單的到貨日補登指染數量，不必再等下一張入庫單
   const arrivedPO = purchaseOrders.find((po) => po.parentId === updated.parentId && po.type === '胚布' && po.greigeArrivedAt)
   if (arrivedPO?.greigeArrivedAt) applyGreigeArrivalToDyeOrder(idx, arrivedPO.greigeArrivedAt)
 
@@ -1204,9 +1203,9 @@ export function confirmDyeOrder(id: string): Promise<DyeOrder> {
 }
 
 /**
- * 胚布到貨扣帳（待染→指染）：由胚布訂單的表6入庫單結案時觸發，非染單自身的人工動作。
- * 貨到才代表胚布可投入染整，故此時才把各列待染數量轉為指染數量，
- * 維持「待染＋指染＋成品＝總投入量」的三段式恆等關係；已完成的染單不再變動。
+ * 胚布到貨登記指染：由胚布訂單的表6入庫單結案時觸發，非染單自身的人工動作。
+ * 貨到才代表胚布可投入染整，故此時才把各列的成品數量整批登記為指染數量
+ * （成品數量本身不動，它是該列應產出的量）；已完成的染單不再變動。
  */
 function applyGreigeArrivalToDyeOrder(idx: number, arrivedAt: string): void {
   const current = dyeOrders[idx]
@@ -1216,13 +1215,13 @@ function applyGreigeArrivalToDyeOrder(idx: number, arrivedAt: string): void {
     greigeArrivedAt: current.greigeArrivedAt ?? arrivedAt,
     items: current.items.map((item) => ({
       ...item,
-      pendingDyeQty: 0,
-      inDyeQty: item.inDyeQty + item.pendingDyeQty,
+      // 手動已填指染數量者不重複累加，一律以該列應產出量為準
+      inDyeQty: item.finishedQty,
     })),
   }
 }
 
-/** 胚布入庫結案時，連動同一張表1底下所有尚未結案的染單完成待染→指染扣帳 */
+/** 胚布入庫結案時，連動同一張表1底下所有尚未結案的染單登記指染數量 */
 function applyGreigeArrivalToParent(parentId: string, arrivedAt: string): void {
   dyeOrders.forEach((order, idx) => {
     if (order.parentId !== parentId) return
@@ -1234,7 +1233,7 @@ function applyGreigeArrivalToParent(parentId: string, arrivedAt: string): void {
 /**
  * 大貨樣確認送樣：完整送樣子流程，退回不設次數上限，選「退回」後該筆鎖定不可修改、自動新增下一筆送樣紀錄。
  * 「通過」為染單結案的唯一判定條件，通過的當下同時發生兩件事（無需另一道人工結案動作）：
- * 1) 染單狀態變更為「已完成」，各列指染數量全數轉為成品數量；
+ * 1) 染單狀態變更為「已完成」，各列指染數量歸零（貨已染完，不再在染整中）；
  * 2) 建立表6入庫單草稿（來源：委外加工）。
  * 另回頭結案關聯的表2胚布送染整訂購單。實際交付數量的對照另由表6入庫確認時記錄，不在此登記。
  */
@@ -1256,20 +1255,17 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '退回
     return delay(rejected)
   }
 
-  // 投胚量：無 OCR 廠商單據標示值時，取染單各列「使用胚布」的原始投入量（指染+成品）作為投胚基準
-  const pledgedQty = current.items.reduce((sum, item) => sum + item.pendingDyeQty + item.inDyeQty + item.finishedQty, 0)
+  // 投胚量：無 OCR 廠商單據標示值時，取染單各列「使用胚布」的成品數量合計作為投胚基準
+  const pledgedQty = current.items.reduce((sum, item) => sum + item.finishedQty, 0)
   const updated: DyeOrder = {
     ...current,
     largeSampleSubmissions: submissions,
     largeSampleConfirmedAt: submission.submittedAt,
     status: '已完成',
-    // 指染（染整進行中）全數轉為成品；未經到廠確認的待染量亦於此併入，
-    // 維持「待染＋指染＋成品＝總投入量」的三段式恆等關係
+    // 染整結束：指染數量歸零，成品數量即該列實際產出的量，不再變動
     items: current.items.map((item) => ({
       ...item,
-      pendingDyeQty: 0,
       inDyeQty: 0,
-      finishedQty: item.finishedQty + item.inDyeQty + item.pendingDyeQty,
     })),
   }
   dyeOrders[idx] = updated
@@ -1551,7 +1547,7 @@ export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']
         // 胚布訂單：入庫結案即代表該批胚布已到貨，可投入染整
         greigeArrivedAt: type === '胚布' ? (purchaseOrders[poIdx].greigeArrivedAt ?? arrivedAt) : purchaseOrders[poIdx].greigeArrivedAt,
       }
-      // 胚布到貨連動：同一張表1底下已起單的染單，待染數量於此時轉為指染數量
+      // 胚布到貨連動：同一張表1底下已起單的染單，於此時登記指染數量
       if (type === '胚布') applyGreigeArrivalToParent(updated.parentId, arrivedAt)
     }
   }

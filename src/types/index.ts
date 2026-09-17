@@ -437,7 +437,7 @@ export interface PurchaseOrder {
   effectiveAt?: string
   /**
    * 胚布到貨確認日：僅「胚布」類型適用，由關聯的表6入庫單結案時回填。
-   * 到貨即代表胚布可投入染整，故同時把關聯染單的待染數量轉為指染數量。
+   * 到貨即代表胚布可投入染整，故同時把關聯染單的成品數量整批登記為指染數量。
    */
   greigeArrivedAt?: string
   signedAt?: string
@@ -501,7 +501,7 @@ export interface LargeSampleSubmission {
 }
 
 /**
- * 明細單列：逐色/逐批追蹤。三段式庫存追蹤（待染／指染／成品數量）以每列各自累計，
+ * 明細單列：逐色/逐批追蹤。庫存以每列各自累計（成品數量／指染數量兩段），
  * 三者合計應等於該列的總投入量。色樣編號在染單結案前皆可修改，非表3回填即鎖定。
  */
 export interface DyeOrderItem {
@@ -535,9 +535,16 @@ export interface DyeOrderItem {
   finishedSpec?: string
   /** 加工單價 */
   unitPrice?: number
-  pendingDyeQty: number
-  inDyeQty: number
+  /**
+   * 成品數量（原稱「待染數量」）：該列應產出的成品數量，建單時即等於來源表1 明細的數量。
+   * 此數量代表這張染單要交出來的量，不隨染整進度增減。
+   */
   finishedQty: number
+  /**
+   * 指染數量：目前投入染整中的數量。建單時可手動填寫（胚布已在廠即可投染），
+   * 胚布到貨時整批轉入，染單結案（大貨樣通過）時歸零——貨已染完，不再在染整中。
+   */
+  inDyeQty: number
 }
 
 export interface DyeOrder {
@@ -566,7 +573,7 @@ export interface DyeOrder {
   effectiveAt?: string
   /**
    * 胚布到貨（可投入染整）日：非染單自身的人工動作，而是由胚布訂單的表6入庫單結案時觸發，
-   * 到貨的當下才真正扣帳（待染→指染），非染單一轉生效就視為已投入染整。
+   * 到貨的當下才登記為指染中，非染單一轉生效就視為已投入染整。
    * 染單晚於入庫單建立時，於確認建單（轉生效）當下依關聯胚布訂單的到貨日一併補扣。
    */
   greigeArrivedAt?: string
@@ -630,7 +637,7 @@ export interface GoodsReceipt {
   /** 原始收據附件：上傳掃描檔供覆核比對，prototype僅記錄檔名 */
   receiptAttachmentName?: string
   rolls: GoodsReceiptRoll[]
-  /** 投胚量：委外加工送染整路徑的損耗紀錄基準，優先取 OCR 辨識廠商單據標示值，否則取染單「使用胚布」的待染數量 */
+  /** 投胚量：委外加工送染整路徑的損耗紀錄基準，優先取 OCR 辨識廠商單據標示值，否則取染單「使用胚布」的成品數量 */
   pledgedQty?: number
   /** 用途：人工選擇的分類欄位，比照舊系統代碼；入倉部門則依倉管人員（operatorAccountId）的角色推導顯示，不另存欄位 */
   purpose?: (typeof GOODS_RECEIPT_PURPOSES)[number]
