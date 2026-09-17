@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/mocks/api'
 import { customers, getVendor } from '@/mocks/data'
-import { createProduct, deleteProduct, updateProduct, type ProductInput } from '@/mocks/mutations'
+import { createProduct, deleteProduct, masterDefaults, updateProduct, type ProductInput } from '@/mocks/mutations'
 import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import { formatDate, isColorStale } from '@/lib/dates'
 import { formatNumber, inchToCm, yardPriceToMeterPrice, yardWeightToMeterWeight } from '@/lib/units'
@@ -20,6 +20,7 @@ import { ProductStockCard } from './ProductStockCard'
 
 function toInput(product: Product): ProductInput {
   return {
+    productCode: product.productCode,
     productName: product.productName,
     customerProductName: product.customerProductName,
     customerId: product.customerId,
@@ -45,6 +46,8 @@ function toInput(product: Product): ProductInput {
 /** 新增時的空白表單：規格數值先給常見預設，避免使用者面對一整排 0 */
 function emptyInput(): ProductInput {
   return {
+    // 產品編號依類別自動給下一號；使用者改類別時會重新帶入（見下方輸入欄）
+    productCode: masterDefaults.productCode(PRODUCT_CATEGORIES[0].code),
     productName: '',
     customerProductName: '',
     customerId: customers[0]?.id ?? '',
@@ -128,7 +131,7 @@ export function ProductDetailPage() {
 
       <PageHeader
         title={isNew ? '新增商品' : `${product!.productName}-${product!.sortNo}　${product!.id}`}
-        description="商品資料主檔編輯視窗。產品編號、產品序號、米重（G/M）與歷史色號為系統維護欄位，不開放手動輸入；同一皇加品名再建一筆即自動成為下一個規格分支。"
+        description="商品資料主檔編輯視窗。產品編號為皇加編碼「類別-流水號」，新增時依類別自動給下一號、仍可修改；系統編號、產品序號、米重（G/M）與歷史色號為系統維護欄位，不開放手動輸入；同一皇加品名再建一筆即自動成為下一個規格分支。"
         actions={
           <>
             <Button variant="outline" onClick={() => navigate('/masters/products')}>
@@ -163,7 +166,22 @@ export function ProductDetailPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">產品類別</Label>
-              <Select value={draft.categoryCode} onValueChange={(v) => set('categoryCode', v as Product['categoryCode'])}>
+              <Select
+                value={draft.categoryCode}
+                onValueChange={(v) => {
+                  const categoryCode = v as Product['categoryCode']
+                  // 新增時產品編號的類別前綴須跟著類別走；編輯既有商品則不動既有編號
+                  setDraft((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          categoryCode,
+                          productCode: isNew ? masterDefaults.productCode(categoryCode) : prev.productCode,
+                        }
+                      : prev,
+                  )
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="請選擇類別" />
                 </SelectTrigger>
@@ -177,9 +195,21 @@ export function ProductDetailPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">產品編號（唯讀）</Label>
+              <Label className="text-xs">產品編號</Label>
+              <Input
+                value={draft.productCode}
+                onChange={(e) => set('productCode', e.target.value)}
+                placeholder="產品類別-流水號，如 1-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                皇加編碼：類別-流水號（1-11 ＝ 第一類的第 11 個產品）{isNew ? '，已依類別自動給號' : ''}
+              </p>
+            </div>
+            <div className="space-y-1">
+              {/* 系統編號才是單據關聯用的主鍵；產品編號可隨皇加既有編碼調整而不影響既有單據 */}
+              <Label className="text-xs">系統編號（唯讀）</Label>
               <Input value={isNew ? '建立後自動產生' : product!.id} disabled />
-              <p className="text-xs text-muted-foreground">建檔時自動編號，單據以此關聯</p>
+              <p className="text-xs text-muted-foreground">建檔時自動編號，單據一律以此關聯</p>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">產品序號（產品分支，唯讀）</Label>

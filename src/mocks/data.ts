@@ -201,6 +201,7 @@ export const products: Product[] = PRODUCT_CATALOG.map((row, i) => {
 
   return {
     id: `PROD-${pad(i + 1)}`,
+    productCode: row.productCode,
     customerId: customer.id,
     productName: row.item,
     customerProductName: base.customerProductName,
