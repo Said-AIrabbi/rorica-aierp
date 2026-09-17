@@ -178,7 +178,28 @@ const productBaseByName = new Map(
   }),
 )
 
-export const products: Product[] = PRODUCT_CATALOG.map((row, i) => {
+/**
+ * 產品編號即主鍵，故必須唯一。產品表中 N120 一列內有 60" 與 120" 兩組規格，
+ * 兩者在系統中是兩筆商品，不能共用同一個編號——第二筆改給該類別的下一個流水號。
+ */
+const usedProductIds = new Set<string>()
+function uniqueProductId(code: string, categoryCode: string): string {
+  if (!usedProductIds.has(code)) {
+    usedProductIds.add(code)
+    return code
+  }
+  const maxNo = PRODUCT_CATALOG.filter((r) => r.productCode.startsWith(`${categoryCode}-`)).reduce((m, r) => {
+    const n = Number(r.productCode.slice(categoryCode.length + 1).split('-')[0])
+    return Number.isFinite(n) ? Math.max(m, n) : m
+  }, 0)
+  let next = maxNo + 1
+  while (usedProductIds.has(`${categoryCode}-${next}`)) next += 1
+  const id = `${categoryCode}-${next}`
+  usedProductIds.add(id)
+  return id
+}
+
+export const products: Product[] = PRODUCT_CATALOG.map((row) => {
   const base = productBaseByName.get(row.item)!
   const category = PRODUCT_CATEGORIES.find((c) => c.code === row.categoryCode)!
   const branchNo = (branchCounter.get(row.item) ?? 0) + 1
@@ -200,8 +221,7 @@ export const products: Product[] = PRODUCT_CATALOG.map((row, i) => {
     }))
 
   return {
-    id: `PROD-${pad(i + 1)}`,
-    productCode: row.productCode,
+    id: uniqueProductId(row.productCode, row.categoryCode),
     customerId: customer.id,
     productName: row.item,
     customerProductName: base.customerProductName,

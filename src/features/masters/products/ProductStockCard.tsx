@@ -73,7 +73,7 @@ export function ProductStockCard({ product }: { product: Product }) {
         <div className="mb-3 flex items-start gap-2 rounded-lg border border-brand/30 bg-brand/10 p-3 text-xs text-ink-body">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-dark" />
           <span>
-            以本商品的產品編號 {product.productCode} 即時查詢布卷資料，非儲存於商品主檔。
+            以本商品的產品編號 {product.id} 即時查詢布卷資料，非儲存於商品主檔。
             <strong>商品</strong>一列＝一個產品分支（型錄性質）；<strong>布卷</strong>一列＝倉庫裡實際存在的那一捲布（庫存帳性質，入庫時自動產生）。
             本卡唯讀，布卷狀態一律只能經由入庫、出貨、分割、客訴等單據觸發改變；
             點條碼可進入該捲檢視長度異動紀錄、分割布卷並列印實體標籤（表7 列印格式）。

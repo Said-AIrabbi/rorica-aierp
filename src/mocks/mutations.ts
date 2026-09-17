@@ -1826,15 +1826,11 @@ export function completeShippingOrder(id: string): Promise<ShippingOrder> {
 
 /**
  * 商品資料主檔編輯視窗可輸入的欄位。
- * 「系統編號」「產品序號（分支）」「米重（G/M）」「歷史色號」不在其中：前兩者為建檔時自動產生，
+ * 「產品編號」「產品序號（分支）」「米重（G/M）」「歷史色號」不在其中：前兩者為建檔時自動產生，
  * 米重依碼重÷0.9144 自動連動且唯讀，歷史色號由表3/表4實際使用時累積，皆不開放手動維護。
  *
- * 產品編號（類別-流水號）則相反：新增時系統依類別給下一號，但仍開放修改——
- * 皇加既有產品表中就有前綴與類別不符的品項，鎖死會無法忠實維護既有編號。
  */
 export interface ProductInput {
-  /** 產品編號：皇加編碼「產品類別-流水號」，如 1-11 */
-  productCode: string
   productName: string
   customerProductName: string
   customerId: string
@@ -1861,7 +1857,6 @@ export function updateProduct(id: string, input: ProductInput): Promise<Product>
   const idx = products.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`商品 ${id} 不存在`)
   if (!input.productName.trim()) throw new Error('皇加品名為必填')
-  assertProductCode(input, id)
 
   const updated: Product = {
     ...products[idx],
@@ -2506,11 +2501,10 @@ export function createProduct(input: ProductInput): Promise<Product> {
   if (!input.customerId) throw new Error('請選擇所屬客戶')
   const branchNo =
     products.filter((p) => p.productName === input.productName.trim() && p.customerId === input.customerId).length + 1
-  assertProductCode(input)
   const product: Product = {
     ...input,
-    id: nextMasterId('PROD', products),
-    productCode: input.productCode.trim(),
+    // 產品編號即主鍵：依所選類別自動給該類別的下一個流水號
+    id: nextProductCode(input.categoryCode),
     sortNo: pad(branchNo, 2),
     // 歷史色號由表3／表4 實際使用時累積，新建商品一律從空的色卡開始
     colors: [],
@@ -2585,33 +2579,24 @@ export function deleteAccount(id: string): Promise<{ id: string }> {
 }
 
 /**
- * 產品編號檢核：同一個皇加品名的多個規格分支共用同一個編號（以產品序號區分），
- * 但不同品名不得共用——編號是對外溝通用的識別，兩個不同的布用同一號會叫不清楚。
- */
-function assertProductCode(input: ProductInput, selfId?: string): void {
-  const code = input.productCode.trim()
-  if (!code) throw new Error('產品編號為必填')
-  const clash = products.find(
-    (p) => p.id !== selfId && p.productCode === code && p.productName !== input.productName.trim(),
-  )
-  if (clash) throw new Error(`產品編號「${code}」已被商品「${clash.productName}」使用`)
-}
-
-/**
  * 下一個產品編號：依「產品類別-流水號」取該類別現有的最大流水號加一。
- * 只認得「類別-數字」的既有編號，類別前綴與所在類別不符者（如 20-60）不列入計算。
+ * 只認得「類別-數字」的既有編號，類別前綴與所在類別不符者（如列在第二類的 20-60）不列入計算；
+ * 萬一算出來的號碼已被占用（例如既有編號本身就跳號），往後找到第一個沒用過的為止。
  */
 function nextProductCode(categoryCode: string): string {
   const used = products
-    .filter((p) => p.productCode.startsWith(`${categoryCode}-`))
-    .map((p) => Number(p.productCode.slice(categoryCode.length + 1).split('-')[0]))
+    .filter((p) => p.id.startsWith(`${categoryCode}-`))
+    .map((p) => Number(p.id.slice(categoryCode.length + 1).split('-')[0]))
     .filter((n) => Number.isFinite(n))
-  return `${categoryCode}-${(used.length > 0 ? Math.max(...used) : 0) + 1}`
+  let next = (used.length > 0 ? Math.max(...used) : 0) + 1
+  while (products.some((p) => p.id === `${categoryCode}-${next}`)) next += 1
+  return `${categoryCode}-${next}`
 }
 
 /** 預設值：新增畫面開啟時帶入的代號，避免使用者自己想編碼規則 */
 export const masterDefaults = {
   customerCode: () => nextMasterCode('C', customers),
+  /** 新增商品時預覽用：實際編號仍於建檔當下產生 */
   productCode: (categoryCode: string) => nextProductCode(categoryCode),
   vendorCode: () => nextMasterCode('V', vendors),
   accountCode: () => nextMasterCode('A', accounts),
