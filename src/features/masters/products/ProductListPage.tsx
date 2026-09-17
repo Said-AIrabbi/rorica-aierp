@@ -27,16 +27,16 @@ export function ProductListPage() {
 
   const columns = useMemo<ColumnDef<Product, unknown>[]>(
     () => [
-      // 欄位順序依皇加指定：品名→編號→分支→產品類別→客戶→成分→幅寬→碼重→米重→厚度，
+      // 欄位順序依皇加指定：品名→產品類別→編號→分支→客戶→成分→幅寬→碼重→米重→厚度，
       // 其餘欄位排在厚度之後（先接規格類，再依序為價格、庫存）
       { accessorKey: 'productName', header: '皇加品名' },
-      { accessorKey: 'id', header: '產品編號' },
-      { accessorKey: 'sortNo', header: '產品序號（分支）' },
       {
         id: 'category',
         header: '產品類別',
         accessorFn: (row) => getCategoryLabel(row.categoryCode),
       },
+      { accessorKey: 'id', header: '產品編號' },
+      { accessorKey: 'sortNo', header: '產品序號（分支）' },
       {
         id: 'customer',
         header: '所屬客戶',

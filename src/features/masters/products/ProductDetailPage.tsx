@@ -158,6 +158,25 @@ export function ProductDetailPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
+              <Label className="text-xs">皇加品名</Label>
+              <Input value={draft.productName} onChange={(e) => set('productName', e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">產品類別</Label>
+              <Select value={draft.categoryCode} onValueChange={(v) => set('categoryCode', v as Product['categoryCode'])}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="請選擇類別" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_CATEGORIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      第{c.code}類　{c.zh}（{c.en}）
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs">產品編號（唯讀）</Label>
               <Input value={isNew ? '建立後自動產生' : product!.id} disabled />
               <p className="text-xs text-muted-foreground">建檔時自動編號，單據以此關聯</p>
@@ -166,18 +185,6 @@ export function ProductDetailPage() {
               <Label className="text-xs">產品序號（產品分支，唯讀）</Label>
               <Input value={isNew ? '建立後自動指派' : product!.sortNo} disabled />
               <p className="text-xs text-muted-foreground">同一皇加品名規格略有差異時，以此序號區分分支</p>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">皇加品名</Label>
-              <Input value={draft.productName} onChange={(e) => set('productName', e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">客戶品名</Label>
-              <Input
-                value={draft.customerProductName}
-                onChange={(e) => set('customerProductName', e.target.value)}
-                placeholder="與皇加品名一對一對應"
-              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">所屬客戶</Label>
@@ -197,19 +204,12 @@ export function ProductDetailPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">產品類別</Label>
-              <Select value={draft.categoryCode} onValueChange={(v) => set('categoryCode', v as Product['categoryCode'])}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="請選擇類別" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCT_CATEGORIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      第{c.code}類　{c.zh}（{c.en}）
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs">客戶品名</Label>
+              <Input
+                value={draft.customerProductName}
+                onChange={(e) => set('customerProductName', e.target.value)}
+                placeholder="與皇加品名一對一對應"
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">胚布編號</Label>
@@ -241,32 +241,6 @@ export function ProductDetailPage() {
                 value={draft.material}
                 onChange={(e) => set('material', e.target.value)}
                 placeholder="例：100% POLY/METALLIC"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">胚布規格</Label>
-              <Input
-                value={draft.greigeSpec}
-                onChange={(e) => set('greigeSpec', e.target.value)}
-                placeholder="表4染整單第二列帶入"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">成品規格</Label>
-              <Input
-                value={draft.finishedSpec}
-                onChange={(e) => set('finishedSpec', e.target.value)}
-                placeholder="表4染整單第二列帶入"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">厚度（mm）</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={draft.thicknessMm}
-                onChange={(e) => set('thicknessMm', num(e.target.value))}
               />
             </div>
             <div className="space-y-1">
@@ -329,6 +303,32 @@ export function ProductDetailPage() {
               <Label className="text-xs">米重（G/M，唯讀）</Label>
               <Input value={formatNumber(yardWeightToMeterWeight(draft.weightGY), 2)} disabled />
               <p className="text-xs text-muted-foreground">碼重 ÷ 0.9144 自動換算，隨碼重連動</p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">厚度（mm）</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={draft.thicknessMm}
+                onChange={(e) => set('thicknessMm', num(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">胚布規格</Label>
+              <Input
+                value={draft.greigeSpec}
+                onChange={(e) => set('greigeSpec', e.target.value)}
+                placeholder="表4染整單第二列帶入"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">成品規格</Label>
+              <Input
+                value={draft.finishedSpec}
+                onChange={(e) => set('finishedSpec', e.target.value)}
+                placeholder="表4染整單第二列帶入"
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">原疋標準尺寸（碼）</Label>
