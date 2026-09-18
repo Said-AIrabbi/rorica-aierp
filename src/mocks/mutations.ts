@@ -2224,7 +2224,7 @@ export function updateAbnormalNoticeHandling(
 }
 
 /**
- * 受理中→處理中：生管回覆並確認處理方式、經主管（董事長）／業務／會計三方簽核後，
+ * 受理中→處理中：生管回覆並確認處理方式、經管理層／業務／會計三方簽核後，
  * 系統才依處理方式分流。簽名為列印後手簽，系統上以生管回覆與處理方式是否齊備作為卡控。
  */
 export function startAbnormalProcessing(id: string): Promise<AbnormalNotice> {
@@ -2856,8 +2856,9 @@ export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
 }
 
 /**
- * 董事長批准：待批准／已逾期（重新報價）→ 待簽回，並重新起算 14 天報價效期。
- * 權限本身屬另立的簽核模組，原型不做角色判斷（決策47）。
+ * 管理層批准：待批准／已逾期（重新報價）→ 待簽回，並重新起算 14 天報價效期。
+ * 核決者即帳號主檔既有的「管理層」角色（決策47，不另設董事長角色）；
+ * 權限判斷本身屬另立的簽核模組，原型不做角色檢查。
  */
 export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
   const idx = piIndex(id)
@@ -3077,7 +3078,7 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
   })
 
   if (result.blocked.length > 0) {
-    // 規則3：轉待人工處理並凍結兩張 PI 與其表1，等主管裁決（決策27）
+    // 規則3：轉待人工處理並凍結兩張 PI 與其表1，等管理層裁決（決策27）
     const now = dayjs().toISOString()
     proformaInvoices[idx] = {
       ...current,
@@ -3113,7 +3114,7 @@ export function resolvePiManualHandling(id: string, resolution: '繼續' | '作�
     ...current,
     status: '已作廢',
     voidedAt: now,
-    voidReason: resolution === '繼續' ? '主管裁決：依舊 PI 出貨，本張取代版作廢' : '主管裁決：整筆終止',
+    voidReason: resolution === '繼續' ? '管理層裁決：依舊 PI 出貨，本張取代版作廢' : '管理層裁決：整筆終止',
     manualHandling: current.manualHandling
       ? { ...current.manualHandling, resolvedAt: now, resolution }
       : undefined,

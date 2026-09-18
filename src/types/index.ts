@@ -925,7 +925,7 @@ export interface AbnormalNotice {
   /** 同批未出貨庫存亦有異常時，連動標記為瑕疵／報廢的條碼 */
   batchDefectRollCodes: string[]
   returnedRolls?: ReturnedRoll[]
-  /** 生管回覆：文字欄位；主管（董事長）／業務／會計三欄為列印後手簽，系統上不輸入 */
+  /** 生管回覆：文字欄位；管理層／業務／會計三欄為列印後手簽，系統上不輸入 */
   productionReply?: string
   processedAt?: string
   completedAt?: string
@@ -935,9 +935,9 @@ export interface AbnormalNotice {
 
 /**
  * PI 狀態流（Phase 2 規格第三章）：
- * 草稿 → 待批准 →（董事長批准）→ 待簽回 → 已簽回 → 已轉換
+ * 草稿 → 待批准 →（管理層批准）→ 待簽回 → 已簽回 → 已轉換
  * 例外：報價 14 天到期轉「已逾期」（重新報價可回到待簽回）；建立滿 3 個月未簽回轉換一律「已作廢」；
- * 取代版套用時偵測到下游已對外發出，轉「待人工處理」等主管裁決。
+ * 取代版套用時偵測到下游已對外發出，轉「待人工處理」等管理層裁決。
  * 註：作廢僅存在於 PI（決策38）——表1～表9 只負責執行，不設作廢態。
  */
 export const PI_STATUSES = ['草稿', '待批准', '待簽回', '已簽回', '已轉換', '已逾期', '待人工處理', '已作廢'] as const

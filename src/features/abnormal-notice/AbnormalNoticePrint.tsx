@@ -30,7 +30,7 @@ const returnedColumns: PrintColumn<ReturnedRoll>[] = [
 
 /**
  * 表9 異常通知單／上游追討附單列印版面。
- * 四個簽核欄（生管回覆／主管＝董事長／業務／會計）為紙本手簽，故系統上只填生管回覆，
+ * 四個簽核欄（生管回覆／管理層／業務／會計）為紙本手簽，故系統上只填生管回覆，
  * 其餘三欄一律留白供列印後簽名；附單需列印給染整廠，版面比照表9（PRD 決策81）。
  */
 export function AbnormalNoticePrint({ notice }: { notice: AbnormalNotice }) {

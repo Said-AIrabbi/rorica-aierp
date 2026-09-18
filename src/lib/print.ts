@@ -46,17 +46,18 @@ export const PRINT_TITLES = {
 /** 出貨單／訂購單等紙本單據沿用的簽名欄；表8為四欄（處理人／倉管／出貨／業務） */
 export const SHIPPING_SIGNATURE_LABELS = ['處理人', '倉管', '出貨', '業務'] as const
 
-/** PI 單簽名欄：皇加承辦、董事長批准（決策3）、客戶回簽（決策48：回簽即代表接受） */
-export const PI_SIGNATURE_LABELS = ['皇加承辦', '董事長批准', '客戶簽回（簽名／蓋章）'] as const
+/** PI 單簽名欄：皇加承辦、管理層批准（決策3、47）、客戶回簽（決策48：回簽即代表接受） */
+export const PI_SIGNATURE_LABELS = ['皇加承辦', '管理層批准', '客戶簽回（簽名／蓋章）'] as const
 
 /** 對外單據（送廠商簽回）的簽名欄：皇加承辦與廠商簽回各一 */
 export const VENDOR_SIGNATURE_LABELS = ['皇加承辦', '皇加主管', '廠商簽回（簽名／蓋章）'] as const
 
 /**
  * 表9 異常通知單／其附單的簽核欄：四欄比照紙本。
- * 「主管」即董事長；三個簽名欄實際為列印後手簽，系統上不輸入（生管回覆例外，為系統文字欄位）。
+ * 核決者的稱呼全系統統一為「管理層」（2026/09/18；原紙本寫「主管」、口語稱董事長，皆指帳號主檔既有的管理層角色）。
+ * 三個簽名欄實際為列印後手簽，系統上不輸入（生管回覆例外，為系統文字欄位）。
  */
-export const ABNORMAL_SIGNATURE_LABELS = ['生管回覆', '主管簽名（董事長）', '業務簽名', '會計簽名'] as const
+export const ABNORMAL_SIGNATURE_LABELS = ['生管回覆', '管理層簽名', '業務簽名', '會計簽名'] as const
 
 /** 空值於紙本一律印為底線留白，避免印出「-」讓廠商誤以為是資料 */
 export function printValue(value: string | number | undefined | null, blank = ' '): string {

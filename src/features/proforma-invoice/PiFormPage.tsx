@@ -225,7 +225,7 @@ export function PiFormPage() {
       <PageHeader
         title={isEdit ? `編輯 PI 單 ${id}` : '新增 PI 單'}
         formCode="PI"
-        description="報價有效期 14 天；建立後須經董事長批准才可發出，客戶回簽後依 PO 拆單轉為表1。"
+        description="報價有效期 14 天；建立後須經管理層批准才可發出，客戶回簽後依 PO 拆單轉為表1。"
       />
 
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-4">

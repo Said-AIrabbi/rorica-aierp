@@ -115,7 +115,7 @@ export function PiDetailPage() {
                 <Button
                   size="sm"
                   className="bg-brand hover:bg-brand-dark"
-                  onClick={() => run(() => submitProformaInvoice(pi.id), '已送出，等待董事長批准')}
+                  onClick={() => run(() => submitProformaInvoice(pi.id), '已送出，等待管理層批准')}
                 >
                   送出批准
                 </Button>
@@ -132,7 +132,7 @@ export function PiDetailPage() {
                   )
                 }
               >
-                {status === '已逾期' ? '重新報價並批准' : '董事長批准'}
+                {status === '已逾期' ? '重新報價並批准' : '管理層批准'}
               </Button>
             )}
             {canSignBackPi(pi) && (
@@ -262,7 +262,7 @@ export function PiDetailPage() {
                 ))}
               </ul>
               <p className="text-muted-foreground">
-                原 PI 與其表1 已凍結，且在本案處理完畢前不可再建立第三張取代版。請由主管（董事長）裁決「繼續」或「作廢」——
+                原 PI 與其表1 已凍結，且在本案處理完畢前不可再建立第三張取代版。請由管理層裁決「繼續」或「作廢」——
                 不設「照客戶要求改」或「另開補單」的第三個出口。
               </p>
             </CardContent>
@@ -298,7 +298,7 @@ export function PiDetailPage() {
               />
               <DetailField label="建立日" value={formatDate(pi.createdAt)} />
               <DetailField label="報價有效期限" value={formatDate(pi.quoteValidUntil)} />
-              <DetailField label="董事長批准" value={pi.approvedAt ? formatDateTime(pi.approvedAt) : '-'} />
+              <DetailField label="管理層批准" value={pi.approvedAt ? formatDateTime(pi.approvedAt) : '-'} />
               <DetailField label="客戶簽回" value={pi.signedBackAt ? formatDateTime(pi.signedBackAt) : '-'} />
               <DetailField label="簽回附件" value={pi.signedBackFileName ?? '（未上傳，非必填）'} />
               <DetailField label="估算 CBM" value="計算公式待皇加提供" />

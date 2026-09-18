@@ -670,7 +670,7 @@ export function AbnormalNoticeDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {['主管簽名（董事長）', '業務簽名', '會計簽名'].map((label) => (
+            {['管理層簽名', '業務簽名', '會計簽名'].map((label) => (
               <div key={label} className="space-y-1.5">
                 <Label className="text-xs">{label}</Label>
                 <Input disabled placeholder="列印後簽名" />
