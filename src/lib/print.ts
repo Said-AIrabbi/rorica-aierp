@@ -14,7 +14,21 @@ export const PRINT_COMPANY = {
 } as const
 
 /** 各單據的列印抬頭：表號與單據名稱一律成對出現，與系統畫面的 formCode 用語一致 */
+/**
+ * PI 單列印用的皇加收款帳戶（Phase 2 決策35）。
+ * 這是「客戶要匯款給皇加」的帳戶，屬公司層級固定資訊——
+ * 與客戶主檔聯絡資訊裡的銀行帳戶無關（那是客戶自己的帳戶，供收付時對帳）。
+ */
+export const PRINT_BANK_ACCOUNT = {
+  bankName: '第一商業銀行 新莊分行',
+  bankCode: '007-1234',
+  swift: 'FCBKTWTP',
+  accountName: 'RORICA TEXTILE CO., LTD.',
+  accountNo: '123-45-678901',
+} as const
+
 export const PRINT_TITLES = {
+  proformaInvoice: { formCode: 'PI', title: 'PROFORMA INVOICE 預估發票' },
   packingNotice: { formCode: '表1', title: '包裝通知單' },
   purchaseOrder: { formCode: '表2', title: '訂購單' },
   dyeRequest: { formCode: '表3', title: '打色通知單' },
@@ -31,6 +45,9 @@ export const PRINT_TITLES = {
 
 /** 出貨單／訂購單等紙本單據沿用的簽名欄；表8為四欄（處理人／倉管／出貨／業務） */
 export const SHIPPING_SIGNATURE_LABELS = ['處理人', '倉管', '出貨', '業務'] as const
+
+/** PI 單簽名欄：皇加承辦、董事長批准（決策3）、客戶回簽（決策48：回簽即代表接受） */
+export const PI_SIGNATURE_LABELS = ['皇加承辦', '董事長批准', '客戶簽回（簽名／蓋章）'] as const
 
 /** 對外單據（送廠商簽回）的簽名欄：皇加承辦與廠商簽回各一 */
 export const VENDOR_SIGNATURE_LABELS = ['皇加承辦', '皇加主管', '廠商簽回（簽名／蓋章）'] as const

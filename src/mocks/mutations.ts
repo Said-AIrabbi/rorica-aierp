@@ -8,6 +8,7 @@ import {
   reservationExpiresAt,
   suggestSplicingCombination,
 } from '@/lib/inventory'
+import { canConvertPi, effectivePiStatus, piOverwriteRule, piQuoteValidUntil } from '@/lib/pi'
 import {
   buildSecondaryProcessingPackaging,
   defaultRollYard,
@@ -34,6 +35,8 @@ import type {
   PackingNoticeItem,
   PackingNoticeMarking,
   Product,
+  ProformaInvoice,
+  ProformaInvoiceItem,
   PurchaseOrder,
   PurchaseOrderItem,
   SecondaryProcessingItem,
@@ -56,6 +59,7 @@ import {
   packingNotices,
   persistSessionSnapshot,
   products,
+  proformaInvoices,
   purchaseOrders,
   resolveProduct,
   secondaryProcessingOrders,
@@ -2695,4 +2699,454 @@ export function deleteFabricLabel(id: string): Promise<{ id: string }> {
   ])
   fabricLabels.splice(fabricLabels.indexOf(label), 1)
   return delay({ id })
+}
+
+// ---------- Phase 2：PI 單（Proforma Invoice） ----------
+
+export type ProformaInvoiceItemInput = Omit<ProformaInvoiceItem, 'id' | 'meter'>
+
+export interface ProformaInvoiceInput {
+  /** 客戶名稱：查得到主檔則沿用；查無者 PI 階段僅存名稱，不建主檔（決策51） */
+  customerName: string
+  contactIndex?: number
+  currency: ProformaInvoice['currency']
+  tradeTerm: string
+  tradeTermNote?: string
+  portOfLoading: ProformaInvoice['portOfLoading']
+  destination?: string
+  leadTimeDays: ProformaInvoice['leadTimeDays']
+  leadTimeNote?: string
+  paymentTerm: string
+  paymentTermNote?: string
+  itemUnit?: 'Yard' | 'Meter'
+  items: ProformaInvoiceItemInput[]
+  markings: PackingNoticeMarking[]
+  /** 取代版專用：填入被取代的前一張 PI 單號（決策24） */
+  previousPiId?: string
+}
+
+function buildPiItems(id: string, items: ProformaInvoiceItemInput[]): ProformaInvoiceItem[] {
+  return items.map((item, i) => ({
+    ...item,
+    id: `${id}-L${i + 1}`,
+    meter: Number(yardToMeter(item.yard).toFixed(1)),
+    colorRatios: (item.colorRatios ?? []).map((v) => v.trim()).filter(Boolean).slice(0, COLOR_RATIO_MAX),
+  }))
+}
+
+/**
+ * PI 的客戶：能對上主檔就綁定 id，對不上則只留名稱。
+ * 與表1 不同——表1 查無客戶會當場建檔，PI 階段對方還不是客戶，故不建（決策51）。
+ * 已歇業客戶一律擋下（比照 Phase 1 決策88）。
+ */
+function resolvePiCustomer(name: string): { customerId?: string; customerName: string } {
+  const trimmed = name.trim()
+  const existing = customers.find((c) => c.shortName === trimmed || c.fullNameCN === trimmed)
+  if (existing?.status === '已歇業') {
+    throw new Error(`客戶「${existing.shortName}」主檔狀態為已歇業，不可開立新 PI`)
+  }
+  return { customerId: existing?.id, customerName: trimmed }
+}
+
+function piContactAddress(customerId: string | undefined, contactIndex: number | undefined): string | undefined {
+  if (!customerId) return undefined
+  const customer = customers.find((c) => c.id === customerId)
+  return customer?.contacts[contactIndex ?? 0]?.shippingAddress
+}
+
+function nextPiId(base: dayjs.Dayjs): string {
+  const prefix = `PI-${base.format('YYYYMMDD')}`
+  // 同日已開立的張數 +1；三位流水號（每日上限 999 張）經皇加確認足夠（決策33）
+  const countToday = proformaInvoices.filter((pi) => pi.id.startsWith(prefix)).length
+  return `${prefix}-${pad(countToday + 1)}`
+}
+
+export function createProformaInvoice(input: ProformaInvoiceInput): Promise<ProformaInvoice> {
+  const today = dayjs()
+  // 取代版沿用母單主號加 -RV{n} 尾碼，客戶收到時認得出是同一筆的改版（決策24）
+  const previous = input.previousPiId ? proformaInvoices.find((pi) => pi.id === input.previousPiId) : undefined
+  const revisionBase = previous ? previous.id.replace(/-RV\d+$/, '') : undefined
+  const id = revisionBase
+    ? `${revisionBase}-RV${proformaInvoices.filter((pi) => pi.id.startsWith(`${revisionBase}-RV`)).length + 1}`
+    : nextPiId(today)
+  const { customerId, customerName } = resolvePiCustomer(input.customerName)
+
+  const pi: ProformaInvoice = {
+    id,
+    previousPiId: input.previousPiId,
+    status: '草稿',
+    createdAt: today.toISOString(),
+    quoteValidUntil: piQuoteValidUntil(today).toISOString(),
+    customerId,
+    customerName,
+    contactIndex: input.contactIndex,
+    shippingAddress: piContactAddress(customerId, input.contactIndex),
+    currency: input.currency,
+    tradeTerm: input.tradeTerm,
+    tradeTermNote: input.tradeTermNote?.trim() || undefined,
+    portOfLoading: input.portOfLoading,
+    destination: input.destination?.trim() || undefined,
+    leadTimeDays: input.leadTimeDays,
+    leadTimeNote: input.leadTimeNote?.trim() || undefined,
+    paymentTerm: input.paymentTerm,
+    paymentTermNote: input.paymentTermNote?.trim() || undefined,
+    itemUnit: input.itemUnit ?? 'Yard',
+    items: buildPiItems(id, input.items),
+    markings: input.markings,
+    packingNoticeIds: [],
+  }
+  proformaInvoices.unshift(pi)
+
+  // 取代版建立後，原單即標記為被取代（決策24）
+  if (previous) {
+    const idx = proformaInvoices.findIndex((x) => x.id === previous.id)
+    proformaInvoices[idx] = {
+      ...proformaInvoices[idx],
+      status: '已作廢',
+      voidedAt: today.toISOString(),
+      voidReason: `由 ${id} 取代`,
+      replacedByPiId: id,
+    }
+  }
+  return delay(pi)
+}
+
+function piIndex(id: string): number {
+  const idx = proformaInvoices.findIndex((pi) => pi.id === id)
+  if (idx === -1) throw new Error(`PI 單 ${id} 不存在`)
+  return idx
+}
+
+/** 草稿階段才可修改；轉換後一經送出即不可改，需作廢重開（決策6） */
+export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): Promise<ProformaInvoice> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  const { customerId, customerName } = resolvePiCustomer(input.customerName)
+  const updated: ProformaInvoice = {
+    ...current,
+    customerId,
+    customerName,
+    contactIndex: input.contactIndex,
+    shippingAddress: piContactAddress(customerId, input.contactIndex),
+    currency: input.currency,
+    tradeTerm: input.tradeTerm,
+    tradeTermNote: input.tradeTermNote?.trim() || undefined,
+    portOfLoading: input.portOfLoading,
+    destination: input.destination?.trim() || undefined,
+    leadTimeDays: input.leadTimeDays,
+    leadTimeNote: input.leadTimeNote?.trim() || undefined,
+    paymentTerm: input.paymentTerm,
+    paymentTermNote: input.paymentTermNote?.trim() || undefined,
+    itemUnit: input.itemUnit ?? current.itemUnit,
+    items: buildPiItems(id, input.items),
+    markings: input.markings,
+  }
+  proformaInvoices[idx] = updated
+  return delay(updated)
+}
+
+/** 送出批准：草稿 → 待批准 */
+export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
+  const idx = piIndex(id)
+  if (proformaInvoices[idx].status !== '草稿') throw new Error('僅草稿可送出批准')
+  const updated: ProformaInvoice = { ...proformaInvoices[idx], status: '待批准' }
+  proformaInvoices[idx] = updated
+  return delay(updated)
+}
+
+/**
+ * 董事長批准：待批准／已逾期（重新報價）→ 待簽回，並重新起算 14 天報價效期。
+ * 權限本身屬另立的簽核模組，原型不做角色判斷（決策47）。
+ */
+export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  const effective = effectivePiStatus(current)
+  // 已逾期者即為「重新報價」的入口；3 個月自動作廢後 effectivePiStatus 會回傳已作廢，於此一併擋下
+  if (effective !== '待批准' && effective !== '已逾期') throw new Error('僅待批准或重新報價（已逾期）的 PI 可批准')
+  const now = dayjs()
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '待簽回',
+    approvedAt: now.toISOString(),
+    // 逾期後重新報價：效期自批准當下重新起算 14 天；3 個月自動作廢的時鐘不受影響（決策2）
+    quoteValidUntil: piQuoteValidUntil(now).toISOString(),
+  }
+  proformaInvoices[idx] = updated
+  return delay(updated)
+}
+
+/** 客戶回簽：待簽回 → 已簽回。附件非必填，不作為卡控（決策48） */
+export function markPiSignedBack(id: string, fileName?: string): Promise<ProformaInvoice> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  if (effectivePiStatus(current) !== '待簽回') throw new Error('逾期後不可直接簽回，請先重新報價並批准')
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '已簽回',
+    signedBackAt: dayjs().toISOString(),
+    signedBackFileName: fileName?.trim() || current.signedBackFileName,
+  }
+  proformaInvoices[idx] = updated
+  return delay(updated)
+}
+
+/** 表1 由 PI 轉換建立時，PI 沒有的內部生產指示先給預設值，待表1 自行補齊 */
+function packingDefaultsFromPi(): Pick<
+  PackingNotice,
+  'sampleQty' | 'shipMethod' | 'labelTypes' | 'packagingType' | 'tolerance' | 'embossing' | 'edgeCut' | 'allowSplicing'
+> {
+  return {
+    sampleQty: 0,
+    shipMethod: ['海運'],
+    labelTypes: ['皇加標籤', '客人指定標籤', '工廠原標籤'],
+    packagingType: '一般PP袋',
+    tolerance: { mode: '±5%' },
+    embossing: ['否'],
+    edgeCut: false,
+    allowSplicing: false,
+  }
+}
+
+function piItemToPackingItem(item: ProformaInvoiceItem, noticeId: string, index: number): PackingNoticeItem {
+  return {
+    id: `${noticeId}-L${index + 1}`,
+    customerProductName: item.customerProductName,
+    roricaProductName: item.roricaProductName,
+    // 產品編號與分支隨轉換帶入，下游一律以此解析分支（決策44）
+    productId: item.productId,
+    color: item.color,
+    yard: item.yard,
+    meter: item.meter,
+    packingMethod: item.packingMethod,
+    fixedLengthMeter: item.fixedLengthMeter,
+    colorRatios: item.colorRatios,
+    note: item.note,
+    sourcePiItemId: item.id,
+  }
+}
+
+/**
+ * PI 轉表1（Phase 2 第三章）：
+ * - 依 PO 分組，一張表1 只承載一個 PO 號（決策43）
+ * - 每張表1 都帶入 PI 的全部嘜頭（決策52）與收貨地址（決策40）
+ * - 出貨日期先以「今天＋交期天數」帶入、可修改；真正的應出貨日以第一張表1 的生效日起算（決策36、49）
+ * - PI 階段沒建主檔的新客戶，於此時才由表1 的既有機制建檔給號（決策51）
+ */
+export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInvoice; notices: PackingNotice[] }> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  if (!canConvertPi(current)) throw new Error('僅「已簽回」的 PI 可轉換為包裝通知單')
+
+  const today = dayjs()
+  const customer = resolveCustomerByName(current.customerName)
+  const poNos = [...new Set(current.items.map((item) => item.poNo))]
+  const notices: PackingNotice[] = []
+
+  poNos.forEach((poNo, i) => {
+    const noticeId = `ORD-${today.format('YYYYMMDD')}-${pad(
+      packingNotices.filter((n) => n.id.startsWith(`ORD-${today.format('YYYYMMDD')}`)).length + 1,
+    )}`
+    const notice: PackingNotice = {
+      id: noticeId,
+      customerId: customer.id,
+      customerOrderNo: poNo,
+      status: '草稿',
+      createdAt: today.toISOString(),
+      expectedDeliveryAt: today.add(current.leadTimeDays, 'day').format('YYYY-MM-DD'),
+      items: current.items
+        .filter((item) => item.poNo === poNo)
+        .map((item, j) => piItemToPackingItem(item, noticeId, j)),
+      itemUnit: current.itemUnit,
+      markings: current.markings,
+      sourcePiId: current.id,
+      shippingAddress: current.shippingAddress,
+      ...packingDefaultsFromPi(),
+    }
+    packingNotices.unshift(notice)
+    autoReserveStockForNotice(notice)
+    notices.push(notice)
+    void i
+  })
+
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '已轉換',
+    convertedAt: today.toISOString(),
+    customerId: customer.id,
+    packingNoticeIds: notices.map((n) => n.id),
+  }
+  proformaInvoices[idx] = updated
+  return delay({ pi: updated, notices })
+}
+
+/** 複製為新 PI（決策24）：內容照抄但視為全新商機，前版單號留空、轉換時另建表1 */
+export function copyProformaInvoiceAsNew(id: string): Promise<ProformaInvoice> {
+  const source = proformaInvoices[piIndex(id)]
+  return createProformaInvoice({
+    customerName: source.customerName,
+    contactIndex: source.contactIndex,
+    currency: source.currency,
+    tradeTerm: source.tradeTerm,
+    tradeTermNote: source.tradeTermNote,
+    portOfLoading: source.portOfLoading,
+    destination: source.destination,
+    leadTimeDays: source.leadTimeDays,
+    leadTimeNote: source.leadTimeNote,
+    paymentTerm: source.paymentTerm,
+    paymentTermNote: source.paymentTermNote,
+    itemUnit: source.itemUnit,
+    items: source.items.map(({ id: _id, meter: _meter, ...rest }) => rest),
+    markings: source.markings,
+  })
+}
+
+/** 作廢並重開（決策24）：取代前一張，原 PI 標記已作廢；新單轉換時不建新表1，改為覆蓋原表1 */
+export function voidAndReopenProformaInvoice(id: string): Promise<ProformaInvoice> {
+  const source = proformaInvoices[piIndex(id)]
+  return createProformaInvoice({
+    customerName: source.customerName,
+    contactIndex: source.contactIndex,
+    currency: source.currency,
+    tradeTerm: source.tradeTerm,
+    tradeTermNote: source.tradeTermNote,
+    portOfLoading: source.portOfLoading,
+    destination: source.destination,
+    leadTimeDays: source.leadTimeDays,
+    leadTimeNote: source.leadTimeNote,
+    paymentTerm: source.paymentTerm,
+    paymentTermNote: source.paymentTermNote,
+    itemUnit: source.itemUnit,
+    items: source.items.map(({ id: _id, meter: _meter, ...rest }) => rest),
+    markings: source.markings,
+    previousPiId: source.id,
+  })
+}
+
+export interface PiOverwriteResult {
+  pi: ProformaInvoice
+  /** 已更新的表1（規則1／2） */
+  updated: string[]
+  /** 因凍結而略過的表1（規則0） */
+  frozen: string[]
+  /** 擋下的原因（規則3）；非空時 PI 轉為待人工處理 */
+  blocked: string[]
+}
+
+/**
+ * 取代版 PI 套用至既有表1（Phase 2 第四章）。
+ * 事後擋：新 PI 可以正常建立填完，直到這一步才偵測下游狀態——
+ * 規則0 凍結略過、規則1／2 直接更新表1 明細、規則3 擋下並轉「待人工處理」同時凍結原 PI 與表1。
+ */
+export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  const previousId = current.previousPiId
+  if (!previousId) throw new Error('本張 PI 非取代版（無前版 PI 單號），請改用「轉換為包裝通知單」')
+  const previous = proformaInvoices.find((pi) => pi.id === previousId)
+  if (!previous) throw new Error(`前版 PI ${previousId} 不存在`)
+  if (previous.packingNoticeIds.length === 0) throw new Error('前版 PI 尚未轉換為包裝通知單，無需覆蓋')
+
+  const result: PiOverwriteResult = { pi: current, updated: [], frozen: [], blocked: [] }
+
+  previous.packingNoticeIds.forEach((noticeId) => {
+    const nIdx = packingNotices.findIndex((n) => n.id === noticeId)
+    if (nIdx === -1) return
+    const notice = packingNotices[nIdx]
+    const rule = piOverwriteRule(notice, purchaseOrders, dyeOrders, secondaryProcessingOrders)
+    if (rule.rule === 0) {
+      result.frozen.push(rule.reason)
+      return
+    }
+    if (rule.rule === 3) {
+      result.blocked.push(...rule.blockers)
+      return
+    }
+    const items = current.items.filter((item) => item.poNo === notice.customerOrderNo)
+    if (items.length === 0) return
+    packingNotices[nIdx] = {
+      ...notice,
+      items: items.map((item, j) => piItemToPackingItem(item, notice.id, j)),
+      itemUnit: current.itemUnit,
+      markings: current.markings,
+      shippingAddress: current.shippingAddress,
+      sourcePiId: current.id,
+    }
+    result.updated.push(notice.id)
+  })
+
+  if (result.blocked.length > 0) {
+    // 規則3：轉待人工處理並凍結兩張 PI 與其表1，等主管裁決（決策27）
+    const now = dayjs().toISOString()
+    proformaInvoices[idx] = {
+      ...current,
+      status: '待人工處理',
+      manualHandling: { detectedAt: now, blockedBy: result.blocked },
+    }
+    result.pi = proformaInvoices[idx]
+    return delay(result)
+  }
+
+  proformaInvoices[idx] = {
+    ...current,
+    status: '已轉換',
+    convertedAt: dayjs().toISOString(),
+    packingNoticeIds: result.updated,
+  }
+  result.pi = proformaInvoices[idx]
+  return delay(result)
+}
+
+/**
+ * 規則3 的人工裁決（決策28）：
+ * 繼續＝依舊 PI 出貨、新建立的取代版作廢刪除；作廢＝整筆終止（原 PI 與取代版皆作廢）。
+ * 不設「照客戶要求改」或「另開補單」的第三個出口。
+ */
+export function resolvePiManualHandling(id: string, resolution: '繼續' | '作廢'): Promise<ProformaInvoice> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  if (current.status !== '待人工處理') throw new Error('本張 PI 不在待人工處理狀態')
+  const now = dayjs().toISOString()
+
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '已作廢',
+    voidedAt: now,
+    voidReason: resolution === '繼續' ? '主管裁決：依舊 PI 出貨，本張取代版作廢' : '主管裁決：整筆終止',
+    manualHandling: current.manualHandling
+      ? { ...current.manualHandling, resolvedAt: now, resolution }
+      : undefined,
+  }
+  proformaInvoices[idx] = updated
+
+  if (resolution === '繼續' && current.previousPiId) {
+    // 舊 PI 回復為已轉換，繼續出貨
+    const pIdx = proformaInvoices.findIndex((pi) => pi.id === current.previousPiId)
+    if (pIdx !== -1) {
+      proformaInvoices[pIdx] = {
+        ...proformaInvoices[pIdx],
+        status: '已轉換',
+        voidedAt: undefined,
+        voidReason: undefined,
+        replacedByPiId: undefined,
+      }
+    }
+  }
+  return delay(updated)
+}
+
+/** 人工作廢（如客戶取消議價）：已轉換者不可作廢，需走取代版流程 */
+export function voidProformaInvoice(id: string, reason: string): Promise<ProformaInvoice> {
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  if (current.status === '已轉換') throw new Error('已轉換的 PI 不可直接作廢，請以「作廢並重開」建立取代版')
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '已作廢',
+    voidedAt: dayjs().toISOString(),
+    voidReason: reason.trim() || '人工作廢',
+  }
+  proformaInvoices[idx] = updated
+  return delay(updated)
 }

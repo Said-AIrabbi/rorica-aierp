@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
 import { reservationExpiresAt } from '@/lib/inventory'
 import { buildSecondaryProcessingPackaging, defaultRollYard } from '@/lib/workflow'
+import { PI_PAYMENT_TERM_TEMPLATES, piQuoteValidUntil } from '@/lib/pi'
 import { PRODUCT_CATALOG } from './product-catalog'
 import type {
   AbnormalNotice,
@@ -15,6 +16,8 @@ import type {
   PackingNotice,
   PackingNoticeItem,
   Product,
+  ProformaInvoice,
+  ProformaInvoiceItem,
   PurchaseOrder,
   SecondaryProcessingOrder,
   ShippingOrder,
@@ -31,6 +34,10 @@ import {
   MARKING_SHAPES,
   PACKAGING_TYPES,
   PACKING_METHODS,
+  PI_CURRENCIES,
+  PI_LEAD_TIME_DAYS,
+  PI_PORTS,
+  PI_TRADE_TERMS,
   PRODUCT_CATEGORIES,
   PROCESSING_METHODS,
   SHIP_METHODS,
@@ -892,6 +899,111 @@ if (abnormalNotices.length > 0) {
   })
 }
 
+// ---------- Phase 2：PI 單（Proforma Invoice） ----------
+
+/**
+ * PI 展示資料：涵蓋狀態流上的各個節點（草稿／待批准／待簽回／已簽回／已轉換／逾期／取代版），
+ * 讓客戶一進畫面就能看到每種情境長什麼樣。
+ * 前兩張為「已轉換」，其表1 取用既有的種子包裝通知單，並回頭補上來源 PI 與收貨地址，
+ * 以呈現 PI → 表1 → 表8 收貨地址只填一次的串接（決策40）。
+ */
+const PI_STATUS_PLAN: { status: ProformaInvoice['status']; daysAgo: number; convertCount: number }[] = [
+  { status: '已轉換', daysAgo: 38, convertCount: 2 },
+  { status: '已轉換', daysAgo: 26, convertCount: 1 },
+  { status: '已簽回', daysAgo: 9, convertCount: 0 },
+  { status: '待簽回', daysAgo: 4, convertCount: 0 },
+  { status: '待批准', daysAgo: 2, convertCount: 0 },
+  { status: '草稿', daysAgo: 0, convertCount: 0 },
+  // 報價 14 天已過：狀態欄位仍是待簽回，畫面由 effectivePiStatus 即時判為「已逾期」
+  { status: '待簽回', daysAgo: 21, convertCount: 0 },
+]
+
+let piConvertCursor = 0
+
+export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) => {
+  const createdAt = dayjs().subtract(plan.daysAgo, 'day')
+  const id = `PI-${createdAt.format('YYYYMMDD')}-${String(i + 1).padStart(3, '0')}`
+  const customer = customers[i % customers.length]
+  const currency = faker.helpers.arrayElement(PI_CURRENCIES)
+  // PO 號：客戶自己的訂單編號；一張 PI 常含 1～2 個 PO，轉表1 時依此拆單（決策43）
+  const poNos = Array.from({ length: faker.number.int({ min: 1, max: 2 }) }).map(
+    () => `N${faker.number.int({ min: 21000, max: 21999 })}`,
+  )
+  const items: ProformaInvoiceItem[] = poNos.flatMap((poNo, pi) =>
+    Array.from({ length: faker.number.int({ min: 1, max: 2 }) }).map((_, j) => {
+      const product = faker.helpers.arrayElement(orderableProducts)
+      const yard = faker.number.int({ min: 200, max: 2500 })
+      const packingMethod = faker.helpers.arrayElement(PACKING_METHODS)
+      return {
+        id: `${id}-L${pi * 2 + j + 1}`,
+        poNo,
+        roricaProductName: product.productName,
+        productId: product.id,
+        customerProductName: product.customerProductName,
+        color: faker.helpers.arrayElement(product.colors)?.color ?? 'WHITE',
+        yard,
+        meter: Number(yardToMeter(yard).toFixed(1)),
+        // 單價來自報價單（不納入系統），故為手填值；主檔牌價空白時兩者不比對
+        unitPrice: Number(faker.number.float({ min: 0.8, max: 4.5, fractionDigits: 2 }).toFixed(2)),
+        packingMethod,
+        fixedLengthMeter: FIXED_ROLL_PACKING_METHODS.includes(packingMethod)
+          ? faker.number.float({ min: 40, max: 60, fractionDigits: 1 })
+          : undefined,
+        colorRatios: faker.helpers.arrayElement([[], [], ['依訂單指定色比±5%']]),
+        note: '',
+      }
+    }),
+  )
+
+  // 收貨人：只能是該客戶底下的聯絡人（決策37），故收貨地址一律取自該組聯絡資訊
+  const contactIndex = customer.contacts.length > 1 && i % 2 === 1 ? 1 : 0
+  const contact = customer.contacts[contactIndex]
+
+  const converted = plan.convertCount > 0 ? packingNotices.slice(piConvertCursor, piConvertCursor + plan.convertCount) : []
+  piConvertCursor += plan.convertCount
+
+  const pi: ProformaInvoice = {
+    id,
+    status: plan.status,
+    createdAt: createdAt.toISOString(),
+    quoteValidUntil: piQuoteValidUntil(createdAt).toISOString(),
+    approvedAt: plan.status === '草稿' || plan.status === '待批准' ? undefined : createdAt.add(1, 'day').toISOString(),
+    signedBackAt:
+      plan.status === '已簽回' || plan.status === '已轉換' ? createdAt.add(3, 'day').toISOString() : undefined,
+    signedBackFileName: plan.status === '已轉換' ? `${id}-signed.pdf` : undefined,
+    convertedAt: plan.status === '已轉換' ? createdAt.add(4, 'day').toISOString() : undefined,
+    customerId: customer.id,
+    customerName: customer.shortName,
+    contactIndex,
+    shippingAddress: contact?.shippingAddress,
+    currency,
+    tradeTerm: faker.helpers.arrayElement(PI_TRADE_TERMS),
+    portOfLoading: faker.helpers.arrayElement(PI_PORTS),
+    destination: faker.helpers.arrayElement(['JEDDAH, K.S.A.', 'XIAMEN, CHINA', 'HO CHI MINH, VIETNAM', 'DUBAI, U.A.E.']),
+    leadTimeDays: faker.helpers.arrayElement(PI_LEAD_TIME_DAYS),
+    paymentTerm: faker.helpers.arrayElement(PI_PAYMENT_TERM_TEMPLATES),
+    itemUnit: faker.helpers.arrayElement(['Yard', 'Meter'] as const),
+    items,
+    // 嘜頭與表1 為同一組資料，只填一次（決策20、52）；轉換時每張表1 帶入全部
+    markings: converted[0]?.markings ?? packingNotices[i % packingNotices.length].markings,
+    packingNoticeIds: converted.map((n) => n.id),
+  }
+
+  // 已轉換者回頭在表1 記錄來源 PI 與收貨地址，串起 PI → 表1 → 表8 的地址傳遞
+  converted.forEach((notice) => {
+    const idx = packingNotices.findIndex((n) => n.id === notice.id)
+    if (idx !== -1) {
+      packingNotices[idx] = {
+        ...packingNotices[idx],
+        sourcePiId: id,
+        shippingAddress: contact?.shippingAddress,
+      }
+    }
+  })
+
+  return pi
+})
+
 // 種子資料中已連動標記的同批條碼：狀態同步為瑕疵／報廢，否則庫存查詢仍會把它們算成可用
 batchDefectLabels.forEach((label) => {
   const idx = fabricLabels.findIndex((l) => l.id === label.id)
@@ -909,6 +1021,7 @@ batchDefectLabels.forEach((label) => {
 const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v2'
 
 interface SessionSnapshot {
+  proformaInvoices: ProformaInvoice[]
   packingNotices: PackingNotice[]
   purchaseOrders: PurchaseOrder[]
   dyeRequests: DyeRequest[]
@@ -930,6 +1043,7 @@ interface SessionSnapshot {
 export function persistSessionSnapshot(): void {
   try {
     const snapshot: SessionSnapshot = {
+      proformaInvoices,
       packingNotices,
       purchaseOrders,
       dyeRequests,
@@ -957,6 +1071,8 @@ function restoreSessionSnapshot(): void {
     const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
     if (!raw) return
     const snapshot = JSON.parse(raw) as SessionSnapshot
+    // PI 單為 Phase 2 新增的快照欄位，舊快照沒有時沿用種子資料
+    if (snapshot.proformaInvoices) proformaInvoices.splice(0, proformaInvoices.length, ...snapshot.proformaInvoices)
     packingNotices.splice(0, packingNotices.length, ...snapshot.packingNotices)
     purchaseOrders.splice(0, purchaseOrders.length, ...snapshot.purchaseOrders)
     dyeRequests.splice(0, dyeRequests.length, ...snapshot.dyeRequests)
@@ -990,6 +1106,12 @@ export function clearSessionSnapshot(): void {
 }
 
 restoreSessionSnapshot()
+
+/** 表1 反查來源 PI（Phase 2）：畫面上要顯示這張表1 是從哪張 PI 轉來的 */
+export function getProformaInvoice(id: string | undefined): ProformaInvoice | undefined {
+  if (!id) return undefined
+  return proformaInvoices.find((pi) => pi.id === id)
+}
 
 /** 下游單據（表8 等）反查來源包裝通知單，主要用於取得建單時的數量輸入基準 */
 export function getPackingNotice(id: string): PackingNotice | undefined {

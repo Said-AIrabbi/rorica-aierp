@@ -251,6 +251,11 @@ export interface PackingNoticeItem {
   processingMethodNote?: string
   /** 明細備註：文字輸入 */
   note?: string
+  /**
+   * 來源 PI 明細列 id（Phase 2 決策42）：改版 PI 覆蓋既有表1 時要逐列對位，
+   * 靠品名或顏色比對會在同品名多色時對錯列，故明確記錄來源列。
+   */
+  sourcePiItemId?: string
 }
 
 export const MARKING_SHAPES = ['正三角形', '菱形', 'A5大小'] as const
@@ -337,6 +342,16 @@ export interface PackingNotice {
    */
   markings: PackingNoticeMarking[]
   actualReceiptComparisons?: ActualReceiptComparison[]
+  /**
+   * 來源 PI 單號（Phase 2 決策42）：由 PI 轉換建立者記錄來源，供改版覆蓋時回頭對位；
+   * 未經 PI、直接開立的表1 留空。
+   */
+  sourcePiId?: string
+  /**
+   * 收貨地址（Phase 2 決策40）：自 PI 選定的聯絡窗口帶入，並續帶至表8 出貨單——
+   * 三張單據為同一筆地址、只填一次。未經 PI 的表1 留空。
+   */
+  shippingAddress?: string
   /** 燙金：多選（布邊/布頭/否），新增於表2、表4唯讀帶入（帶入時以頓號連接顯示） */
   embossing: (typeof EMBOSSING_OPTIONS)[number][]
   /** 裁邊：是/否 */
@@ -914,4 +929,112 @@ export interface AbnormalNotice {
   productionReply?: string
   processedAt?: string
   completedAt?: string
+}
+
+// ---------- Phase 2：PI 單（Proforma Invoice） ----------
+
+/**
+ * PI 狀態流（Phase 2 規格第三章）：
+ * 草稿 → 待批准 →（董事長批准）→ 待簽回 → 已簽回 → 已轉換
+ * 例外：報價 14 天到期轉「已逾期」（重新報價可回到待簽回）；建立滿 3 個月未簽回轉換一律「已作廢」；
+ * 取代版套用時偵測到下游已對外發出，轉「待人工處理」等主管裁決。
+ * 註：作廢僅存在於 PI（決策38）——表1～表9 只負責執行，不設作廢態。
+ */
+export const PI_STATUSES = ['草稿', '待批准', '待簽回', '已簽回', '已轉換', '已逾期', '待人工處理', '已作廢'] as const
+export type ProformaInvoiceStatus = (typeof PI_STATUSES)[number]
+
+/** 幣別：一張 PI 只能有一種（決策14）；商品主檔價格以 NTD 為主，其餘僅作簡易匯率參照（決策41） */
+export const PI_CURRENCIES = ['USD', 'RMB', 'NTD'] as const
+export type PiCurrency = (typeof PI_CURRENCIES)[number]
+
+/** 貿易條件常用選項（2026/09/17 皇加提供，共 7 項）；選用後可自行修改，另有備註一行 */
+export const PI_TRADE_TERMS = ['EXW', 'FOB', 'CFR', 'CIF', 'FCA', 'DOOR TO DOOR', 'EXPRESS COURIER'] as const
+
+/** 起運地：固定選項，以英文顯示（決策17） */
+export const PI_PORTS = ['KEELUNG', 'TAIPEI', 'TAICHUNG', 'KAOHSIUNG'] as const
+
+/** 交期天數下拉（2026/09/17 提供，共 4 項）：下定到出貨的期限 */
+export const PI_LEAD_TIME_DAYS = [30, 45, 60, 90] as const
+
+export interface ProformaInvoiceItem {
+  id: string
+  /**
+   * PO NO.：即表1 的「客戶訂單號」。一張 PI 可含多個 PO，而拆單以 PO 為界（決策43），
+   * 故 PO 記在明細層級，轉換時依此分組成多張表1。
+   */
+  poNo: string
+  roricaProductName: string
+  /** 產品編號（決策44）：選定產品分支時記錄，隨轉換帶入表1 明細 */
+  productId?: string
+  customerProductName: string
+  color: string
+  /** 數量一律以 Yard 存放，meter 為換算值；itemUnit 記錄當初以哪個單位報價 */
+  yard: number
+  meter: number
+  /** 單價：手動輸入，來源為報價單（報價單本身不納入系統，決策12） */
+  unitPrice: number
+  packingMethod: (typeof PACKING_METHODS)[number]
+  /** 定碼長度（米）：包裝方式為定碼ROLL 時展開，比照表1（決策53） */
+  fixedLengthMeter?: number
+  /** 彩條：最多 3 組，比照表1 的明細層級設計 */
+  colorRatios?: string[]
+  note?: string
+}
+
+/** 規則3（下游已對外發出）擋下後的人工處理紀錄 */
+export interface PiManualHandling {
+  detectedAt: string
+  /** 擋下原因：哪幾張下游單據已經讓外部廠商動起來 */
+  blockedBy: string[]
+  resolvedAt?: string
+  /** 繼續＝依舊 PI 出貨、新 PI 作廢；作廢＝整筆終止（不設第三個出口，決策28） */
+  resolution?: '繼續' | '作廢'
+}
+
+export interface ProformaInvoice {
+  id: string
+  /** 前版 PI 單號：取代版（作廢並重開）自動填入；「複製為新 PI」留空（決策24） */
+  previousPiId?: string
+  /** 被哪一張取代版取代（原單標記用） */
+  replacedByPiId?: string
+  status: ProformaInvoiceStatus
+  createdAt: string
+  /** 報價有效期限：建單日 +14 天，逾期價格作廢但單據保留、可複製（決策1） */
+  quoteValidUntil: string
+  approvedAt?: string
+  signedBackAt?: string
+  /** 客戶簽回附件：非必填、不作為轉表1 的卡控（決策48）；原型僅記檔名 */
+  signedBackFileName?: string
+  convertedAt?: string
+  voidedAt?: string
+  voidReason?: string
+  /**
+   * 客戶：PI 階段對方可能尚未成為客戶，故允許只有名稱而無主檔 id——
+   * 自動建檔留在表1（決策51），轉換時才建立主檔並給編號。
+   */
+  customerId?: string
+  customerName: string
+  /** 收貨人：客戶主檔聯絡資訊的第幾組（決策37：只能是該客戶底下的聯絡人） */
+  contactIndex?: number
+  /** 收貨地址：由選定聯絡窗口帶出，隨轉換帶入表1、表8（決策40） */
+  shippingAddress?: string
+  currency: PiCurrency
+  tradeTerm: string
+  tradeTermNote?: string
+  portOfLoading: (typeof PI_PORTS)[number]
+  destination?: string
+  leadTimeDays: (typeof PI_LEAD_TIME_DAYS)[number]
+  leadTimeNote?: string
+  paymentTerm: string
+  paymentTermNote?: string
+  /** 估算 CBM：公式待皇加提供，目前不計算（Phase 2 第七章） */
+  estimatedCbm?: number
+  /** 報價數量的輸入單位基準；轉換後表1 沿用同一基準（決策7） */
+  itemUnit: 'Yard' | 'Meter'
+  items: ProformaInvoiceItem[]
+  /** 嘜頭：PI 可多組，轉換時每張表1 都帶入全部（決策52） */
+  markings: PackingNoticeMarking[]
+  /** 已轉換產生的表1 單號（一張 PI 可拆多張，決策4） */
+  packingNoticeIds: string[]
+  manualHandling?: PiManualHandling
 }

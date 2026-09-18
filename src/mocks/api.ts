@@ -8,6 +8,7 @@ import {
   goodsReceipts,
   packingNotices,
   products,
+  proformaInvoices,
   purchaseOrders,
   secondaryProcessingOrders,
   shippingOrders,
@@ -22,6 +23,7 @@ function delay<T>(value: T, ms = 250): Promise<T> {
 }
 
 export const api = {
+  proformaInvoices: () => delay(proformaInvoices),
   packingNotices: () => delay(packingNotices),
   purchaseOrders: () => delay(purchaseOrders),
   secondaryProcessingOrders: () => delay(secondaryProcessingOrders),

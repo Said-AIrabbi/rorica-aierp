@@ -25,7 +25,8 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
   const { data: stockReservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
-  const notifications = buildNotifications(packingNotices, purchaseOrders, stockReservations)
+  const { data: proformaInvoices = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
+  const notifications = buildNotifications(packingNotices, purchaseOrders, stockReservations, proformaInvoices)
 
   return (
     <header className={`flex h-16 items-center justify-between gap-2 border-b border-border bg-surface px-4 sm:px-6 ${className}`}>

@@ -9,6 +9,7 @@ import {
   PackageCheck,
   PackageSearch,
   Palette,
+  Receipt,
   Scissors,
   ScrollText,
   Send,
@@ -20,6 +21,8 @@ import {
 import { cn } from '@/lib/utils'
 
 const documentNav = [
+  // PI 單是表1 的上游（客戶在表1 之前先收到的報價），故列於表1 之上
+  { to: '/proforma-invoice', label: 'PI 單（預估發票）', icon: Receipt },
   { to: '/packing-notice', label: '表1 包裝通知單', icon: ScrollText },
   { to: '/purchase-order', label: '表2 訂購單', icon: ShoppingCart },
   { to: '/dye-request', label: '表3 打色通知單', icon: Palette },

@@ -2,6 +2,9 @@ import { Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { HomePage } from '@/features/home/HomePage'
 import { StockOverviewPage } from '@/features/inventory/StockOverviewPage'
+import { PiListPage } from '@/features/proforma-invoice/PiListPage'
+import { PiDetailPage } from '@/features/proforma-invoice/PiDetailPage'
+import { PiFormPage } from '@/features/proforma-invoice/PiFormPage'
 import { PackingNoticeListPage } from '@/features/packing-notice/PackingNoticeListPage'
 import { PackingNoticeDetailPage } from '@/features/packing-notice/PackingNoticeDetailPage'
 import { PackingNoticeFormPage } from '@/features/packing-notice/PackingNoticeFormPage'
@@ -43,6 +46,12 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
 
         <Route path="/inventory" element={<StockOverviewPage />} />
+
+        {/* Phase 2：PI 單為表1 的上游，路由順序比照側欄排在表1 之前 */}
+        <Route path="/proforma-invoice" element={<PiListPage />} />
+        <Route path="/proforma-invoice/new" element={<PiFormPage />} />
+        <Route path="/proforma-invoice/:id" element={<PiDetailPage />} />
+        <Route path="/proforma-invoice/:id/edit" element={<PiFormPage />} />
 
         <Route path="/packing-notice" element={<PackingNoticeListPage />} />
         <Route path="/packing-notice/new" element={<PackingNoticeFormPage />} />
