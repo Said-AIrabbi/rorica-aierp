@@ -85,12 +85,22 @@ export function piAutoVoidAt(createdAt: string | Date | Dayjs): Dayjs {
 }
 
 /**
+ * 待人工處理（規則3）：取代版偵測到下游已對外發出後掛上，裁決前一律成立。
+ * 這不是一個狀態——PI 仍留在草稿，只是動不了（決策27）。
+ */
+export function isPiOnManualHold(pi: ProformaInvoice): boolean {
+  return Boolean(pi.manualHandling && !pi.manualHandling.resolvedAt)
+}
+
+/**
  * 畫面實際顯示的狀態：報價逾期與 3 個月自動作廢都是「時間到了就成立」，
  * 不需要有人按按鈕，故比照表2 逾期的做法即時推算，不寫回資料。
  * 已簽回之後的狀態（已轉換等）不再受這兩個時鐘影響。
+ * 待人工處理中的 PI 也不自動作廢——爭議卡著不是業務不處理，時鐘不該繼續跑。
  */
 export function effectivePiStatus(pi: ProformaInvoice): ProformaInvoice['status'] {
-  if (pi.status === '已作廢' || pi.status === '已轉換' || pi.status === '待人工處理') return pi.status
+  if (pi.status === '已作廢' || pi.status === '已轉換') return pi.status
+  if (isPiOnManualHold(pi)) return pi.status
   const now = dayjs()
   if (pi.status !== '已簽回' && now.isAfter(piAutoVoidAt(pi.createdAt))) return '已作廢'
   if (pi.status === '待簽回' && now.isAfter(dayjs(pi.quoteValidUntil))) return '已逾期'
@@ -99,11 +109,11 @@ export function effectivePiStatus(pi: ProformaInvoice): ProformaInvoice['status'
 
 /** 逾期後不可直接簽回，須先重新報價並批准（Phase 2 第三章狀態流程） */
 export function canSignBackPi(pi: ProformaInvoice): boolean {
-  return effectivePiStatus(pi) === '待簽回'
+  return !isPiOnManualHold(pi) && effectivePiStatus(pi) === '待簽回'
 }
 
 export function canConvertPi(pi: ProformaInvoice): boolean {
-  return effectivePiStatus(pi) === '已簽回'
+  return !isPiOnManualHold(pi) && effectivePiStatus(pi) === '已簽回'
 }
 
 /**

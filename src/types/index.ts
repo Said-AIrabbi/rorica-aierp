@@ -951,11 +951,12 @@ export interface AbnormalNotice {
 /**
  * PI 狀態流（Phase 2 規格第三章）：
  * 草稿 → 待批准 →（管理層批准）→ 待簽回 → 已簽回 → 已轉換
- * 例外：報價 14 天到期轉「已逾期」（重新報價可回到待簽回）；建立滿 3 個月未簽回轉換一律「已作廢」；
- * 取代版套用時偵測到下游已對外發出，轉「待人工處理」等管理層裁決。
+ * 例外：報價 14 天到期轉「已逾期」（重新報價可回到待簽回）；建立滿 3 個月未簽回轉換一律「已作廢」。
+ * 規則3 的爭議不是一個狀態：取代版一旦偵測到下游已對外發出，就**留在草稿**並掛上
+ * manualHandling（見 ProformaInvoice），在管理層裁決前不得送批准／簽回／套用（決策27）。
  * 註：作廢僅存在於 PI（決策38）——表1～表9 只負責執行，不設作廢態。
  */
-export const PI_STATUSES = ['草稿', '待批准', '待簽回', '已簽回', '已轉換', '已逾期', '待人工處理', '已作廢'] as const
+export const PI_STATUSES = ['草稿', '待批准', '待簽回', '已簽回', '已轉換', '已逾期', '已作廢'] as const
 export type ProformaInvoiceStatus = (typeof PI_STATUSES)[number]
 
 /** 幣別：一張 PI 只能有一種（決策14）；商品主檔價格以 NTD 為主，其餘僅作簡易匯率參照（決策41） */
@@ -996,7 +997,11 @@ export interface ProformaInvoiceItem {
   note?: string
 }
 
-/** 規則3（下游已對外發出）擋下後的人工處理紀錄 */
+/**
+ * 規則3（下游已對外發出）的人工處理紀錄。
+ * 掛上且尚未 resolvedAt 者即「待人工處理」——PI 留在草稿動不了、其來源 PI 的表1 一併凍結，
+ * 期間一張表1 都不會被改到，也不可再建第三張取代版。
+ */
 export interface PiManualHandling {
   detectedAt: string
   /** 擋下原因：哪幾張下游單據已經讓外部廠商動起來 */

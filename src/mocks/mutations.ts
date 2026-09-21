@@ -8,7 +8,7 @@ import {
   reservationExpiresAt,
   suggestSplicingCombination,
 } from '@/lib/inventory'
-import { canConvertPi, effectivePiStatus, piOverwriteRule, piQuoteValidUntil } from '@/lib/pi'
+import { canConvertPi, effectivePiStatus, isPiOnManualHold, piOverwriteRule, piQuoteValidUntil } from '@/lib/pi'
 import {
   buildSecondaryProcessingPackaging,
   defaultRollYard,
@@ -2873,7 +2873,7 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
   if (previous) {
     const chainRoot = previous.id.replace(/-RV\d+$/, '')
     const pendingCase = proformaInvoices.find(
-      (x) => x.status === '待人工處理' && x.id.replace(/-RV\d+$/, '') === chainRoot,
+      (x) => isPiOnManualHold(x) && x.id.replace(/-RV\d+$/, '') === chainRoot,
     )
     if (pendingCase) {
       throw new Error(`${pendingCase.id} 仍在待人工處理，本案處理完畢前不可再建立取代版`)
@@ -2907,8 +2907,21 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
   }
   proformaInvoices.unshift(pi)
 
-  // 取代版建立後，原單即標記為被取代（決策24）
   if (previous) {
+    // 規則3 的擋下**從 PI 就開始**（決策27）：建立取代版的當下即檢查下游，
+    // 已對外發出者，新 PI 就地留在草稿並掛上待人工處理，一張表1 都不會被改到。
+    const blockers = piBlockingReasons(previous)
+    if (blockers.length > 0) {
+      const held: ProformaInvoice = {
+        ...pi,
+        manualHandling: { detectedAt: today.toISOString(), blockedBy: blockers },
+      }
+      proformaInvoices[0] = held
+      // 原 PI 此時**不作廢**——還沒裁決，舊單可能要繼續出貨；連同其表1 一併凍結
+      setManualHoldOnNotices(previous, id)
+      return delay(held)
+    }
+    // 未被擋下才走原本的取代流程：原單標記為被取代（決策24）
     const idx = proformaInvoices.findIndex((x) => x.id === previous.id)
     proformaInvoices[idx] = {
       ...proformaInvoices[idx],
@@ -2921,6 +2934,36 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
   return delay(pi)
 }
 
+/**
+ * 規則3 的判定（決策26、27）：檢查某張 PI 已轉出的表1，有沒有任何一張的下游已經對外發出。
+ * 回傳擋下的原因清單，空陣列代表整批都還沒讓外部廠商動起來。
+ */
+function piBlockingReasons(source: ProformaInvoice): string[] {
+  return source.packingNoticeIds.flatMap((noticeId) => {
+    const notice = packingNotices.find((n) => n.id === noticeId)
+    if (!notice) return []
+    const rule = piOverwriteRule(notice, purchaseOrders, dyeOrders, secondaryProcessingOrders)
+    return rule.rule === 3 ? rule.blockers : []
+  })
+}
+
+/** 待人工處理期間，連同來源 PI 的表1 一起凍結／解除（決策27、39） */
+function setManualHoldOnNotices(source: ProformaInvoice, holdPiId: string | undefined): void {
+  source.packingNoticeIds.forEach((noticeId) => {
+    const idx = packingNotices.findIndex((n) => n.id === noticeId)
+    if (idx !== -1) packingNotices[idx] = { ...packingNotices[idx], manualHoldPiId: holdPiId }
+  })
+}
+
+/** 待人工處理中的 PI 一律不得推進流程（送批准／批准／簽回／套用） */
+function assertNotOnManualHold(pi: ProformaInvoice): void {
+  if (isPiOnManualHold(pi)) {
+    throw new Error(
+      `本張 PI 因下游已對外發出而待人工處理，裁決前不得推進：${pi.manualHandling?.blockedBy.join('；') ?? ''}`,
+    )
+  }
+}
+
 function piIndex(id: string): number {
   const idx = proformaInvoices.findIndex((pi) => pi.id === id)
   if (idx === -1) throw new Error(`PI 單 ${id} 不存在`)
@@ -2931,6 +2974,7 @@ function piIndex(id: string): number {
 export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): Promise<ProformaInvoice> {
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
+  assertNotOnManualHold(current)
   if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
   const { customerId, customerName } = resolvePiCustomer(input.customerName)
   const updated: ProformaInvoice = {
@@ -2959,6 +3003,7 @@ export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): 
 /** 送出批准：草稿 → 待批准 */
 export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
   const idx = piIndex(id)
+  assertNotOnManualHold(proformaInvoices[idx])
   if (proformaInvoices[idx].status !== '草稿') throw new Error('僅草稿可送出批准')
   const updated: ProformaInvoice = { ...proformaInvoices[idx], status: '待批准' }
   proformaInvoices[idx] = updated
@@ -2973,6 +3018,7 @@ export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
 export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
+  assertNotOnManualHold(current)
   const effective = effectivePiStatus(current)
   // 已逾期者即為「重新報價」的入口；3 個月自動作廢後 effectivePiStatus 會回傳已作廢，於此一併擋下
   if (effective !== '待批准' && effective !== '已逾期') throw new Error('僅待批准或重新報價（已逾期）的 PI 可批准')
@@ -2993,6 +3039,7 @@ export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
 export function markPiSignedBack(id: string, fileName?: string): Promise<ProformaInvoice> {
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
+  assertNotOnManualHold(current)
   if (effectivePiStatus(current) !== '待簽回') throw new Error('逾期後不可直接簽回，請先重新報價並批准')
   const updated: ProformaInvoice = {
     ...current,
@@ -3156,6 +3203,7 @@ export interface PiOverwriteResult {
 export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
+  assertNotOnManualHold(current)
   const previousId = current.previousPiId
   if (!previousId) throw new Error('本張 PI 非取代版（無前版 PI 單號），請改用「轉換為包裝通知單」')
   const previous = proformaInvoices.find((pi) => pi.id === previousId)
@@ -3184,17 +3232,15 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
   })
 
   if (result.blocked.length > 0) {
-    // 規則3：一張都不寫入，PI 轉待人工處理，並連同其表1 一併人工凍結，等管理層裁決（決策27、39）
+    // 規則3 通常在建立取代版當下就擋下了；走到這裡代表是**批准／簽回期間**下游才對外發出。
+    // 處理方式一致：一張表1 都不寫入，PI 退回草稿並掛上待人工處理，連同其表1 一併凍結（決策27、39）
     const now = dayjs().toISOString()
     proformaInvoices[idx] = {
       ...current,
-      status: '待人工處理',
+      status: '草稿',
       manualHandling: { detectedAt: now, blockedBy: result.blocked },
     }
-    previous.packingNoticeIds.forEach((noticeId) => {
-      const nIdx = packingNotices.findIndex((n) => n.id === noticeId)
-      if (nIdx !== -1) packingNotices[nIdx] = { ...packingNotices[nIdx], manualHoldPiId: current.id }
-    })
+    setManualHoldOnNotices(previous, current.id)
     result.pi = proformaInvoices[idx]
     result.updated = []
     return delay(result)
@@ -3236,7 +3282,7 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
 export function resolvePiManualHandling(id: string, resolution: '繼續' | '作廢'): Promise<ProformaInvoice> {
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
-  if (current.status !== '待人工處理') throw new Error('本張 PI 不在待人工處理狀態')
+  if (!isPiOnManualHold(current)) throw new Error('本張 PI 不在待人工處理')
   const now = dayjs().toISOString()
 
   const updated: ProformaInvoice = {
@@ -3257,18 +3303,25 @@ export function resolvePiManualHandling(id: string, resolution: '繼續' | '作�
     }
   })
 
-  if (resolution === '繼續' && current.previousPiId) {
-    // 舊 PI 回復為已轉換，繼續出貨
-    const pIdx = proformaInvoices.findIndex((pi) => pi.id === current.previousPiId)
-    if (pIdx !== -1) {
-      proformaInvoices[pIdx] = {
-        ...proformaInvoices[pIdx],
-        status: '已轉換',
-        voidedAt: undefined,
-        voidReason: undefined,
-        replacedByPiId: undefined,
-      }
-    }
+  const pIdx = current.previousPiId ? proformaInvoices.findIndex((pi) => pi.id === current.previousPiId) : -1
+  if (pIdx !== -1) {
+    proformaInvoices[pIdx] =
+      resolution === '繼續'
+        ? {
+            // 繼續：依舊 PI 出貨，維持已轉換（擋下期間本來就沒作廢它，此處僅確保狀態正確）
+            ...proformaInvoices[pIdx],
+            status: '已轉換',
+            voidedAt: undefined,
+            voidReason: undefined,
+            replacedByPiId: undefined,
+          }
+        : {
+            // 作廢：整筆終止——舊 PI 一併作廢，其表1 停在原狀不再推進（表1 無作廢態，決策38）
+            ...proformaInvoices[pIdx],
+            status: '已作廢',
+            voidedAt: now,
+            voidReason: `管理層裁決整筆終止（爭議來源：${current.id}）`,
+          }
   }
   return delay(updated)
 }

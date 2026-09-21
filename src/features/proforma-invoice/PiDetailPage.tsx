@@ -33,6 +33,7 @@ import {
   canConvertPi,
   canSignBackPi,
   effectivePiStatus,
+  isPiOnManualHold,
   piDueDate,
   piTotalAmount,
 } from '@/lib/pi'
@@ -77,6 +78,8 @@ export function PiDetailPage() {
   const dueDate = piDueDate(pi, packingNotices)
   const poNos = [...new Set(pi.items.map((item) => item.poNo))]
   const isReplacement = Boolean(pi.previousPiId)
+  // 待人工處理不是狀態：PI 留在草稿但整條流程卡住，裁決前不得送批准／簽回／套用（決策27）
+  const onHold = isPiOnManualHold(pi)
 
   const run = (fn: () => Promise<unknown>, successText: string) =>
     action.mutate(fn, { onSuccess: () => toast.success(successText) })
@@ -101,13 +104,18 @@ export function PiDetailPage() {
             <span>
               {symbol} {formatNumber(total, 2)}
             </span>
+            {onHold && (
+              <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                待人工處理
+              </span>
+            )}
             {pi.previousPiId && <span className="text-warning">取代版（前版 {pi.previousPiId}）</span>}
             {pi.replacedByPiId && <span className="text-warning">已由 {pi.replacedByPiId} 取代</span>}
           </span>
         }
         actions={
           <>
-            {status === '草稿' && (
+            {status === '草稿' && !onHold && (
               <>
                 <Button size="sm" variant="outline" onClick={() => navigate(`/proforma-invoice/${pi.id}/edit`)}>
                   編輯草稿
@@ -121,7 +129,7 @@ export function PiDetailPage() {
                 </Button>
               </>
             )}
-            {(status === '待批准' || status === '已逾期') && (
+            {(status === '待批准' || status === '已逾期') && !onHold && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -144,7 +152,7 @@ export function PiDetailPage() {
                 標記已簽回
               </Button>
             )}
-            {canConvertPi(pi) && !isReplacement && (
+            {canConvertPi(pi) && !isReplacement && !onHold && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -160,7 +168,7 @@ export function PiDetailPage() {
                 轉換為包裝通知單（依 PO 拆單）
               </Button>
             )}
-            {canConvertPi(pi) && isReplacement && (
+            {canConvertPi(pi) && isReplacement && !onHold && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -182,7 +190,7 @@ export function PiDetailPage() {
                 套用至既有表1（覆蓋規則）
               </Button>
             )}
-            {status === '待人工處理' && (
+            {onHold && (
               <>
                 <Button
                   size="sm"
@@ -233,7 +241,7 @@ export function PiDetailPage() {
                 作廢並重開
               </Button>
             )}
-            {status !== '已作廢' && status !== '已轉換' && status !== '待人工處理' && (
+            {status !== '已作廢' && status !== '已轉換' && !onHold && (
               <Button
                 size="sm"
                 variant="outline"
@@ -249,7 +257,7 @@ export function PiDetailPage() {
       />
 
       <div className="space-y-4">
-        {status === '待人工處理' && pi.manualHandling && (
+        {onHold && pi.manualHandling && (
           <Card className="border-destructive/40">
             <CardHeader>
               <CardTitle className="text-base text-destructive">待人工處理（規則3：下游已對外發出）</CardTitle>
@@ -262,8 +270,9 @@ export function PiDetailPage() {
                 ))}
               </ul>
               <p className="text-muted-foreground">
-                原 PI 與其表1 已凍結，且在本案處理完畢前不可再建立第三張取代版。請由管理層裁決「繼續」或「作廢」——
-                不設「照客戶要求改」或「另開補單」的第三個出口。
+                擋下的時點在 PI 本身：本張取代版留在草稿、不得送批准／簽回／套用，前一版 PI 與其表1 一併凍結，
+                期間一張表1 都不會被改到，也不可再建立第三張取代版。請由管理層裁決「繼續（依舊 PI 出貨）」或
+                「作廢（整筆終止）」——不設「照客戶要求改」或「另開補單」的第三個出口。
               </p>
             </CardContent>
           </Card>
