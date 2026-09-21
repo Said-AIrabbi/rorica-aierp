@@ -11,6 +11,8 @@ import type { docAccess, DocAction, DocKey, FieldGroup, MasterKey } from './perm
 export interface CurrentAccountValue {
   account: Account
   switchTo: (id: string) => void
+  /** 登出：回到登入頁並清掉查詢快取 */
+  signOut: () => void
   /** ① 功能權限：看不看得到這張單據的入口 */
   canView: (doc: DocKey) => boolean
   access: (doc: DocKey) => ReturnType<typeof docAccess>

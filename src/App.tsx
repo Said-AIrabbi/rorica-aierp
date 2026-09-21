@@ -36,6 +36,8 @@ import { ProductListPage } from '@/features/masters/products/ProductListPage'
 import { ProductDetailPage } from '@/features/masters/products/ProductDetailPage'
 import { VendorListPage } from '@/features/masters/vendors/VendorListPage'
 import { VendorDetailPage } from '@/features/masters/vendors/VendorDetailPage'
+import { RoleMatrixPage } from '@/features/settings/RoleMatrixPage'
+import { ExclusionsPage } from '@/features/settings/ExclusionsPage'
 import { AccountListPage } from '@/features/masters/accounts/AccountListPage'
 import { AccountDetailPage } from '@/features/masters/accounts/AccountDetailPage'
 
@@ -94,6 +96,9 @@ export default function App() {
         <Route path="/masters/products/:id" element={<ProductDetailPage />} />
         <Route path="/masters/vendors" element={<VendorListPage />} />
         <Route path="/masters/vendors/:id" element={<VendorDetailPage />} />
+        {/* 權限設定：角色矩陣與個別排除刻意分成兩頁（權限規格第二章「為何分兩頁」） */}
+        <Route path="/settings/permissions" element={<RoleMatrixPage />} />
+        <Route path="/settings/exclusions" element={<ExclusionsPage />} />
         <Route path="/masters/accounts" element={<AccountListPage />} />
         {/* 新增與編輯共用同一個頁面元件，:id 為 new 時即新增模式 */}
         <Route path="/masters/accounts/:id" element={<AccountDetailPage />} />

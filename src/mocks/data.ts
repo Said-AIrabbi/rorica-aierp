@@ -83,14 +83,25 @@ const VENDOR_NAMES: { name: string; types: VendorType[]; siteCode?: string }[] =
   { name: '瑞成成衣有限公司', types: ['成品供應商'] },
 ]
 
-const ACCOUNT_SEED: { name: string; roles: Account['roles'] }[] = [
-  { name: '陳美玲', roles: ['業務'] },
-  { name: '林志豪', roles: ['業務'] },
-  { name: '黃淑芬', roles: ['生管'] },
-  { name: '王建國', roles: ['倉管'] },
-  { name: '李佳穎', roles: ['財務'] },
-  { name: '吳宗翰', roles: ['管理層'] },
-  { name: '張育誠', roles: ['管理員'] },
+/**
+ * 測試帳號（2026/09/21 依皇加指定）。
+ *
+ * `code` 即登入帳號，密碼一律 `0000`。六個角色各給一個，讓權限規格的三層控制
+ * 可以逐一驗證：換個帳號登入，側欄、按鈕與金額欄位就跟著變。
+ *
+ * **這是原型的展示用登入，不是真的身分驗證**——密碼以明文比對、全部相同，
+ * 資料也都是模擬值。正式系統的帳密與雜湊屬後端工作（見 docs/backend-infra-requirements.md）。
+ */
+const DEMO_PASSWORD = '0000'
+
+const ACCOUNT_SEED: { code: string; name: string; roles: Account['roles'] }[] = [
+  { code: 'R001', name: '陳美玲', roles: ['業務'] },
+  { code: 'R002', name: '林志豪', roles: ['業務'] },
+  { code: 'R003', name: '黃淑芬', roles: ['生管'] },
+  { code: 'R004', name: '王建國', roles: ['倉管'] },
+  { code: 'R005', name: '李佳穎', roles: ['財務'] },
+  { code: 'R006', name: '吳宗翰', roles: ['管理層'] },
+  { code: 'admin', name: '張育誠', roles: ['管理員'] },
 ]
 
 function pad(n: number, len = 3) {
@@ -155,10 +166,10 @@ export const vendors: Vendor[] = VENDOR_NAMES.map((v, i) => ({
 
 export const accounts: Account[] = ACCOUNT_SEED.map((a, i) => ({
   id: `ACC-${pad(i + 1)}`,
-  code: `A${pad(i + 1)}`,
+  code: a.code,
   name: a.name,
-  // 模擬資料不放任何可用密碼；畫面上本欄一律以遮蔽形式呈現（見帳號主檔列表）
-  password: 'DEMO-ONLY-NOT-A-REAL-PASSWORD',
+  // 展示用密碼，全部相同且為明文比對；畫面上本欄一律以遮蔽形式呈現（見帳號主檔列表）
+  password: DEMO_PASSWORD,
   // 示範信箱一律使用保留網域 example.com，避免公開的模擬資料指向真實信箱網域
   mailbox: `${faker.internet.username({ firstName: a.name }).toLowerCase()}@example.com`,
   phone: faker.phone.number({ style: 'international' }),

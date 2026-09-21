@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { accounts } from '@/mocks/data'
-import { getCurrentAccountId, setCurrentAccountId } from '@/mocks/session'
+import { getCurrentAccountId, setCurrentAccountId, signIn, signOut } from '@/mocks/session'
+import { LoginPage } from '@/features/auth/LoginPage'
 import {
   actionsFor,
   canDoAction,
@@ -15,10 +16,11 @@ import {
 import { CurrentAccountContext, type CurrentAccountValue } from './current-account-context'
 
 /**
- * 目前登入帳號的 React 側包裝。
+ * 目前登入帳號的 React 側包裝，同時扮演登入閘門。
  *
- * 真值放在 mocks/session.ts（資料層要用它判權限）；這裡只負責讓畫面在切換帳號後重繪。
- * 原型沒有登入頁，改由抬頭列切換身分——這樣權限規格的三層控制才看得出效果。
+ * 真值放在 mocks/session.ts（資料層要用它判權限）；這裡負責兩件事：
+ *   ① 未登入時整個系統換成登入頁——沒有身分就沒有權限，畫面也不該先出現
+ *   ② 登入或切換身分後讓畫面重繪並清掉查詢快取
  */
 export function CurrentAccountProvider({ children }: { children: ReactNode }) {
   const [accountId, setAccountId] = useState(getCurrentAccountId)
@@ -34,11 +36,29 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
     [queryClient],
   )
 
-  const value = useMemo<CurrentAccountValue>(() => {
-    const account = accounts.find((a) => a.id === accountId) ?? accounts[0]
+  const handleSignIn = useCallback(
+    (code: string, password: string) => {
+      const account = signIn(code, password)
+      setAccountId(account.id)
+      queryClient.invalidateQueries()
+    },
+    [queryClient],
+  )
+
+  const handleSignOut = useCallback(() => {
+    signOut()
+    setAccountId(null)
+    queryClient.clear()
+  }, [queryClient])
+
+  const account = accountId === null ? undefined : accounts.find((a) => a.id === accountId)
+
+  const value = useMemo<CurrentAccountValue | null>(() => {
+    if (!account) return null
     return {
       account,
       switchTo,
+      signOut: handleSignOut,
       canView: (doc) => canViewDoc(account, doc),
       access: (doc) => docAccess(account, doc),
       can: (doc, action) => canDoAction(account, doc, action),
@@ -53,7 +73,10 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
       canViewMasterData: (master) => canViewMaster(account, master),
       canMaintain: (master) => canMaintainMaster(account, master),
     }
-  }, [accountId, switchTo])
+  }, [account, switchTo, handleSignOut])
+
+  // 未登入（或帳號已被刪除）一律回登入頁
+  if (!value) return <LoginPage onSignIn={handleSignIn} />
 
   return <CurrentAccountContext.Provider value={value}>{children}</CurrentAccountContext.Provider>
 }

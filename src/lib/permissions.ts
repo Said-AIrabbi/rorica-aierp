@@ -1,5 +1,8 @@
 import type { Account, AccountRole } from '@/types'
 
+/** 六個角色（權限規格第一章、主文件決策26）；設定介面要逐列畫出來，故需要一個清單 */
+export const ACCOUNT_ROLES: AccountRole[] = ['業務', '生管', '倉管', '財務', '管理層', '管理員']
+
 /**
  * 權限規格（docs/PRD-Phase1-權限規格-2026-09-21.md）的實作。
  *
@@ -41,7 +44,7 @@ export const FIELD_GROUP_CONTENT: Record<FieldGroup, string> = {
  * 三格標「待覆核」者為業務判斷，仍待皇加確認（權限規格第九章第 1 項）：
  * 業務的「加工與委外費用」「生產績效」、倉管的「生產績效」。
  */
-const ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, boolean>> = {
+const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, boolean>> = {
   業務: {
     訂單基本資訊: true,
     售價: true,
@@ -141,7 +144,7 @@ export type DocAction =
 /** ● 可操作／○ 唯讀檢視／－ 無權限（介面不呈現） */
 export type DocAccess = '可操作' | '唯讀' | '無權限'
 
-interface DocPermission {
+export interface DocPermission {
   access: DocAccess
   /** access 為「可操作」時，該角色實際可按的動作 */
   actions: DocAction[]
@@ -157,7 +160,7 @@ const can = (...actions: DocAction[]): DocPermission => ({ access: '可操作', 
  * 管理員一律為「●」，但其全權限僅限系統維護用途，同受職責分離約束（決策38）——
  * 見 separationViolation()：管理員建立的表1／表9 不得由同一帳號簽核。
  */
-const DOC_MATRIX: Record<DocKey, Record<AccountRole, DocPermission>> = {
+const DEFAULT_DOC_MATRIX: Record<DocKey, Record<AccountRole, DocPermission>> = {
   // PI 單屬 Phase 2，其批准權限另立簽核模組（權限規格範圍界線）；
   // 此處僅給出與 Phase 1 一致的可操作範圍，讓原型的側欄與按鈕有依據。
   PI: {
@@ -243,6 +246,174 @@ const DOC_MATRIX: Record<DocKey, Record<AccountRole, DocPermission>> = {
   },
 }
 
+/**
+ * 這張單上「存在哪些動作」——取各角色預設值的聯集。
+ * 設定介面用它畫出勾選矩陣的欄位；管理員能調的是「誰可以」，不是「有哪些動作」。
+ */
+export const DOC_ACTIONS: Record<DocKey, DocAction[]> = Object.fromEntries(
+  DOC_KEYS.map((doc) => {
+    const all = new Set<DocAction>()
+    ACCOUNT_ROLES.forEach((role) => DEFAULT_DOC_MATRIX[doc][role].actions.forEach((a) => all.add(a)))
+    return [doc, [...all]]
+  }),
+) as Record<DocKey, DocAction[]>
+
+// ---------- 可維護的設定值（權限規格重要前提、決策19） ----------
+
+/**
+ * 權限**不寫死在程式裡**：上面兩張表是「出廠預設值」，管理員於設定介面調整後
+ * 存成這一層覆寫。設定的對象是**角色**而非個別帳號——改一次角色設定，
+ * 掛該角色的所有帳號一起生效。
+ *
+ * 原型以 sessionStorage 承載（與其餘模擬資料一致，關掉分頁即回到預設）；
+ * 正式系統這一層存在資料庫裡。
+ */
+export interface PermissionSettings {
+  docs: Partial<Record<DocKey, Partial<Record<AccountRole, { access: DocAccess; actions: DocAction[] }>>>>
+  fields: Partial<Record<AccountRole, Partial<Record<FieldGroup, boolean>>>>
+}
+
+/** 稽核軌跡（決策20）：每次權限異動寫入，不覆蓋前次紀錄 */
+export interface PermissionAuditEntry {
+  at: string
+  byAccountId: string
+  byAccountName: string
+  /** 何人、何時、把哪個角色的哪項權限改成什麼 */
+  description: string
+}
+
+const SETTINGS_KEY = 'rorica-erp-permission-settings'
+const AUDIT_KEY = 'rorica-erp-permission-audit'
+
+function loadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.sessionStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    // 無痕視窗或封鎖網站資料時讀不到，回到出廠預設即可
+    return fallback
+  }
+}
+
+function saveJson(key: string, value: unknown): void {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // 存不進去不影響本次瀏覽，設定仍在記憶體中
+  }
+}
+
+let settings: PermissionSettings =
+  typeof window === 'undefined'
+    ? { docs: {}, fields: {} }
+    : loadJson<PermissionSettings>(SETTINGS_KEY, { docs: {}, fields: {} })
+
+let auditLog: PermissionAuditEntry[] =
+  typeof window === 'undefined' ? [] : loadJson<PermissionAuditEntry[]>(AUDIT_KEY, [])
+
+function persist(): void {
+  saveJson(SETTINGS_KEY, settings)
+  saveJson(AUDIT_KEY, auditLog)
+}
+
+function writeAudit(by: Account, description: string): void {
+  auditLog = [
+    { at: new Date().toISOString(), byAccountId: by.id, byAccountName: by.name, description },
+    ...auditLog,
+  ]
+}
+
+export function permissionAuditLog(): PermissionAuditEntry[] {
+  return auditLog
+}
+
+/** 目前生效的單據權限（覆寫優先於出廠預設） */
+export function docPermission(doc: DocKey, role: AccountRole): DocPermission {
+  return settings.docs[doc]?.[role] ?? DEFAULT_DOC_MATRIX[doc][role]
+}
+
+/** 目前生效的欄位可見性 */
+export function roleFieldVisible(role: AccountRole, group: FieldGroup): boolean {
+  return settings.fields[role]?.[group] ?? DEFAULT_ROLE_FIELD_VISIBILITY[role][group]
+}
+
+/** 該格是否已被管理員改過（設定介面用來標示「非預設值」） */
+export function isDocPermissionOverridden(doc: DocKey, role: AccountRole): boolean {
+  return settings.docs[doc]?.[role] !== undefined
+}
+
+export function isFieldVisibilityOverridden(role: AccountRole, group: FieldGroup): boolean {
+  return settings.fields[role]?.[group] !== undefined
+}
+
+function requireAdmin(by: Account | undefined): Account {
+  if (!by) throw new Error('未指定操作帳號，無法變更權限設定')
+  if (!by.roles.includes('管理員') || by.status === '停用') {
+    throw new Error('權限設定僅管理員可維護（權限規格第七章第 1 節，不開放調整）')
+  }
+  return by
+}
+
+/** 調整「角色 × 單據」的檢視層級（● 可操作／○ 唯讀／－ 無權限） */
+export function setRoleDocAccess(by: Account | undefined, doc: DocKey, role: AccountRole, access: DocAccess): void {
+  const admin = requireAdmin(by)
+  const current = docPermission(doc, role)
+  // 降為唯讀或無權限時，該角色在這張單上的動作一併清空——
+  // 留著會變成「看不到卻按得到」，設定介面上也對不起來
+  const actions = access === '可操作' ? current.actions : []
+  settings.docs[doc] = { ...settings.docs[doc], [role]: { access, actions } }
+  writeAudit(admin, `將「${role}」在${DOC_LABELS[doc]}的層級改為「${access}」`)
+  persist()
+}
+
+/** 勾選／取消「角色 × 單據 × 動作」 */
+export function setRoleDocAction(
+  by: Account | undefined,
+  doc: DocKey,
+  role: AccountRole,
+  action: DocAction,
+  allowed: boolean,
+): void {
+  const admin = requireAdmin(by)
+  const current = docPermission(doc, role)
+  const actions = allowed
+    ? [...new Set([...current.actions, action])]
+    : current.actions.filter((a) => a !== action)
+  // 勾了動作卻停在唯讀，等於設了沒用；自動升為可操作
+  const access: DocAccess = actions.length > 0 ? '可操作' : current.access === '可操作' ? '唯讀' : current.access
+  settings.docs[doc] = { ...settings.docs[doc], [role]: { access, actions } }
+  writeAudit(admin, `${allowed ? '開放' : '取消'}「${role}」的「${DOC_LABELS[doc]}－${action}」`)
+  persist()
+}
+
+/** 調整「角色 × 欄位群組」的可見性 */
+export function setRoleFieldVisibility(
+  by: Account | undefined,
+  role: AccountRole,
+  group: FieldGroup,
+  visible: boolean,
+): void {
+  const admin = requireAdmin(by)
+  settings.fields[role] = { ...settings.fields[role], [group]: visible }
+  writeAudit(admin, `將「${role}」對「${group}」的可見性改為「${visible ? '可見' : '不可見'}」`)
+  persist()
+}
+
+/** 全部還原為出廠預設值 */
+export function resetPermissionSettings(by: Account | undefined): void {
+  const admin = requireAdmin(by)
+  settings = { docs: {}, fields: {} }
+  writeAudit(admin, '將全部權限設定還原為出廠預設值')
+  persist()
+}
+
+/** 目前有幾格被改過（設定介面的提示用） */
+export function overriddenCount(): number {
+  const docs = Object.values(settings.docs).reduce((sum, byRole) => sum + Object.keys(byRole ?? {}).length, 0)
+  const fields = Object.values(settings.fields).reduce((sum, byGroup) => sum + Object.keys(byGroup ?? {}).length, 0)
+  return docs + fields
+}
+
 // ---------- 主檔維護權限（權限規格第六章） ----------
 
 export const MASTER_KEYS = ['客戶', '商品', '廠商', '帳號', '布卷'] as const
@@ -293,7 +464,7 @@ export function docAccess(account: Account | undefined, doc: DocKey): DocAccess 
   // 多角色取聯集：任一角色可操作即可操作，任一角色唯讀即至少唯讀
   let best: DocAccess = '無權限'
   for (const role of account.roles) {
-    const access = DOC_MATRIX[doc][role].access
+    const access = docPermission(doc, role).access
     if (access === '可操作') return '可操作'
     if (access === '唯讀') best = '唯讀'
   }
@@ -309,14 +480,14 @@ export function canDoAction(account: Account | undefined, doc: DocKey, action: D
   if (!account || account.status === '停用') return false
   const excluded = exclusionsOf(account).actions?.some((e) => e.doc === doc && e.action === action)
   if (excluded) return false
-  return account.roles.some((role) => DOC_MATRIX[doc][role].actions.includes(action))
+  return account.roles.some((role) => docPermission(doc, role).actions.includes(action))
 }
 
 /** 該帳號在這張單上可按的全部動作（聯集減排除），供畫面列出 */
 export function actionsFor(account: Account | undefined, doc: DocKey): DocAction[] {
   if (!account || account.status === '停用') return []
   const all = new Set<DocAction>()
-  account.roles.forEach((role) => DOC_MATRIX[doc][role].actions.forEach((a) => all.add(a)))
+  account.roles.forEach((role) => docPermission(doc, role).actions.forEach((a) => all.add(a)))
   return [...all].filter((a) => canDoAction(account, doc, a))
 }
 
@@ -324,7 +495,7 @@ export function actionsFor(account: Account | undefined, doc: DocKey): DocAction
 export function canSeeFieldGroup(account: Account | undefined, group: FieldGroup): boolean {
   if (!account || account.status === '停用') return false
   if (exclusionsOf(account).fieldGroups?.includes(group)) return false
-  return account.roles.some((role) => ROLE_FIELD_VISIBILITY[role][group])
+  return account.roles.some((role) => roleFieldVisible(role, group))
 }
 
 /**
@@ -334,6 +505,18 @@ export function canSeeFieldGroup(account: Account | undefined, group: FieldGroup
 export function canSeeField(account: Account | undefined, group: FieldGroup | undefined): boolean {
   if (!group) return false
   return canSeeFieldGroup(account, group)
+}
+
+/**
+ * 「只看角色」的兩個查詢：個別排除只能收緊不能放寬，
+ * 驗證時要知道「這些角色本來給了什麼」，故不套排除清單。
+ */
+export function canDoActionByRoles(roles: AccountRole[], doc: DocKey, action: DocAction): boolean {
+  return roles.some((role) => docPermission(doc, role).actions.includes(action))
+}
+
+export function canSeeFieldGroupByRoles(roles: AccountRole[], group: FieldGroup): boolean {
+  return roles.some((role) => roleFieldVisible(role, group))
 }
 
 // ---------- 職責分離（權限規格第七章第 1 節，決策27、38） ----------

@@ -20,8 +20,16 @@ import {
   packingNoticeLocks,
   pendingAbnormalHandlings,
 } from '@/lib/workflow'
-import { assertCanAct, assertCanMaintainMaster } from '@/lib/permissions'
-import { getCurrentAccount } from './session'
+import {
+  assertCanAct,
+  assertCanMaintainMaster,
+  canDoActionByRoles,
+  canSeeFieldGroupByRoles,
+  type DocAction,
+  type DocKey,
+  type FieldGroup,
+} from '@/lib/permissions'
+import { getCurrentAccount, requireCurrentAccount } from './session'
 import type {
   AbnormalHandling,
   AbnormalNotice,
@@ -397,7 +405,7 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     status: '草稿',
     // 決策118：新建的表1 一律從「未送簽」起步，要業務按送簽才進管理層的待簽清單
     approvalState: '未送簽',
-    createdByAccountId: getCurrentAccount().id,
+    createdByAccountId: requireCurrentAccount().id,
     createdAt: today.toISOString(),
     expectedDeliveryAt: input.expectedDeliveryAt,
     sampleQty: input.sampleQty,
@@ -464,7 +472,7 @@ export function submitPackingNoticeForApproval(id: string): Promise<PackingNotic
 export function approvePackingNotice(id: string): Promise<PackingNotice> {
   const idx = requirePackingNotice(id)
   const notice = packingNotices[idx]
-  const account = getCurrentAccount()
+  const account = requireCurrentAccount()
   // 建單者不得自行簽核（權限規格第七章第 1 節）
   assertCanAct(account, '表1', '簽核', notice.createdByAccountId)
   if (notice.manualHoldPiId) {
@@ -499,7 +507,7 @@ export function approvePackingNotice(id: string): Promise<PackingNotice> {
 export function rejectPackingNotice(id: string, reason: string): Promise<PackingNotice> {
   const idx = requirePackingNotice(id)
   const notice = packingNotices[idx]
-  const account = getCurrentAccount()
+  const account = requireCurrentAccount()
   assertCanAct(account, '表1', '退回')
   if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
   if (notice.status !== '草稿' || packingNoticeApprovalState(notice) !== '待簽核') {
@@ -2091,7 +2099,7 @@ export function setShippingOrderStatus(id: string, status: ShippingOrder['status
 export function rejectShippingOrder(id: string, reason: string): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
-  const account = getCurrentAccount()
+  const account = requireCurrentAccount()
   assertCanAct(account, '表8', '退回')
   if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
   const order = shippingOrders[idx]
@@ -2586,7 +2594,7 @@ export function updateAbnormalNoticeHandling(
 export function approveAbnormalNotice(id: string): Promise<AbnormalNotice> {
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
-  const account = getCurrentAccount()
+  const account = requireCurrentAccount()
   assertCanAct(account, '表9', '批准', notice.createdByAccountId)
   if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單需要批准')
   if (notice.approvedAt) throw new Error('本單已批准過')
@@ -2602,7 +2610,7 @@ export function approveAbnormalNotice(id: string): Promise<AbnormalNotice> {
 export function rejectAbnormalNotice(id: string, reason: string): Promise<AbnormalNotice> {
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
-  const account = getCurrentAccount()
+  const account = requireCurrentAccount()
   assertCanAct(account, '表9', '退回')
   if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
   if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可退回')
@@ -2626,7 +2634,7 @@ export function rejectAbnormalNotice(id: string, reason: string): Promise<Abnorm
 export function signAbnormalNoticeAccounting(id: string): Promise<AbnormalNotice> {
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
-  const account = getCurrentAccount()
+  const account = requireCurrentAccount()
   assertCanAct(account, '表9', '會計簽核', notice.createdByAccountId)
   if (!notice.handling.deduction) throw new Error('本單未勾選「扣款不退貨」，不需要會計簽核')
   if (notice.accountingSignedAt) throw new Error('本單已完成會計簽核')
@@ -3013,6 +3021,43 @@ export function updateAccount(id: string, input: AccountInput): Promise<Account>
  * 刪除帳號：已在單據上留下經手紀錄者不可刪除——簽核與經手人是稽核軌跡，
  * 人員離職應改為「停用」（狀態欄），而不是把歷史單據上的經手人抹掉。
  */
+/**
+ * 個別排除（權限規格決策32）：管理員針對單一帳號勾掉特定動作或欄位群組。
+ *
+ * 最終權限 ＝（該帳號所有角色的聯集）－（本清單），**排除永遠勝過聯集**。
+ * 限制：**只能收緊、不能放寬**——不可用它給某帳號一個其所有角色都沒有的權限，
+ * 否則權限來源會分散在兩處、稽核時查不清楚。要放寬就加角色。
+ * 故此處逐項驗證：排除的對象必須是該帳號的角色本來就給了的東西。
+ */
+export function setAccountExclusions(
+  id: string,
+  exclusions: { actions?: { doc: string; action: string }[]; fieldGroups?: string[] },
+): Promise<Account> {
+  assertCanMaintainMaster(getCurrentAccount(), '帳號')
+  const idx = accounts.findIndex((a) => a.id === id)
+  if (idx === -1) throw new Error(`帳號 ${id} 不存在`)
+  const account = accounts[idx]
+
+  exclusions.actions?.forEach((e) => {
+    if (!canDoActionByRoles(account.roles, e.doc as DocKey, e.action as DocAction)) {
+      throw new Error(
+        `「${account.name}」的角色本來就沒有「${e.doc}－${e.action}」，個別排除只能收緊、不能放寬（決策32）`,
+      )
+    }
+  })
+  exclusions.fieldGroups?.forEach((g) => {
+    if (!canSeeFieldGroupByRoles(account.roles, g as FieldGroup)) {
+      throw new Error(
+        `「${account.name}」的角色本來就看不到「${g}」，個別排除只能收緊、不能放寬（決策32）`,
+      )
+    }
+  })
+
+  const updated: Account = { ...account, exclusions }
+  accounts[idx] = updated
+  return delay(updated)
+}
+
 export function deleteAccount(id: string): Promise<{ id: string }> {
   assertCanMaintainMaster(getCurrentAccount(), '帳號')
   const account = accounts.find((a) => a.id === id)

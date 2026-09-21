@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, Menu, RotateCcw, UserCog } from 'lucide-react'
+import { Bell, LogOut, Menu, RotateCcw, UserCog } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,7 @@ function resetDemoData() {
 }
 
 export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
-  const { account, switchTo } = useCurrentAccount()
+  const { account, switchTo, signOut } = useCurrentAccount()
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
   const { data: stockReservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
@@ -116,7 +116,7 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[min(18rem,calc(100vw-2rem))]">
             <DropdownMenuLabel>
-              切換身分（原型展示用，實際系統由登入決定）
+              切換身分（原型展示用，不需重新輸入密碼）
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {accounts
@@ -129,6 +129,10 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
                   </div>
                 </DropdownMenuItem>
               ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={signOut}>
+              <LogOut className="mr-2 h-3.5 w-3.5" /> 登出
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

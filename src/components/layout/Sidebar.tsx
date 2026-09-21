@@ -14,6 +14,8 @@ import {
   ScrollText,
   Send,
   ShoppingCart,
+  ShieldCheck,
+  UserMinus,
   Users,
   Warehouse,
   X,
@@ -88,7 +90,9 @@ function NavItem({ to, label, icon: Icon, nested = false }: { to: string; label:
  * 手機抽屜點了連結要自動關閉，故以 onNavigate 回呼通知外層。
  */
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { account, canView, canViewMasterData } = useCurrentAccount()
+  const { account, canView, canViewMasterData, canMaintain } = useCurrentAccount()
+  // 權限設定僅管理員可操作（權限規格第七章第 1 節，不開放授予其他角色）
+  const canManagePermissions = canMaintain('帳號')
   const docs = documentNav.filter((item) => canView(item.doc))
   const masters = masterNav.filter((item) => canViewMasterData(item.master))
 
@@ -141,6 +145,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             ))}
           </div>
         </div>
+
+        {canManagePermissions && (
+          <div>
+            <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              系統設定
+            </div>
+            <div className="space-y-0.5">
+              <NavItem to="/settings/permissions" label="權限設定（角色矩陣）" icon={ShieldCheck} />
+              <NavItem to="/settings/exclusions" label="權限設定（個別排除）" icon={UserMinus} />
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* 版本戳記：客戶回饋意見時可對照是哪一版，避免「上次不是長這樣」對不上 */}
