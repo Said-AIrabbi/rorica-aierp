@@ -19,40 +19,49 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCurrentAccount } from '@/lib/current-account-context'
+import type { DocKey, MasterKey } from '@/lib/permissions'
 
-const documentNav = [
+/**
+ * 側欄即權限規格的第①層「功能權限」：該角色是否看得到這張單據的列表與建單入口。
+ * 看不到即完全不存在於該帳號的介面上——不是禁用，是不呈現（權限規格第二章）。
+ */
+const documentNav: { to: string; label: string; icon: typeof Home; doc: DocKey }[] = [
   // PI 單是表1 的上游（客戶在表1 之前先收到的報價），故列於表1 之上
-  { to: '/proforma-invoice', label: 'PI 單（預估發票）', icon: Receipt },
-  { to: '/packing-notice', label: '表1 包裝通知單', icon: ScrollText },
-  { to: '/purchase-order', label: '表2 訂購單', icon: ShoppingCart },
-  { to: '/dye-request', label: '表3 打色通知單', icon: Palette },
-  { to: '/dye-order', label: '表4 染整單', icon: Layers },
-  { to: '/secondary-processing', label: '表5 二次加工單', icon: Scissors },
-  { to: '/goods-receipt', label: '表6 入庫單', icon: PackageCheck },
-  { to: '/shipping-order', label: '表8 出貨單', icon: Send },
-  { to: '/abnormal-notice', label: '表9 異常通知單', icon: AlertTriangle },
+  { to: '/proforma-invoice', label: 'PI 單（預估發票）', icon: Receipt, doc: 'PI' },
+  { to: '/packing-notice', label: '表1 包裝通知單', icon: ScrollText, doc: '表1' },
+  { to: '/purchase-order', label: '表2 訂購單', icon: ShoppingCart, doc: '表2' },
+  { to: '/dye-request', label: '表3 打色通知單', icon: Palette, doc: '表3' },
+  { to: '/dye-order', label: '表4 染整單', icon: Layers, doc: '表4' },
+  { to: '/secondary-processing', label: '表5 二次加工單', icon: Scissors, doc: '表5' },
+  { to: '/goods-receipt', label: '表6 入庫單', icon: PackageCheck, doc: '表6' },
+  { to: '/shipping-order', label: '表8 出貨單', icon: Send, doc: '表8' },
+  { to: '/abnormal-notice', label: '表9 異常通知單', icon: AlertTriangle, doc: '表9' },
 ]
 
 interface NavEntry {
   to: string
   label: string
   icon: typeof Home
+  master: MasterKey
   /** 下一階層：從屬於上一層主檔的資料，縮排呈現 */
   children?: NavEntry[]
 }
 
 const masterNav: NavEntry[] = [
-  { to: '/masters/customers', label: '客戶主檔', icon: Users },
+  { to: '/masters/customers', label: '客戶主檔', icon: Users, master: '客戶' },
   {
     to: '/masters/products',
     label: '產品主檔',
     icon: Package,
+    master: '商品',
     // 布卷資料在資料層是獨立的第五張主檔（PRD 決策 61-1），但從屬於商品分支，
     // 故 UI 上列為產品主檔的下一階層：由商品點進去看該分支的布卷，也可直接進來跨商品查詢
-    children: [{ to: '/fabric-label', label: '布卷資料', icon: Tags }],
+    children: [{ to: '/fabric-label', label: '布卷資料', icon: Tags, master: '布卷' }],
   },
-  { to: '/masters/vendors', label: '廠商主檔', icon: Boxes },
-  { to: '/masters/accounts', label: '帳戶主檔', icon: PackageSearch },
+  { to: '/masters/vendors', label: '廠商主檔', icon: Boxes, master: '廠商' },
+  // 帳號主檔僅管理員可見——一般角色連列表都看不到（權限規格第六章）
+  { to: '/masters/accounts', label: '帳戶主檔', icon: PackageSearch, master: '帳號' },
 ]
 
 function NavItem({ to, label, icon: Icon, nested = false }: { to: string; label: string; icon: typeof Home; nested?: boolean }) {
@@ -79,6 +88,10 @@ function NavItem({ to, label, icon: Icon, nested = false }: { to: string; label:
  * 手機抽屜點了連結要自動關閉，故以 onNavigate 回呼通知外層。
  */
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { account, canView, canViewMasterData } = useCurrentAccount()
+  const docs = documentNav.filter((item) => canView(item.doc))
+  const masters = masterNav.filter((item) => canViewMasterData(item.master))
+
   return (
     <div className="flex h-full flex-col" onClick={onNavigate}>
       <div className="flex h-16 items-center gap-2 border-b border-border px-5">
@@ -102,9 +115,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             單據流程
           </div>
           <div className="space-y-0.5">
-            {documentNav.map((item) => (
-              <NavItem key={item.to} {...item} />
+            {docs.map((item) => (
+              <NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} />
             ))}
+            {docs.length === 0 && (
+              <div className="px-3 py-1.5 text-xs text-muted-foreground">目前身分無可檢視的單據</div>
+            )}
           </div>
         </div>
 
@@ -113,12 +129,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             主檔資料
           </div>
           <div className="space-y-0.5">
-            {masterNav.map((item) => (
+            {masters.map((item) => (
               <div key={item.to} className="space-y-0.5">
                 <NavItem to={item.to} label={item.label} icon={item.icon} />
-                {item.children?.map((child) => (
-                  <NavItem key={child.to} to={child.to} label={child.label} icon={child.icon} nested />
-                ))}
+                {item.children
+                  ?.filter((child) => canViewMasterData(child.master))
+                  .map((child) => (
+                    <NavItem key={child.to} to={child.to} label={child.label} icon={child.icon} nested />
+                  ))}
               </div>
             ))}
           </div>
@@ -127,6 +145,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* 版本戳記：客戶回饋意見時可對照是哪一版，避免「上次不是長這樣」對不上 */}
       <div className="border-t border-border px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+        {/* 側欄少了幾項時，這一行說明是「權限」而不是「壞掉」 */}
+        <div className="mb-1.5 rounded bg-muted px-2 py-1">
+          目前身分：<span className="font-medium text-ink-body">{account.name}</span>（{account.roles.join('、')}）
+          <div>選單依權限規格第三章呈現</div>
+        </div>
         <div>原型展示版本</div>
         <div className="font-mono">{new Date(__BUILD_TIME__).toLocaleString('zh-TW', { hour12: false })}</div>
       </div>

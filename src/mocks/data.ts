@@ -250,6 +250,12 @@ function randomOrderId(index: number, daysAgo: number) {
 
 const PACKING_STATUSES: PackingNotice['status'][] = ['草稿', '生效', '已完成']
 
+/** 建單業務輪流掛，讓「建單者不得自行簽核」這條在展示資料上也成立 */
+const seedSalesAccounts = accounts.filter((a) => a.roles.includes('業務'))
+const salesAccountIdForSeed = (i: number) =>
+  (seedSalesAccounts[i % seedSalesAccounts.length] ?? accounts[0]).id
+const managerAccountId = (accounts.find((a) => a.roles.includes('管理層')) ?? accounts[0]).id
+
 export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_, i) => {
   const daysAgo = faker.number.int({ min: 0, max: 60 })
   const id = randomOrderId(i + 1, daysAgo)
@@ -307,11 +313,22 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
     }
   })
 
+  // 決策118：草稿的簽核旗標。第一張草稿留在「未送簽」（可按送簽），
+  // 其餘草稿放「待簽核」，讓管理層一進系統就有東西可簽、也看得到退回按鈕。
+  const approvalState: PackingNotice['approvalState'] =
+    status !== '草稿' ? '已簽核' : i % 2 === 0 ? '未送簽' : '待簽核'
+
   return {
     id,
     customerId: customer.id,
     customerOrderNo: `${customer.code}-${faker.string.numeric(5)}`,
     status,
+    approvalState,
+    // 建單者：職責分離要用（建單者不得自行簽核），故種子也要記
+    createdByAccountId: salesAccountIdForSeed(i),
+    submittedAt: approvalState === '待簽核' ? createdAt.add(1, 'hour').toISOString() : undefined,
+    approvedAt: status !== '草稿' ? createdAt.add(1, 'day').toISOString() : undefined,
+    approvedByAccountId: status !== '草稿' ? managerAccountId : undefined,
     createdAt: createdAt.toISOString(),
     effectiveAt: status === '草稿' ? undefined : createdAt.add(1, 'day').toISOString(),
     expectedDeliveryAt: createdAt.add(customer.leadTimeDays, 'day').toISOString(),
@@ -823,6 +840,9 @@ export const abnormalNotices: AbnormalNotice[] = abnormalSourceOrders.flatMap((s
     createdAt: noticeDate.toISOString(),
     noticeDate: noticeDate.toISOString(),
     createdByAccountId: salesAccountId,
+    // 已進入處理分流者，代表管理層批准過（權限規格第四章第 4 節）
+    approvedAt: noticeDate.add(1, 'day').toISOString(),
+    approvedByAccountId: managerAccountId,
     customerId: so.customerId,
     ...trace,
     shippingOrderId: so.id,
@@ -878,9 +898,46 @@ export const abnormalNotices: AbnormalNotice[] = abnormalSourceOrders.flatMap((s
   return [notice]
 })
 
+// 待管理層批准的主單：業務剛受理完客訴、尚未經核決，故生管還不能收單。
+// 展示資料必須有這一張，「管理層批准」與「退回業務」才按得到。
+if (abnormalNotices.length > 0) {
+  const template = abnormalNotices[0]
+  const pendingDate = dayjs(template.noticeDate).add(6, 'day')
+  abnormalNotices.unshift({
+    ...template,
+    id: `AB-${pendingDate.format('YYYYMMDD')}-${pad(9)}`,
+    kind: '客訴異常',
+    parentAbnormalId: undefined,
+    status: '受理中',
+    createdAt: pendingDate.toISOString(),
+    noticeDate: pendingDate.toISOString(),
+    // 尚未核決：批准與會計簽核皆留空
+    approvedAt: undefined,
+    approvedByAccountId: undefined,
+    accountingSignedAt: undefined,
+    accountingSignedByAccountId: undefined,
+    categoryName: '布面問題',
+    categoryItem: '污漬',
+    issueNote: '客戶反映整批布面有零星污漬，要求扣款處理；待管理層批准後由生管收單。',
+    abnormalQty: Number((template.shippedQty * 0.25).toFixed(1)),
+    handling: {
+      deduction: {
+        amount: 8000,
+        upstreamVendorId: (vendors.find((v) => v.types.includes('染整廠')) ?? vendors[0]).id,
+      },
+    },
+    batchDefectRollCodes: [],
+    returnedRolls: undefined,
+    // 生管尚未回覆——批准之前本來就還輪不到生管
+    productionReply: undefined,
+    processedAt: undefined,
+    completedAt: undefined,
+  })
+}
+
 // 上游追討附單：客訴後回頭向染整廠追討，掛在該張表9底下（欄位暫時與表9相同）
 if (abnormalNotices.length > 0) {
-  const parent = abnormalNotices[0]
+  const parent = abnormalNotices.find((x) => x.status === '處理中') ?? abnormalNotices[0]
   abnormalNotices.push({
     ...parent,
     id: `${parent.id}-U1`,
@@ -1019,6 +1076,10 @@ export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) 
         customerId: customer.id,
         customerOrderNo: poNo,
         status: '生效',
+        approvalState: '已簽核',
+        createdByAccountId: salesAccountId,
+        approvedAt: effectiveAt.toISOString(),
+        approvedByAccountId: managerAccountId,
         createdAt: effectiveAt.toISOString(),
         effectiveAt: effectiveAt.toISOString(),
         expectedDeliveryAt: dueDate,

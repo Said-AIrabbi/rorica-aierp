@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, Menu, RotateCcw } from 'lucide-react'
+import { Bell, Menu, RotateCcw, UserCog } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { api } from '@/mocks/api'
 import { buildNotifications } from '@/lib/notifications'
-import { clearSessionSnapshot } from '@/mocks/data'
+import { clearSessionSnapshot, accounts } from '@/mocks/data'
+import { useCurrentAccount } from '@/lib/current-account-context'
 
 function resetDemoData() {
   if (!window.confirm('重置模擬資料將清除本次瀏覽分頁中測試建立/異動的所有單據，回到預設展示資料，確定要重置嗎？')) {
@@ -22,6 +23,7 @@ function resetDemoData() {
 }
 
 export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
+  const { account, switchTo } = useCurrentAccount()
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
   const { data: stockReservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
@@ -90,16 +92,45 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white">
-            陳
-          </div>
-          {/* 頭像在小螢幕已足以辨識目前身分，姓名與角色僅在 sm 以上顯示 */}
-          <div className="hidden text-sm sm:block">
-            <div className="font-medium text-ink">陳美玲</div>
-            <div className="text-xs text-muted-foreground">業務</div>
-          </div>
-        </div>
+        {/*
+          身分切換：原型沒有登入頁，改由此處切換帳號，
+          讓權限規格的三層控制（側欄／按鈕／欄位）在畫面上看得出效果。
+        */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted"
+              title="切換目前登入身分（原型展示用）"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white">
+                {account.name.slice(0, 1)}
+              </div>
+              {/* 頭像在小螢幕已足以辨識目前身分，姓名與角色僅在 sm 以上顯示 */}
+              <div className="hidden text-left text-sm sm:block">
+                <div className="font-medium text-ink">{account.name}</div>
+                <div className="text-xs text-muted-foreground">{account.roles.join('、')}</div>
+              </div>
+              <UserCog className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[min(18rem,calc(100vw-2rem))]">
+            <DropdownMenuLabel>
+              切換身分（原型展示用，實際系統由登入決定）
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {accounts
+              .filter((a) => a.status === '啟用')
+              .map((a) => (
+                <DropdownMenuItem key={a.id} onSelect={() => switchTo(a.id)}>
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <span className={a.id === account.id ? 'font-semibold text-brand-dark' : ''}>{a.name}</span>
+                    <span className="text-xs text-muted-foreground">{a.roles.join('、')}</span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )

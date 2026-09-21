@@ -197,7 +197,7 @@ export function DyeOrderDetailPage() {
         actions={
           <>
             <StatusBadge status={order.status} className="text-sm" />
-            <PrintActions sheets={[{ key: 'doc', label: '列印染單', sheet: <DyeOrderPrint order={order} /> }]} />
+            <PrintActions outboundDoc="表4 染整單" sheets={[{ key: 'doc', label: '列印染單', sheet: <DyeOrderPrint order={order} /> }]} />
             {order.status === '草稿' && (
               <Button
                 size="sm"

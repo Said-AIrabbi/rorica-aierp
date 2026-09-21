@@ -16,8 +16,12 @@ import {
   effectivePurchaseOrderStatus,
   isPackingNoticeFullyShipped,
   isWithinAbnormalClaimWindow,
+  packingNoticeApprovalState,
+  packingNoticeLocks,
   pendingAbnormalHandlings,
 } from '@/lib/workflow'
+import { assertCanAct, assertCanMaintainMaster } from '@/lib/permissions'
+import { getCurrentAccount } from './session'
 import type {
   AbnormalHandling,
   AbnormalNotice,
@@ -174,12 +178,16 @@ function resolveCustomerByName(name: string): Customer {
 
 /**
  * 系統自動查詢與判斷庫存：可用庫存＝實際庫存－已預留未出貨。
- * 足夠則自動建立庫存預留紀錄（綁定客戶／捲號批次／14天效期），並自動建立／併入表8出貨單草稿
- * （有庫存路徑，表8兩個進入點之一）；不接疋時僅接受單一捲即可覆蓋需求量的整捲，
- * 可接疋時依接疋規則提供拼接組合建議。庫存不足的明細，於全部明細判斷完畢後統一觸發表2訂購單草稿
- * （無庫存路徑，見 autoCreatePurchaseOrderDraft）。
+ * 足夠則自動建立庫存預留紀錄（綁定客戶／捲號批次／14天效期）；不接疋時僅接受單一捲即可覆蓋
+ * 需求量的整捲，可接疋時依接疋規則提供拼接組合建議。
+ *
+ * **決策118（2026/09/21）：預留與下游草稿脫鉤。**
+ * 庫存預留維持在草稿建立的當下（庫存要先卡住，否則簽核期間該批布會被其他訂單挑走），
+ * 但表2 訂購單草稿與表8 出貨單草稿改為表1 轉「生效」時才建立——未經核准的單不應讓
+ * 生管與倉管看到下游工作。`withDownstream` 即這道開關：草稿階段傳 false，
+ * 生效後的重算（例如凍結期內改明細）仍傳 true，讓下游跟著更新。
  */
-function autoReserveStockForNotice(notice: PackingNotice, keepExpiresAt?: string): void {
+function autoReserveStockForNotice(notice: PackingNotice, keepExpiresAt?: string, withDownstream = true): void {
   const outOfStockItems: PackingNoticeItem[] = []
 
   notice.items.forEach((item) => {
@@ -219,17 +227,18 @@ function autoReserveStockForNotice(notice: PackingNotice, keepExpiresAt?: string
       outOfStockItems.push(item)
       return
     }
-    reserveRollsForItem(notice, item, chosen, keepExpiresAt)
+    reserveRollsForItem(notice, item, chosen, keepExpiresAt, withDownstream)
   })
 
-  if (outOfStockItems.length > 0) {
+  if (withDownstream && outOfStockItems.length > 0) {
     autoCreatePurchaseOrderDraft(notice, outOfStockItems)
   }
 }
 
 /**
- * 建立庫存預留紀錄（綁定客戶／記錄捲號批次／14天效期逾期自動釋放），
- * 並自動建立／併入表8出貨單草稿——有庫存路徑貨已在庫存中，是表8兩個進入點之一。
+ * 建立庫存預留紀錄（綁定客戶／記錄捲號批次／14天效期逾期自動釋放）。
+ * `withDownstream` 為 true 時一併建立／併入表8 出貨單草稿——有庫存路徑貨已在庫存中，
+ * 是表8 兩個進入點之一；表1 仍是草稿時傳 false（決策118）。
  * 拼接出貨時捲號組合完整記錄於出貨明細的 rollCodes，供日後客訴回溯。
  */
 function reserveRollsForItem(
@@ -237,6 +246,7 @@ function reserveRollsForItem(
   item: PackingNoticeItem,
   chosen: FabricLabel[],
   keepExpiresAt?: string,
+  withDownstream = true,
 ): StockReservation {
   const qty = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
   const createdAt = dayjs().toISOString()
@@ -256,6 +266,8 @@ function reserveRollsForItem(
     expiresAt: keepExpiresAt ?? reservationExpiresAt(createdAt).toISOString(),
   }
   stockReservations.unshift(reservation)
+
+  if (!withDownstream) return reservation
 
   const product = resolveProduct(item.productId, item.roricaProductName)
   autoCreateOrAppendShippingOrder(notice.id, notice.customerId, [
@@ -294,7 +306,8 @@ export function confirmSplicingSuggestion(id: string): Promise<SplicingSuggestio
   )
   if (rolls.length !== suggestion.rollCodes.length) throw new Error('建議的布卷已被其他單據使用，請重新查詢庫存')
 
-  reserveRollsForItem(notice, item, rolls)
+  // 決策118：表1 還是草稿時只配貨、不建下游，等簽核生效才一起建
+  reserveRollsForItem(notice, item, rolls, undefined, notice.status !== '草稿')
   const updated: SplicingSuggestion = { ...suggestion, status: '已採用', decidedAt: dayjs().toISOString() }
   splicingSuggestions[idx] = updated
   return delay(updated)
@@ -315,10 +328,12 @@ export function rejectSplicingSuggestion(id: string): Promise<SplicingSuggestion
 
   const available = availableFabricLabels(item.roricaProductName, item.color, fabricLabels, stockReservations, item.productId)
   const chosen = allocateWholeRolls(item.yard, available)
+  // 決策118：表1 還是草稿時只配貨、不建下游，等簽核生效才一起建
+  const withDownstream = notice.status !== '草稿'
   if (chosen) {
     // 改為整捲裁切屬新的一次配貨，效期自今天起算，不沿用舊到期日
-    reserveRollsForItem(notice, item, chosen)
-  } else {
+    reserveRollsForItem(notice, item, chosen, undefined, withDownstream)
+  } else if (withDownstream) {
     autoCreatePurchaseOrderDraft(notice, [item])
   }
 
@@ -369,6 +384,8 @@ function autoCreatePurchaseOrderDraft(notice: PackingNotice, outOfStockItems: Pa
 }
 
 export function createPackingNotice(input: PackingNoticeInput): Promise<PackingNotice> {
+  assertCanAct(getCurrentAccount(), '表1', '建立')
+  // 管理層不得建立表1（權限規格決策38）——本檢查在 assertCanAct 內
   const today = dayjs()
   const countToday = packingNotices.filter((n) => n.id.startsWith(`ORD-${today.format('YYYYMMDD')}`)).length
   const id = `ORD-${today.format('YYYYMMDD')}-${pad(countToday + 1)}`
@@ -378,6 +395,9 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     customerId: customer.id,
     customerOrderNo: input.customerOrderNo,
     status: '草稿',
+    // 決策118：新建的表1 一律從「未送簽」起步，要業務按送簽才進管理層的待簽清單
+    approvalState: '未送簽',
+    createdByAccountId: getCurrentAccount().id,
     createdAt: today.toISOString(),
     expectedDeliveryAt: input.expectedDeliveryAt,
     sampleQty: input.sampleQty,
@@ -395,8 +415,157 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     edgeCut: input.edgeCut,
   }
   packingNotices.unshift(notice)
-  autoReserveStockForNotice(notice)
+  // 決策118：草稿只鎖庫存、不產生任何下游單據
+  autoReserveStockForNotice(notice, undefined, false)
   return delay(notice)
+}
+
+/** 取得表1 並確認存在，回傳索引（各簽核動作共用） */
+function requirePackingNotice(id: string): number {
+  const idx = packingNotices.findIndex((n) => n.id === id)
+  if (idx === -1) throw new Error(`包裝通知單 ${id} 不存在`)
+  return idx
+}
+
+/** 有任何未解除的鎖就擋下（權限規格決策30：以鎖定清單判斷，不以個別旗標判斷） */
+function assertPackingNoticeUnlocked(notice: PackingNotice): void {
+  const locks = packingNoticeLocks(notice)
+  if (locks.length > 0) {
+    throw new Error(`本單因「${locks.map((l) => l.source).join('；')}」鎖定，不可異動`)
+  }
+}
+
+/**
+ * 表1 送簽（決策118）：草稿轉唯讀，進入管理層的待簽清單。
+ * 送簽前業務可反覆編輯草稿；送簽後要改，得先請管理層退回。
+ * 庫存預留不因送簽而變動、效期不重置（權限規格決策31）。
+ */
+export function submitPackingNoticeForApproval(id: string): Promise<PackingNotice> {
+  assertCanAct(getCurrentAccount(), '表1', '送簽')
+  const idx = requirePackingNotice(id)
+  const notice = packingNotices[idx]
+  assertPackingNoticeUnlocked(notice)
+  if (notice.status !== '草稿') throw new Error('僅「草稿」狀態的包裝通知單需要送簽')
+  packingNotices[idx] = { ...notice, approvalState: '待簽核', submittedAt: dayjs().toISOString() }
+  return delay(packingNotices[idx])
+}
+
+/**
+ * 表1 簽核（決策118）：簽核通過即轉「生效」。
+ *
+ * 事務邊界（權限規格第七章第 6 節）分兩段：
+ *   交易內（全成或全不成）——①狀態改生效並寫入簽核者與時間；②解除待簽核鎖；③寫下生效時間戳
+ *     （7 個工作天凍結期與 Phase 2 交期 Day 0 皆讀此欄位，不另行計算或儲存）
+ *   交易外（自動重試）——④建立表2 訂購單草稿（僅無庫存品項）；⑤建立表8 出貨單草稿；⑥發送通知
+ * 原型沒有真實交易，但保留這個分段與冪等鍵：連點兩下只會得到同一張草稿。
+ *
+ * 簽核動作本身以狀態為條件（狀態須為草稿且旗標為待簽核），第二次點擊直接擋下。
+ */
+export function approvePackingNotice(id: string): Promise<PackingNotice> {
+  const idx = requirePackingNotice(id)
+  const notice = packingNotices[idx]
+  const account = getCurrentAccount()
+  // 建單者不得自行簽核（權限規格第七章第 1 節）
+  assertCanAct(account, '表1', '簽核', notice.createdByAccountId)
+  if (notice.manualHoldPiId) {
+    throw new Error(`本單因取代版 PI ${notice.manualHoldPiId} 待人工處理而凍結，待管理層裁決後才可簽核`)
+  }
+  if (notice.status !== '草稿') throw new Error('本單已經生效，不需要再簽核')
+  if (packingNoticeApprovalState(notice) !== '待簽核') throw new Error('本單尚未送簽，無法簽核')
+
+  const now = dayjs().toISOString()
+  const updated: PackingNotice = {
+    ...notice,
+    status: '生效',
+    approvalState: '已簽核',
+    approvedAt: now,
+    approvedByAccountId: account.id,
+    // 生效時間戳只寫一次：凍結期與 Phase 2 的 Day 0 都讀這一欄
+    effectiveAt: notice.effectiveAt ?? now,
+  }
+  packingNotices[idx] = updated
+
+  // ↓ 以下為「交易外」：失敗不影響表1 已經生效這件事
+  applyPiDueDateOnEffective(updated)
+  createDownstreamDraftsOnEffective(updated)
+  return delay(packingNotices[idx])
+}
+
+/**
+ * 表1 退回草稿（決策118、權限規格決策37）：回到業務手上可編輯。
+ * 退回原因必填、每次寫入異動紀錄不覆蓋前次、不設次數上限；
+ * **庫存預留不釋放**——退回只是把工作丟回去改，貨還是要卡著。
+ */
+export function rejectPackingNotice(id: string, reason: string): Promise<PackingNotice> {
+  const idx = requirePackingNotice(id)
+  const notice = packingNotices[idx]
+  const account = getCurrentAccount()
+  assertCanAct(account, '表1', '退回')
+  if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
+  if (notice.status !== '草稿' || packingNoticeApprovalState(notice) !== '待簽核') {
+    throw new Error('僅「待簽核」的包裝通知單可退回草稿')
+  }
+  packingNotices[idx] = {
+    ...notice,
+    approvalState: '未送簽',
+    rejections: [
+      ...(notice.rejections ?? []),
+      { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() },
+    ],
+  }
+  return delay(packingNotices[idx])
+}
+
+/**
+ * 表1 生效時才建立的下游草稿（決策118 的「交易外」那一段）。
+ *
+ * 冪等鍵——表8 以「表1單號」為唯一鍵（autoCreateOrAppendShippingOrder 會併入既有草稿）、
+ * 表2 以「表1單號＋來源明細 id」為唯一鍵。重試或連點兩下只會得到同一張草稿。
+ */
+function createDownstreamDraftsOnEffective(notice: PackingNotice): void {
+  const outOfStockItems: PackingNoticeItem[] = []
+
+  notice.items.forEach((item) => {
+    const reserved = stockReservations.some(
+      (r) => r.packingNoticeItemId === item.id && r.status === '預留中',
+    )
+    if (!reserved) {
+      // 沒有預留到現貨者走無庫存路徑；已在拼接建議待確認中的明細此時也還沒預留，
+      // 由生管確認拼接或改整捲裁切時再補上（見 confirmSplicingSuggestion）
+      const pendingSplicing = splicingSuggestions.some(
+        (x) => x.packingNoticeItemId === item.id && x.status === '待確認',
+      )
+      if (!pendingSplicing) outOfStockItems.push(item)
+      return
+    }
+    // 冪等：這筆明細已經在表8 草稿裡就不再加一次
+    const alreadyShipping = shippingOrders.some(
+      (o) => o.parentId === notice.id && o.items.some((i) => i.sourceItemId === item.id),
+    )
+    if (alreadyShipping) return
+
+    const reservation = stockReservations.find(
+      (r) => r.packingNoticeItemId === item.id && r.status === '預留中',
+    )
+    const product = resolveProduct(item.productId, item.roricaProductName)
+    autoCreateOrAppendShippingOrder(notice.id, notice.customerId, [
+      {
+        sourceItemId: item.id,
+        customerProductName: item.customerProductName,
+        roricaProductName: item.roricaProductName,
+        color: item.color,
+        rollCodes: reservation?.rollCodes ?? [],
+        yard: item.yard,
+        meter: Number(yardToMeter(item.yard).toFixed(1)),
+        unitPrice: product?.sellPrice,
+        note: item.note,
+      },
+    ])
+  })
+
+  if (outOfStockItems.length > 0) {
+    autoCreatePurchaseOrderDraft(notice, outOfStockItems)
+  }
 }
 
 /**
@@ -416,7 +585,8 @@ function recalcReservationsForNotice(notice: PackingNotice): void {
     const idx = stockReservations.findIndex((x) => x.id === r.id)
     stockReservations[idx] = { ...stockReservations[idx], status: '已釋放', releasedAt: now }
   })
-  autoReserveStockForNotice(notice, keepExpiresAt)
+  // 決策118：表1 還是草稿時不建下游；已生效者（凍結期內仍可改明細）則讓下游跟著更新
+  autoReserveStockForNotice(notice, keepExpiresAt, notice.status !== '草稿')
 }
 
 /** 手動釋放庫存預留（例如客戶取消需求）；14天效期到期則由 effectiveReservationStatus 自動視為已釋放 */
@@ -429,12 +599,11 @@ export function releaseStockReservation(id: string): Promise<StockReservation> {
 }
 
 export function updatePackingNotice(id: string, input: PackingNoticeInput): Promise<PackingNotice> {
-  const idx = packingNotices.findIndex((n) => n.id === id)
-  if (idx === -1) throw new Error(`包裝通知單 ${id} 不存在`)
-  // 取代版 PI 爭議期間一併凍結本單（決策27、39）；畫面已擋，此處為資料層守門
-  if (packingNotices[idx].manualHoldPiId) {
-    throw new Error(`本單因取代版 PI ${packingNotices[idx].manualHoldPiId} 待人工處理而凍結，待管理層裁決後才可修改`)
-  }
+  assertCanAct(getCurrentAccount(), '表1', '編輯草稿')
+  const idx = requirePackingNotice(id)
+  // 鎖定清單一次擋掉三種來源：待簽核唯讀（決策118）、人工凍結（Phase 2 決策27、39）、
+  // 生效後 7 個工作天凍結（主文件決策38）。畫面已擋，此處為資料層守門。
+  assertPackingNoticeUnlocked(packingNotices[idx])
   const customer = resolveCustomerByName(input.customerName)
   const updated: PackingNotice = {
     ...packingNotices[idx],
@@ -481,9 +650,17 @@ function applyPiDueDateOnEffective(notice: PackingNotice): void {
   })
 }
 
+/**
+ * 表1 狀態機（草稿→生效→已完成）。
+ *
+ * **決策118 之後，「生效」不再由這裡進入**——生效權在管理層的簽核動作上（approvePackingNotice），
+ * 業務自己不能讓表1 生效。本函式保留給「已完成」與系統內部的狀態回寫。
+ */
 export function setPackingNoticeStatus(id: string, status: PackingNotice['status']): Promise<PackingNotice> {
-  const idx = packingNotices.findIndex((n) => n.id === id)
-  if (idx === -1) throw new Error(`包裝通知單 ${id} 不存在`)
+  const idx = requirePackingNotice(id)
+  if (status === '生效' && packingNotices[idx].status === '草稿') {
+    throw new Error('表1 須經管理層簽核才能生效——請先送簽，再由管理層簽核（決策118）')
+  }
   if (packingNotices[idx].manualHoldPiId) {
     throw new Error(`本單因取代版 PI ${packingNotices[idx].manualHoldPiId} 待人工處理而凍結，待管理層裁決後才可變更狀態`)
   }
@@ -522,6 +699,7 @@ export interface PurchaseOrderInput {
  * 明細與表1包裝通知單完全一致，逐列（1:1）帶入，包裝單有幾筆明細訂購單就對應產生幾筆，非合併為一筆。
  */
 export function createPurchaseOrder(input: PurchaseOrderInput): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '建立')
   const notice = packingNotices.find((n) => n.id === input.parentId)
   if (!notice) throw new Error(`包裝通知單 ${input.parentId} 不存在`)
   const existingForParent = purchaseOrders.filter((p) => p.parentId === input.parentId).length
@@ -579,6 +757,7 @@ export interface PurchaseOrderDraftCompletionInput {
  * 進入正常簽回流程（2日內未簽回自動標記已逾期）。
  */
 export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraftCompletionInput): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '編輯草稿')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const current = purchaseOrders[idx]
@@ -605,6 +784,7 @@ export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraft
  * 使用者可分多次補齊資料，沒按儲存就維持原狀（送出另走 completePurchaseOrderDraft）。
  */
 export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftCompletionInput): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '編輯草稿')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const current = purchaseOrders[idx]
@@ -629,6 +809,7 @@ export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftComp
  * 通過後記錄大貨樣確認日，作為訂購單進入「已完成」狀態的判定條件。
  */
 export function submitPurchaseOrderLargeSample(id: string, result: '通過' | '退回', reason?: string): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '結案')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const current = purchaseOrders[idx]
@@ -649,6 +830,7 @@ export function submitPurchaseOrderLargeSample(id: string, result: '通過' | '�
 
 /** 賣方（供應商／染整廠）簽回訂購單；2日內未簽回則系統自動標記為已逾期，效果等同已確認 */
 export function signPurchaseOrder(id: string): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '送出')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const updated: PurchaseOrder = {
@@ -820,6 +1002,7 @@ function resolveProductForCustomer(productId: string | undefined, productName: s
  * （表6入庫單／表4染整單）完成時回頭結案（見 setGoodsReceiptStatus／submitDyeOrderLargeSample）。
  */
 export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '送出')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const order = purchaseOrders[idx]
@@ -917,6 +1100,7 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
 // ---------- 表3 打色通知單 ----------
 
 export function sendDyeRequest(id: string): Promise<void> {
+  assertCanAct(getCurrentAccount(), '表3', '送出')
   const idx = dyeRequests.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
   dyeRequests[idx] = { ...dyeRequests[idx], status: '已送出' }
@@ -957,6 +1141,7 @@ export interface DyeRequestColorInput {
  * 已完成的打色通知單不再提供修改。
  */
 export function updateDyeRequestColors(id: string, colors: DyeRequestColorInput[]): Promise<DyeRequest> {
+  assertCanAct(getCurrentAccount(), '表3', '建立')
   const idx = dyeRequests.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
   const current = dyeRequests[idx]
@@ -978,6 +1163,7 @@ export function updateDyeRequestColors(id: string, colors: DyeRequestColorInput[
  * 只寫在表3，不動商品主檔——要不要納入主檔是結案後的另一個決定（見 applyDyeRequestFinishedSpec）。
  */
 export function updateDyeRequestFinishedSpec(id: string, finishedSpec: string): Promise<DyeRequest> {
+  assertCanAct(getCurrentAccount(), '表3', '建立')
   const idx = dyeRequests.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
   if (dyeRequests[idx].status === '已完成') throw new Error('已完成的打色通知單不可修改成品規格')
@@ -994,6 +1180,7 @@ export function updateDyeRequestFinishedSpec(id: string, finishedSpec: string): 
  * 要不要以這次打色結果為準，由生管判斷。
  */
 export function applyDyeRequestFinishedSpec(id: string): Promise<Product> {
+  assertCanAct(getCurrentAccount(), '表3', '確認色卡')
   const request = dyeRequests.find((d) => d.id === id)
   if (!request) throw new Error(`打色通知單 ${id} 不存在`)
   if (request.status !== '已完成') throw new Error('打色通知單結案（已完成）後才可納入商品主檔')
@@ -1014,6 +1201,7 @@ export interface DyeRequestDraftInput {
 
 /** 表3 草稿階段的單頭手動更新：送出染整廠後即固定，不再開放修改 */
 export function updateDyeRequestDraft(id: string, input: DyeRequestDraftInput): Promise<DyeRequest> {
+  assertCanAct(getCurrentAccount(), '表3', '建立')
   const idx = dyeRequests.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
   const current = dyeRequests[idx]
@@ -1029,6 +1217,7 @@ export function updateDyeRequestDraft(id: string, input: DyeRequestDraftInput): 
 }
 
 export function createDyeRequest(input: DyeRequestInput): Promise<DyeRequest> {
+  assertCanAct(getCurrentAccount(), '表3', '建立')
   // 表3的子序號為 -C{n}，與表4染單的 -D{n} 分開，避免同一主號下單號相撞
   const id = nextDyeRequestId(input.parentId)
   // 品名比對得到商品資料主檔時沿用其 id（供後續帶出胚布編號等資訊），全新品名則直接記錄品名字串
@@ -1054,6 +1243,7 @@ export function createDyeRequest(input: DyeRequestInput): Promise<DyeRequest> {
  * 通過後打色通知單狀態變更為「已完成」，並將色樣編號回填至對應染單（若染單已先行開立且色號欄位仍空白）。
  */
 export function submitDyeRequestColorSample(id: string, result: '通過' | '退回', reason?: string): Promise<DyeRequest> {
+  assertCanAct(getCurrentAccount(), '表3', '確認色卡')
   const idx = dyeRequests.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
   const current = dyeRequests[idx]
@@ -1142,6 +1332,7 @@ export interface DyeOrderInput {
 
 /** 建立染整單草稿：生管可直接開單，不需等待表3或色號判斷完成，此時尚未觸發委外加工 */
 export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '建立')
   const notice = packingNotices.find((n) => n.id === input.parentId)
   if (!notice) throw new Error(`包裝通知單 ${input.parentId} 不存在`)
   const existingForParent = dyeOrders.filter((d) => d.parentId === input.parentId).length
@@ -1205,6 +1396,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
  * 不限於表3回填的時機——生管拿到染整廠回覆即可直接於染單補填或更正。
  */
 export function updateDyeOrderSampleCodes(id: string, sampleCodeByItem: Record<string, string>): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '編輯草稿')
   const idx = dyeOrders.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
@@ -1240,6 +1432,7 @@ export interface DyeOrderDraftInput {
 
 /** 表4 草稿階段的單頭手動更新：確認正式建單（轉生效）後回復唯讀 */
 export function updateDyeOrderDraft(id: string, input: DyeOrderDraftInput): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '編輯草稿')
   const idx = dyeOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
@@ -1257,6 +1450,7 @@ export function updateDyeOrderDraft(id: string, input: DyeOrderDraftInput): Prom
 }
 
 export function confirmDyeOrder(id: string): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '轉生效')
   const idx = dyeOrders.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
@@ -1311,6 +1505,7 @@ function applyGreigeArrivalToParent(parentId: string, arrivedAt: string): void {
  * 另回頭結案關聯的表2胚布送染整訂購單。實際交付數量的對照另由表6入庫確認時記錄，不在此登記。
  */
 export function submitDyeOrderLargeSample(id: string, result: '通過' | '退回', reason?: string): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '結案')
   const idx = dyeOrders.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
@@ -1400,6 +1595,7 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '退回
 // ---------- 表6 入庫單 ----------
 
 export function updateGoodsReceiptRolls(id: string, rolls: GoodsReceiptRoll[]): Promise<GoodsReceipt> {
+  assertCanAct(getCurrentAccount(), '表6', '複核')
   const idx = goodsReceipts.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
   const updated: GoodsReceipt = { ...goodsReceipts[idx], rolls }
@@ -1409,6 +1605,7 @@ export function updateGoodsReceiptRolls(id: string, rolls: GoodsReceiptRoll[]): 
 
 /** 更新投胚量：優先取 OCR 辨識廠商單據標示值，此處為人工覆核／輸入介面 */
 export function updateGoodsReceiptPledgedQty(id: string, pledgedQty: number | undefined): Promise<GoodsReceipt> {
+  assertCanAct(getCurrentAccount(), '表6', '複核')
   const idx = goodsReceipts.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
   const updated: GoodsReceipt = { ...goodsReceipts[idx], pledgedQty }
@@ -1418,6 +1615,7 @@ export function updateGoodsReceiptPledgedQty(id: string, pledgedQty: number | un
 
 /** 用途：人工選擇的分類欄位，比照舊系統代碼 */
 export function updateGoodsReceiptPurpose(id: string, purpose: GoodsReceipt['purpose']): Promise<GoodsReceipt> {
+  assertCanAct(getCurrentAccount(), '表6', '複核')
   const idx = goodsReceipts.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
   const updated: GoodsReceipt = { ...goodsReceipts[idx], purpose }
@@ -1434,6 +1632,7 @@ export interface GoodsReceiptVendorInfoInput {
 
 /** 廠商名稱／廠商出貨單號／出貨日期（OCR辨識）／原始收據附件，此處為人工覆核／輸入介面 */
 export function updateGoodsReceiptVendorInfo(id: string, input: GoodsReceiptVendorInfoInput): Promise<GoodsReceipt> {
+  assertCanAct(getCurrentAccount(), '表6', '複核')
   const idx = goodsReceipts.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
   const updated: GoodsReceipt = { ...goodsReceipts[idx], ...input }
@@ -1546,6 +1745,7 @@ function resolveDyeOrderIndexForReceipt(receipt: GoodsReceipt): number {
  *    委外加工路徑則不需再結案（表4染單於大貨樣通過當下已完成）。
  */
 export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']): Promise<GoodsReceipt> {
+  assertCanAct(getCurrentAccount(), '表6', '確認入庫')
   const idx = goodsReceipts.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
   if (status === '已複核' && goodsReceipts[idx].rolls.some((r) => r.ocrConfidence === '低' && !r.reviewed)) {
@@ -1648,6 +1848,7 @@ function rollCodePrefixAndSeq(rollCode: string): { prefix: string; seq: number }
  * 分割產生的新捲條碼直接接續當時最大可用流水號（非原編號的子序號），各自依分割後的長度建立新條碼。
  */
 export function splitFabricLabel(id: string, firstLength: number): Promise<FabricLabel[]> {
+  assertCanAct(getCurrentAccount(), '表7', '分割布卷')
   const idx = fabricLabels.findIndex((l) => l.id === id)
   if (idx === -1) throw new Error(`布卷條碼標籤 ${id} 不存在`)
   const original = fabricLabels[idx]
@@ -1697,6 +1898,7 @@ export function splitFabricLabel(id: string, firstLength: number): Promise<Fabri
  * 已完成／已終止／已標記過的布卷不再開放標記。
  */
 export function markFabricLabelDefective(id: string, note: string): Promise<FabricLabel> {
+  assertCanAct(getCurrentAccount(), '表7', '標記瑕疵')
   const idx = fabricLabels.findIndex((l) => l.id === id)
   if (idx === -1) throw new Error(`布卷條碼標籤 ${id} 不存在`)
   const current = fabricLabels[idx]
@@ -1775,6 +1977,7 @@ function piUnitPriceForNoticeItem(notice: PackingNotice | undefined, sourceItemI
 
 /** 建立出貨單：明細以布卷條碼組合記錄（拼接出貨即為實際使用的捲號組合） */
 export function createShippingOrder(input: ShippingOrderInput): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '建立')
   const existingForParent = shippingOrders.filter((s) => s.parentId === input.parentId).length
   const warehouseAccount = accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]
   const sourceNotice = packingNotices.find((n) => n.id === input.parentId)
@@ -1803,6 +2006,7 @@ export function createShippingOrder(input: ShippingOrderInput): Promise<Shipping
  * 供倉管於確認建單前調整實際出貨的品項與數量；已建立之後不再提供修改。
  */
 export function updateShippingOrderItems(id: string, items: ShippingOrderItem[]): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
   const current = shippingOrders[idx]
@@ -1828,6 +2032,7 @@ export interface ShippingOrderHeaderInput {
 
 /** 表8 草稿階段的單頭手動更新：確認建單後回復唯讀（比照明細） */
 export function updateShippingOrderHeader(id: string, input: ShippingOrderHeaderInput): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
   const idx = shippingOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
   const current = shippingOrders[idx]
@@ -1845,6 +2050,7 @@ export function updateShippingOrderHeader(id: string, input: ShippingOrderHeader
 }
 
 export function updateShippingOrderSignatures(id: string, signatures: ShippingOrder['signatures']): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
   const updated: ShippingOrder = { ...shippingOrders[idx], signatures }
@@ -1859,6 +2065,12 @@ export function updateShippingOrderSignatures(id: string, signatures: ShippingOr
 export function setShippingOrderStatus(id: string, status: ShippingOrder['status']): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  // 「改為出貨完成」會觸發扣庫存，僅生管可按且不得為建單者（權限規格第七章第 1 節）；
+  // 該路徑一律走 completeShippingOrder()，這裡只處理草稿↔已建立
+  if (status === '已完成') {
+    throw new Error('請改用「確認出貨」——出貨完成會觸發扣庫存，須由生管執行')
+  }
+  assertCanAct(getCurrentAccount(), '表8', status === '草稿' ? '退回' : '建立')
   const updated: ShippingOrder = { ...shippingOrders[idx], status }
   shippingOrders[idx] = updated
   return delay(updated)
@@ -1870,9 +2082,39 @@ export function setShippingOrderStatus(id: string, status: ShippingOrder['status
  * 裁剩的零碼布留在該捲條碼上等待下次湊單）。部分出貨（尚有剩餘長度）狀態轉為「已使用」，
  * 全部出貨（長度歸零）轉為「已完成」，兩者皆不可逆；每次扣減皆記錄一筆長度異動紀錄。
  */
+/**
+ * 表8 退回草稿（權限規格第四章第 3 節、決策37）：單據已建立但內容有誤，退回讓業務重填。
+ *
+ * 僅「已建立」可退回——「已完成」代表扣庫存已發生，退回等於要回沖庫存，
+ * 性質上屬異常處理，應走表9 而非退回草稿。
+ */
+export function rejectShippingOrder(id: string, reason: string): Promise<ShippingOrder> {
+  const idx = shippingOrders.findIndex((s) => s.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const account = getCurrentAccount()
+  assertCanAct(account, '表8', '退回')
+  if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
+  const order = shippingOrders[idx]
+  if (order.status === '已完成') {
+    throw new Error('「已完成」的出貨單不可退回草稿——扣庫存已發生，請改開表9 異常通知單')
+  }
+  if (order.status !== '已建立') throw new Error('僅「已建立」的出貨單可退回草稿')
+  shippingOrders[idx] = {
+    ...order,
+    status: '草稿',
+    rejections: [
+      ...(order.rejections ?? []),
+      { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() },
+    ],
+  }
+  return delay(shippingOrders[idx])
+}
+
 export function completeShippingOrder(id: string): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  // 建單者不得自行確認出貨——即使某帳號同時具備業務與生管角色（權限規格第七章第 1 節）
+  assertCanAct(getCurrentAccount(), '表8', '改為出貨完成', shippingOrders[idx].createdByAccountId)
 
   // 瑕疵／報廢的布卷不可再被任何訂單挑選：明細若含此類捲號，擋下出貨並要求先改捲
   const defective = shippingOrders[idx].items
@@ -1953,6 +2195,7 @@ export interface ProductInput {
 }
 
 export function updateProduct(id: string, input: ProductInput): Promise<Product> {
+  assertCanMaintainMaster(getCurrentAccount(), '商品')
   const idx = products.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`商品 ${id} 不存在`)
   if (!input.productName.trim()) throw new Error('皇加品名為必填')
@@ -1990,6 +2233,7 @@ export interface SecondaryProcessingInput {
  * 廠商資訊選自廠商資料主檔。同一張表1可開多張（不同加工廠分開發包），故單號流水為 -X{n}。
  */
 export function createSecondaryProcessingOrder(input: SecondaryProcessingInput): Promise<SecondaryProcessingOrder> {
+  assertCanAct(getCurrentAccount(), '表5', '補齊加工廠')
   const notice = packingNotices.find((n) => n.id === input.parentId)
   if (!notice) throw new Error(`包裝通知單 ${input.parentId} 不存在`)
   if (!input.vendorId) throw new Error('請選擇加工廠')
@@ -2039,6 +2283,7 @@ export function setSecondaryProcessingStatus(
   id: string,
   status: SecondaryProcessingOrder['status'],
 ): Promise<SecondaryProcessingOrder> {
+  assertCanAct(getCurrentAccount(), '表5', '轉生效')
   const idx = secondaryProcessingOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`二次加工單 ${id} 不存在`)
   const current = secondaryProcessingOrders[idx]
@@ -2065,6 +2310,7 @@ export function updateSecondaryProcessingItems(
   id: string,
   items: SecondaryProcessingItem[],
 ): Promise<SecondaryProcessingOrder> {
+  assertCanAct(getCurrentAccount(), '表5', '補齊加工廠')
   const idx = secondaryProcessingOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`二次加工單 ${id} 不存在`)
   if (secondaryProcessingOrders[idx].status !== '草稿') throw new Error('僅草稿狀態可調整明細')
@@ -2084,6 +2330,7 @@ export function updateSecondaryProcessingItems(
 export type CustomerInput = Omit<Customer, 'id'>
 
 export function updateCustomer(id: string, input: CustomerInput): Promise<Customer> {
+  assertCanMaintainMaster(getCurrentAccount(), '客戶')
   const idx = customers.findIndex((c) => c.id === id)
   if (idx === -1) throw new Error(`客戶 ${id} 不存在`)
   if (!input.code.trim()) throw new Error('客戶代碼為必填')
@@ -2106,6 +2353,7 @@ export function updateCustomer(id: string, input: CustomerInput): Promise<Custom
 export type VendorInput = Omit<Vendor, 'id'>
 
 export function updateVendor(id: string, input: VendorInput): Promise<Vendor> {
+  assertCanMaintainMaster(getCurrentAccount(), '廠商')
   const idx = vendors.findIndex((v) => v.id === id)
   if (idx === -1) throw new Error(`廠商 ${id} 不存在`)
   if (!input.code.trim()) throw new Error('廠商代碼為必填')
@@ -2139,6 +2387,7 @@ export function updateSecondaryProcessingVendor(
   id: string,
   input: SecondaryProcessingVendorInput,
 ): Promise<SecondaryProcessingOrder> {
+  assertCanAct(getCurrentAccount(), '表5', '補齊加工廠')
   const idx = secondaryProcessingOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`二次加工單 ${id} 不存在`)
   if (secondaryProcessingOrders[idx].status !== '草稿') throw new Error('僅草稿狀態可調整廠商資訊')
@@ -2195,6 +2444,8 @@ function nextAbnormalId(at: dayjs.Dayjs): string {
 }
 
 export function createAbnormalNotice(input: AbnormalNoticeInput): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '建立')
+  // 管理層不得建立表9（權限規格決策38）——本檢查在 assertCanAct 內
   const now = dayjs()
   const source = input.shippingOrderId ? shippingOrders.find((s) => s.id === input.shippingOrderId) : undefined
   if (input.shippingOrderId && !source) throw new Error(`出貨單 ${input.shippingOrderId} 不存在`)
@@ -2293,6 +2544,7 @@ function applyBatchDefectMarking(notice: AbnormalNotice, rollCodes: string[]): s
 }
 
 export function markAbnormalBatchRolls(id: string, rollCodes: string[]): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '收單處理')
   const idx = requireAbnormalNotice(id)
   if (abnormalNotices[idx].status === '已完成') throw new Error('已完成的異常通知單不可再標記同批庫存')
   const marked = applyBatchDefectMarking(abnormalNotices[idx], rollCodes)
@@ -2310,6 +2562,7 @@ export function updateAbnormalNoticeHandling(
     categoryItem?: string
   },
 ): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '收單處理')
   const idx = requireAbnormalNotice(id)
   if (abnormalNotices[idx].status === '已完成') throw new Error('已完成的異常通知單不可修改')
   abnormalNotices[idx] = {
@@ -2326,10 +2579,72 @@ export function updateAbnormalNoticeHandling(
  * 受理中→處理中：生管回覆並確認處理方式、經管理層／業務／會計三方簽核後，
  * 系統才依處理方式分流。簽名為列印後手簽，系統上以生管回覆與處理方式是否齊備作為卡控。
  */
+/**
+ * 表9 管理層批准（權限規格第四章第 4 節）：業務建單 → **管理層批准** → 生管收單。
+ * 批准前單據停留在「受理中」，不進入處理分流。建單者不得自行批准。
+ */
+export function approveAbnormalNotice(id: string): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  const account = getCurrentAccount()
+  assertCanAct(account, '表9', '批准', notice.createdByAccountId)
+  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單需要批准')
+  if (notice.approvedAt) throw new Error('本單已批准過')
+  abnormalNotices[idx] = { ...notice, approvedAt: dayjs().toISOString(), approvedByAccountId: account.id }
+  return delay(abnormalNotices[idx])
+}
+
+/**
+ * 表9 管理層退回（2026/09/21 新增，權限規格決策37）：資訊不足或不應受理時退回業務。
+ * 常見情形：客訴描述與照片不足、已逾 6 個月受理期、責任歸屬尚未釐清、數量與表8 對不上。
+ * 退回後單據仍停在「受理中」由業務編輯，不進入處理分流。
+ */
+export function rejectAbnormalNotice(id: string, reason: string): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  const account = getCurrentAccount()
+  assertCanAct(account, '表9', '退回')
+  if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
+  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可退回')
+  abnormalNotices[idx] = {
+    ...notice,
+    // 退回等於收回批准：要重新走一次批准才能往下
+    approvedAt: undefined,
+    approvedByAccountId: undefined,
+    rejections: [
+      ...(notice.rejections ?? []),
+      { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() },
+    ],
+  }
+  return delay(abnormalNotices[idx])
+}
+
+/**
+ * 表9 會計簽核（權限規格決策25）：財務角色的系統動作，**僅記錄簽核帳號與時間**。
+ * 表單上的會計簽名欄維持唯讀、列印後手簽——系統簽核推動狀態，紙本簽名留存正本。
+ */
+export function signAbnormalNoticeAccounting(id: string): Promise<AbnormalNotice> {
+  const idx = requireAbnormalNotice(id)
+  const notice = abnormalNotices[idx]
+  const account = getCurrentAccount()
+  assertCanAct(account, '表9', '會計簽核', notice.createdByAccountId)
+  if (!notice.handling.deduction) throw new Error('本單未勾選「扣款不退貨」，不需要會計簽核')
+  if (notice.accountingSignedAt) throw new Error('本單已完成會計簽核')
+  abnormalNotices[idx] = {
+    ...notice,
+    accountingSignedAt: dayjs().toISOString(),
+    accountingSignedByAccountId: account.id,
+  }
+  return delay(abnormalNotices[idx])
+}
+
 export function startAbnormalProcessing(id: string): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '收單處理')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可進入處理中')
+  // 決策118 同源的把關：核決在前、執行在後。未經管理層批准不得進入處理分流
+  if (!notice.approvedAt) throw new Error('本單尚未經管理層批准，不可進入處理中')
   if (!notice.productionReply?.trim()) throw new Error('請先填寫生管回覆')
   const { returnGoods, deduction, replacement, other } = notice.handling
   if (!returnGoods && !deduction && !replacement && !other) throw new Error('請至少勾選一種處理方式')
@@ -2339,6 +2654,7 @@ export function startAbnormalProcessing(id: string): Promise<AbnormalNotice> {
 
 /** 退貨路徑：倉管收貨進退貨暫存倉，逐筆登記退回的布卷（條碼遺失者可留空） */
 export function registerReturnedRoll(id: string, input: { rollCode?: string; yard: number }): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '退貨收貨複核')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   if (notice.status !== '處理中') throw new Error('僅「處理中」的異常通知單可登記退回布卷')
@@ -2362,6 +2678,7 @@ export function reviewReturnedRoll(
   verdict: '良品' | '瑕疵',
   note?: string,
 ): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '退貨收貨複核')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   const rolls = [...(notice.returnedRolls ?? [])]
@@ -2439,6 +2756,7 @@ export function reviewReturnedRoll(
  * 新出貨單記錄來源表9單號供追溯換貨事件的完整脈絡。
  */
 export function createReplacementShippingOrder(id: string): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '建立')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   const replacement = notice.handling.replacement
@@ -2480,6 +2798,7 @@ export function createReplacementShippingOrder(id: string): Promise<ShippingOrde
 
 /** 三條處理路徑全部完成，表9才可結案（逾 12 個月未結案僅提醒追蹤，不阻擋結案） */
 export function completeAbnormalNotice(id: string): Promise<AbnormalNotice> {
+  assertCanAct(getCurrentAccount(), '表9', '收單處理')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   if (notice.status !== '處理中') throw new Error('僅「處理中」的異常通知單可結案')
@@ -2533,6 +2852,7 @@ function assertCustomerContacts(contacts: CustomerContact[]): void {
 }
 
 export function createCustomer(input: CustomerInput): Promise<Customer> {
+  assertCanMaintainMaster(getCurrentAccount(), '客戶')
   if (!input.code.trim()) throw new Error('客戶代碼為必填')
   if (!input.shortName.trim()) throw new Error('客戶簡稱為必填')
   assertCustomerContacts(input.contacts)
@@ -2549,6 +2869,7 @@ export function createCustomer(input: CustomerInput): Promise<Customer> {
 }
 
 export function deleteCustomer(id: string): Promise<{ id: string }> {
+  assertCanMaintainMaster(getCurrentAccount(), '客戶')
   const customer = customers.find((c) => c.id === id)
   if (!customer) throw new Error(`客戶 ${id} 不存在`)
   assertNotReferenced(`客戶「${customer.shortName}」`, [
@@ -2562,6 +2883,7 @@ export function deleteCustomer(id: string): Promise<{ id: string }> {
 }
 
 export function createVendor(input: VendorInput): Promise<Vendor> {
+  assertCanMaintainMaster(getCurrentAccount(), '廠商')
   if (!input.code.trim()) throw new Error('廠商代碼為必填')
   if (!input.name.trim()) throw new Error('廠名為必填')
   if (input.types.length === 0) throw new Error('請至少選擇一種廠商類型')
@@ -2575,6 +2897,7 @@ export function createVendor(input: VendorInput): Promise<Vendor> {
 }
 
 export function deleteVendor(id: string): Promise<{ id: string }> {
+  assertCanMaintainMaster(getCurrentAccount(), '廠商')
   const vendor = vendors.find((v) => v.id === id)
   if (!vendor) throw new Error(`廠商 ${id} 不存在`)
   assertNotReferenced(`廠商「${vendor.name}」`, [
@@ -2597,6 +2920,7 @@ export function deleteVendor(id: string): Promise<{ id: string }> {
  * 讓新建的規格差異自動成為下一個分支，而不是覆蓋既有商品。
  */
 export function createProduct(input: ProductInput): Promise<Product> {
+  assertCanMaintainMaster(getCurrentAccount(), '商品')
   if (!input.productName.trim()) throw new Error('皇加品名為必填')
   if (!input.customerId) throw new Error('請選擇所屬客戶')
   const branchNo =
@@ -2621,6 +2945,7 @@ export function createProduct(input: ProductInput): Promise<Product> {
 }
 
 export function deleteProduct(id: string): Promise<{ id: string }> {
+  assertCanMaintainMaster(getCurrentAccount(), '商品')
   const product = products.find((p) => p.id === id)
   if (!product) throw new Error(`商品 ${id} 不存在`)
   assertNotReferenced(`商品「${product.productName}」`, [
@@ -2654,17 +2979,32 @@ function assertAccountInput(input: AccountInput, selfId?: string): void {
 }
 
 export function createAccount(input: AccountInput): Promise<Account> {
+  assertCanMaintainMaster(getCurrentAccount(), '帳號')
   assertAccountInput(input)
   const account: Account = { ...input, id: nextMasterId('ACC', accounts) }
   accounts.unshift(account)
   return delay(account)
 }
 
+/**
+ * 安全底線（權限規格決策20、第七章第 1 節）：系統至少須保留一個具「帳號管理」權限的**啟用**帳號。
+ * 管理員不得把最後一個管理員角色停用、移除該權限或刪除該帳號，否則將無人能再維護系統。
+ * 本約束於資料層強制執行，不出現在管理員的設定介面上。
+ */
+function assertLastAdminSurvives(afterChange: Account[]): void {
+  const remaining = afterChange.filter((a) => a.status === '啟用' && a.roles.includes('管理員'))
+  if (remaining.length === 0) {
+    throw new Error('系統至少須保留一個啟用中的管理員帳號，否則將無人能再維護權限設定（權限規格決策20）')
+  }
+}
+
 export function updateAccount(id: string, input: AccountInput): Promise<Account> {
+  assertCanMaintainMaster(getCurrentAccount(), '帳號')
   const idx = accounts.findIndex((a) => a.id === id)
   if (idx === -1) throw new Error(`帳號 ${id} 不存在`)
   assertAccountInput(input, id)
   const updated: Account = { ...accounts[idx], ...input }
+  assertLastAdminSurvives(accounts.map((a, i) => (i === idx ? updated : a)))
   accounts[idx] = updated
   return delay(updated)
 }
@@ -2674,12 +3014,14 @@ export function updateAccount(id: string, input: AccountInput): Promise<Account>
  * 人員離職應改為「停用」（狀態欄），而不是把歷史單據上的經手人抹掉。
  */
 export function deleteAccount(id: string): Promise<{ id: string }> {
+  assertCanMaintainMaster(getCurrentAccount(), '帳號')
   const account = accounts.find((a) => a.id === id)
   if (!account) throw new Error(`帳號 ${id} 不存在`)
   assertNotReferenced(`帳號「${account.name}」`, [
     { where: '入庫單經手人', ids: goodsReceipts.filter((r) => r.operatorAccountId === id).map((r) => r.id) },
     { where: '出貨單經手人', ids: shippingOrders.filter((s) => s.operatorAccountId === id).map((s) => s.id) },
   ])
+  assertLastAdminSurvives(accounts.filter((a) => a.id !== id))
   accounts.splice(accounts.indexOf(account), 1)
   return delay({ id })
 }
@@ -2732,6 +3074,7 @@ export interface FabricLabelInput {
 }
 
 export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<FabricLabel> {
+  assertCanMaintainMaster(getCurrentAccount(), '布卷')
   const idx = fabricLabels.findIndex((l) => l.id === id)
   if (idx === -1) throw new Error(`布卷 ${id} 不存在`)
   const current = fabricLabels[idx]
@@ -2773,6 +3116,7 @@ export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<
  * 刪掉會讓那些單據指向不存在的捲號；此時應改用「標記瑕疵／報廢」讓它退出可用庫存。
  */
 export function deleteFabricLabel(id: string): Promise<{ id: string }> {
+  assertCanMaintainMaster(getCurrentAccount(), '布卷')
   const label = fabricLabels.find((l) => l.id === id)
   if (!label) throw new Error(`布卷 ${id} 不存在`)
   assertNotReferenced(`布卷「${label.rollCode}」`, [
@@ -2862,6 +3206,7 @@ function nextPiId(base: dayjs.Dayjs): string {
 }
 
 export function createProformaInvoice(input: ProformaInvoiceInput): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '建立')
   const today = dayjs()
   // 取代版沿用母單主號加 -RV{n} 尾碼，客戶收到時認得出是同一筆的改版（決策24）
   const previous = input.previousPiId ? proformaInvoices.find((pi) => pi.id === input.previousPiId) : undefined
@@ -2972,6 +3317,7 @@ function piIndex(id: string): number {
 
 /** 草稿階段才可修改；轉換後一經送出即不可改，需作廢重開（決策6） */
 export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '編輯草稿')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   assertNotOnManualHold(current)
@@ -3002,6 +3348,7 @@ export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): 
 
 /** 送出批准：草稿 → 待批准 */
 export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '送簽')
   const idx = piIndex(id)
   assertNotOnManualHold(proformaInvoices[idx])
   if (proformaInvoices[idx].status !== '草稿') throw new Error('僅草稿可送出批准')
@@ -3016,6 +3363,7 @@ export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
  * 權限判斷本身屬另立的簽核模組，原型不做角色檢查。
  */
 export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '批准')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   assertNotOnManualHold(current)
@@ -3037,6 +3385,7 @@ export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
 
 /** 客戶回簽：待簽回 → 已簽回。附件非必填，不作為卡控（決策48） */
 export function markPiSignedBack(id: string, fileName?: string): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '編輯草稿')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   assertNotOnManualHold(current)
@@ -3094,6 +3443,7 @@ function piItemToPackingItem(item: ProformaInvoiceItem, noticeId: string, index:
  * - PI 階段沒建主檔的新客戶，於此時才由表1 的既有機制建檔給號（決策51）
  */
 export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInvoice; notices: PackingNotice[] }> {
+  assertCanAct(getCurrentAccount(), 'PI', '結案')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   if (!canConvertPi(current)) throw new Error('僅「已簽回」的 PI 可轉換為包裝通知單')
@@ -3144,6 +3494,7 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
 
 /** 複製為新 PI（決策24）：內容照抄但視為全新商機，前版單號留空、轉換時另建表1 */
 export function copyProformaInvoiceAsNew(id: string): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '建立')
   const source = proformaInvoices[piIndex(id)]
   return createProformaInvoice({
     customerName: source.customerName,
@@ -3165,6 +3516,7 @@ export function copyProformaInvoiceAsNew(id: string): Promise<ProformaInvoice> {
 
 /** 作廢並重開（決策24）：取代前一張，原 PI 標記已作廢；新單轉換時不建新表1，改為覆蓋原表1 */
 export function voidAndReopenProformaInvoice(id: string): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '建立')
   const source = proformaInvoices[piIndex(id)]
   return createProformaInvoice({
     customerName: source.customerName,
@@ -3280,6 +3632,7 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
  * 不設「照客戶要求改」或「另開補單」的第三個出口。
  */
 export function resolvePiManualHandling(id: string, resolution: '繼續' | '作廢'): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '批准')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   if (!isPiOnManualHold(current)) throw new Error('本張 PI 不在待人工處理')
@@ -3328,6 +3681,7 @@ export function resolvePiManualHandling(id: string, resolution: '繼續' | '作�
 
 /** 人工作廢（如客戶取消議價）：已轉換者不可作廢，需走取代版流程 */
 export function voidProformaInvoice(id: string, reason: string): Promise<ProformaInvoice> {
+  assertCanAct(getCurrentAccount(), 'PI', '編輯草稿')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   if (current.status === '已轉換') throw new Error('已轉換的 PI 不可直接作廢，請以「作廢並重開」建立取代版')

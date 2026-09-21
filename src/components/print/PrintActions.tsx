@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Printer, X } from 'lucide-react'
+import { AlertTriangle, Eye, Printer, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useCurrentAccount } from '@/lib/current-account-context'
+import { printWarning } from '@/lib/permissions'
 
 export interface PrintSheetOption {
   key: string
@@ -20,7 +22,24 @@ export interface PrintSheetOption {
  * 一張單據可有多種列印輸出（如入庫單與其布卷標籤）：預覽時全部一起顯示供確認格式，
  * 實際列印時只輸出被按下的那一份，避免一次印出全部。
  */
-export function PrintActions({ sheets }: { sheets: PrintSheetOption[] }) {
+export function PrintActions({
+  sheets,
+  /**
+   * 對外單據的名稱，用來比對「指定列印角色」（權限規格第七章第 3 節）。
+   * 傳了才會檢查；對內單據不需要傳。
+   */
+  outboundDoc,
+}: {
+  sheets: PrintSheetOption[]
+  outboundDoc?: string
+}) {
+  const { account } = useCurrentAccount()
+  /**
+   * 列印內容依操作者的欄位可見性呈現（決策29），所以非指定角色印出來會少一欄金額。
+   * 提示但不擋——現場可能確實只有其他人在（比照主文件決策22 的「出警示不卡控」慣例）。
+   */
+  const warning = outboundDoc ? printWarning(account, outboundDoc) : undefined
+
   const [activeKey, setActiveKey] = useState(sheets[0]?.key)
   const [preview, setPreview] = useState(false)
   // 每次按下列印遞增，作為「已切換到指定版面後再呼叫列印」的觸發訊號
@@ -70,8 +89,16 @@ export function PrintActions({ sheets }: { sheets: PrintSheetOption[] }) {
         <Eye className="mr-1 h-4 w-4" /> 版面預覽
       </Button>
       {sheets.map((sheet) => (
-        <Button key={sheet.key} size="sm" variant="outline" className="print:hidden" onClick={() => print(sheet.key)}>
-          <Printer className="mr-1 h-4 w-4" /> {sheet.label}
+        <Button
+          key={sheet.key}
+          size="sm"
+          variant="outline"
+          className={`print:hidden ${warning ? 'border-warning/50 text-warning' : ''}`}
+          title={warning}
+          onClick={() => print(sheet.key)}
+        >
+          {warning ? <AlertTriangle className="mr-1 h-4 w-4" /> : <Printer className="mr-1 h-4 w-4" />}
+          {sheet.label}
         </Button>
       ))}
 

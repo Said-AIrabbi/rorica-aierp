@@ -198,9 +198,27 @@ export interface Account {
   phone: string
   roles: AccountRole[]
   status: '啟用' | '停用'
+  /**
+   * 個別排除（權限規格決策32）：角色矩陣之外，管理員可針對單一帳號勾掉特定動作或欄位群組。
+   * 最終權限 ＝（該帳號所有角色的聯集）－（本清單）。**只能收緊、不能放寬**——
+   * 不可用它給某帳號一個其所有角色都沒有的權限，否則權限來源會分散在兩處、稽核時查不清楚。
+   * 型別定義於 @/lib/permissions（AccountExclusions），此處以結構型別避免 types → lib 的反向相依。
+   */
+  exclusions?: {
+    actions?: { doc: string; action: string }[]
+    fieldGroups?: string[]
+  }
 }
 
-/** 欄位層級權限矩陣（示範架構，實際各角色可見欄位仍需與客戶逐一核對確認） */
+/**
+ * 欄位層級權限矩陣（**已被取代，僅留作沿革對照**）。
+ *
+ * 主文件決策116（2026/09/21）：本表原為 5 群 × 5 角色的示範架構，已由
+ * 《帳號主檔權限規格》第五章取代——欄位群組擴為 7 群、補列「管理層」角色。
+ * 實際判定一律走 `@/lib/permissions` 的 canSeeFieldGroup()，不要再讀本表。
+ *
+ * @deprecated 改用 `canSeeFieldGroup` from '@/lib/permissions'
+ */
 export type PermissionField = '訂單基本資訊' | '售價' | '進價' | '客戶聯絡資訊' | '帳號管理'
 export type PermissionLevel = '可見' | '不可見' | '可見＋可操作'
 
@@ -216,6 +234,27 @@ export const ROLE_PERMISSION_MATRIX: Record<AccountRole, Record<PermissionField,
 // ---------- 單據 ----------
 
 export type PackingNoticeStatus = '草稿' | '生效' | '已完成'
+
+/**
+ * 表1 的簽核旗標（主文件決策118 / 權限規格決策4）。
+ *
+ * **狀態機不新增狀態**——「草稿→生效→已完成」三態維持不變，簽核以草稿上的這個旗標呈現。
+ * 草稿建立時為「未送簽」，業務送簽後轉「待簽核」（草稿轉唯讀），管理層簽核通過即轉「已簽核」
+ * 並同時讓 status 變成「生效」；管理層亦可退回，旗標回到「未送簽」、status 仍是草稿。
+ */
+export type PackingNoticeApprovalState = '未送簽' | '待簽核' | '已簽核'
+
+/**
+ * 退回紀錄（權限規格決策37）：表1、表8、表9 三處退回共用同一套規則——
+ * 原因必填、每次寫入不覆蓋前次、不設次數上限。反覆退回本身即為異常訊號，
+ * 由本清單呈現，不以系統擋單。
+ */
+export interface DocumentRejection {
+  at: string
+  /** 退回者的帳號 id */
+  byAccountId: string
+  reason: string
+}
 
 /** 包裝方式：選擇「定碼ROLL可接疋／不可接疋」時展開「定碼長度」欄位，輸入米數自動換算為碼數 */
 export const PACKING_METHODS = ['捲支', '板捲', '定碼ROLL可接疋', '定碼ROLL不可接疋', '原疋捲', '其他'] as const
@@ -308,7 +347,21 @@ export interface PackingNotice {
   customerId: string
   customerOrderNo: string
   status: PackingNoticeStatus
+  /**
+   * 簽核旗標（決策118）。未記錄者（早於本機制的舊資料）視為「已簽核」——
+   * 既有的生效單不該因為新增欄位而倒退回待簽核。
+   */
+  approvalState?: PackingNoticeApprovalState
+  /** 建單帳號：職責分離要用（建單者不得自行簽核），故必須記錄 */
+  createdByAccountId?: string
   createdAt: string
+  /** 業務送簽的時間；退回後再次送簽會覆蓋為最新一次 */
+  submittedAt?: string
+  /** 管理層簽核通過的時間與帳號 */
+  approvedAt?: string
+  approvedByAccountId?: string
+  /** 歷次退回（決策37）：不覆蓋前次，不設次數上限 */
+  rejections?: DocumentRejection[]
   effectiveAt?: string
   expectedDeliveryAt: string
   /** 出貨樣數量：半碼一單位，0~20碼滾輪選單 */
@@ -746,6 +799,10 @@ export interface ShippingOrder {
   parentId: string
   customerId: string
   status: ShippingOrderStatus
+  /** 建單帳號：職責分離要用（建單者不得自行按出貨完成） */
+  createdByAccountId?: string
+  /** 歷次退回（決策37）：僅「已建立」可退回草稿，「已完成」不可退回 */
+  rejections?: DocumentRejection[]
   shipDate: string
   isSampleOrder: boolean
   items: ShippingOrderItem[]
@@ -914,6 +971,20 @@ export interface AbnormalNotice {
   noticeDate: string
   /** 製表人：自動帶入登入帳號 */
   createdByAccountId: string
+  /**
+   * 管理層批准（權限規格第四章第 4 節）：業務建單 → **管理層批准** → 生管收單。
+   * 批准前單據停留在「受理中」，不進入處理分流。未記錄者（早於本機制的舊資料）視為已批准。
+   */
+  approvedAt?: string
+  approvedByAccountId?: string
+  /**
+   * 會計簽核（權限規格決策25）：財務角色的系統動作，**僅記錄簽核帳號與時間**；
+   * 表單上的會計簽名欄維持唯讀、列印後手簽。系統簽核推動狀態，紙本簽名留存正本。
+   */
+  accountingSignedAt?: string
+  accountingSignedByAccountId?: string
+  /** 歷次退回（權限規格決策37）：管理層於批准階段退回業務補件或更正 */
+  rejections?: DocumentRejection[]
   customerId?: string
   /** 生產編號：委外染整情境的追溯鍵，關聯回表4染單 */
   productionCode?: string

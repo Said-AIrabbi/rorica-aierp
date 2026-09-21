@@ -33,37 +33,84 @@ export function isFrozen(effectiveAt: string | undefined): boolean {
 }
 
 /**
- * 包裝通知單是否可編輯：凍結後整份單據不再提供修改；
- * 「草稿」狀態尚未正式生效，不受凍結旗標限制，可隨時修改。
- * 凍結有兩種來源（Phase 2 決策39）：①生效滿 7 個工作天自動；
- * ②取代版 PI 套用被擋下（規則3）時，連同該張表1 一併人工凍結，直到管理層裁決。
- * 後者不分狀態一律凍結——草稿也擋，因為爭議中的內容不該繼續被改。
+ * 單據鎖定模型（權限規格第七章第 4 節，決策30）。
+ *
+ * 表1 身上有三種互相獨立的鎖定來源（權限規格列的第四種「爭議中的取代版 PI」鎖在 PI 自己身上，見 isPiOnManualHold）。若各自做成一個布林旗標，解鎖時很容易漏掉其中一個，
+ * 故一律收斂為單一的「鎖定清單」：一張單可同時有多個鎖，**全部解除才可編輯**。
+ * 日後新增鎖定情境時只是多一筆鎖，不需要改動既有的判斷邏輯。
  */
-export function isPackingNoticeEditable(
-  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId'>,
-): boolean {
-  if (notice.manualHoldPiId) return false
-  if (notice.status === '草稿') return true
-  return !isFrozen(notice.effectiveAt)
-}
-
-/** 凍結原因（供畫面說明為何不能改）；未凍結回傳 undefined */
-export function packingNoticeFreezeReason(
-  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId'>,
-): string | undefined {
-  if (notice.manualHoldPiId) {
-    return `取代版 PI ${notice.manualHoldPiId} 因下游已對外發出轉入「待人工處理」，本單與該 PI 一併凍結，待管理層裁決`
-  }
-  if (notice.status !== '草稿' && isFrozen(notice.effectiveAt)) {
-    return '自生效日起算滿 7 個工作天，已自動凍結'
-  }
-  return undefined
+export interface DocumentLock {
+  /** 鎖定來源，直接顯示於畫面（「本單因○○○被鎖定」，而非只是禁用按鈕） */
+  source: string
+  /** 鎖定時間；推算而來的鎖（如凍結）為該鎖生效的時點 */
+  since?: string
+  /** 解除條件，一併顯示，讓使用者知道要找誰 */
+  release: string
 }
 
 /**
- * 訂購單是否可編輯：凍結後整份單據不再提供修改；
- * 「草稿」狀態尚未正式送出（待簽回），不受凍結旗標限制，可隨時修改，比照包裝通知單的處理方式。
+ * 表1 的簽核旗標（決策118）。
+ * 未記錄者（早於本機制的舊資料與種子）視為「已簽核」——既有的生效單不該因為新增欄位而倒退。
  */
+export function packingNoticeApprovalState(
+  notice: Pick<PackingNotice, 'approvalState'>,
+): NonNullable<PackingNotice['approvalState']> {
+  return notice.approvalState ?? '已簽核'
+}
+
+export function packingNoticeLocks(
+  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId' | 'approvalState' | 'submittedAt'>,
+): DocumentLock[] {
+  const locks: DocumentLock[] = []
+
+  // ① 待簽核唯讀（決策118）：送簽後草稿轉唯讀，要改得先請管理層退回
+  if (notice.status === '草稿' && packingNoticeApprovalState(notice) === '待簽核') {
+    locks.push({
+      source: '待簽核唯讀——已送簽，等待管理層簽核',
+      since: notice.submittedAt,
+      release: '管理層簽核通過（轉生效）或退回草稿',
+    })
+  }
+
+  // ② 人工凍結（Phase 2 決策27、39）：取代版 PI 建立當下偵測到下游已對外發出
+  if (notice.manualHoldPiId) {
+    locks.push({
+      source: `人工凍結——取代版 PI ${notice.manualHoldPiId} 待人工處理`,
+      release: '管理層裁決「繼續」或「作廢」後由系統解除',
+    })
+  }
+
+  // ③ 生效後凍結（主文件決策38）：生效滿 7 個工作天，終態不解除；草稿豁免
+  if (notice.status !== '草稿' && isFrozen(notice.effectiveAt)) {
+    locks.push({
+      source: `生效後凍結——已逾生效後 ${FREEZE_WORKDAYS} 個工作天`,
+      since: freezeDate(notice.effectiveAt)?.toISOString(),
+      release: '不解除（終態）',
+    })
+  }
+
+  return locks
+}
+
+/**
+ * 是否可編輯：以「是否存在未解除的鎖」判斷，不以個別旗標判斷（決策30）。
+ * 這樣日後多一種鎖，這裡不用改。
+ */
+export function isPackingNoticeEditable(
+  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId' | 'approvalState' | 'submittedAt'>,
+): boolean {
+  return packingNoticeLocks(notice).length === 0
+}
+
+/** 不可編輯時的原因；多個鎖一併列出——只講其中一個，使用者解掉還是動不了 */
+export function packingNoticeFreezeReason(
+  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId' | 'approvalState' | 'submittedAt'>,
+): string | undefined {
+  const locks = packingNoticeLocks(notice)
+  if (locks.length === 0) return undefined
+  return locks.map((l) => l.source).join('；')
+}
+
 export function isPurchaseOrderEditable(order: Pick<PurchaseOrder, 'effectiveAt' | 'status'>): boolean {
   if (order.status === '草稿') return true
   return !isFrozen(order.effectiveAt)

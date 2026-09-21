@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Lock, Pencil } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Lock, Pencil, Send, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -12,8 +12,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getCustomer, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
-import { confirmSplicingSuggestion, rejectSplicingSuggestion, setPackingNoticeStatus } from '@/mocks/mutations'
+import { accounts, getCustomer, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
+import {
+  approvePackingNotice,
+  confirmSplicingSuggestion,
+  rejectPackingNotice,
+  rejectSplicingSuggestion,
+  submitPackingNoticeForApproval,
+} from '@/mocks/mutations'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
@@ -22,12 +29,12 @@ import { effectiveReservationStatus } from '@/lib/inventory'
 import {
   colorRatioText,
   isPackingNoticeEditable,
+  packingNoticeApprovalState,
+  packingNoticeLocks,
   isPackingNoticeFullyShipped,
-  packingNoticeFreezeReason,
 } from '@/lib/workflow'
 import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
 import { smallMarkingLines } from '@/lib/workflow'
-import type { PackingNoticeStatus } from '@/types'
 
 export function PackingNoticeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -77,12 +84,37 @@ export function PackingNoticeDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
-  const statusMutation = useMutation({
-    mutationFn: (status: PackingNoticeStatus) => setPackingNoticeStatus(id!, status),
-    onSuccess: async (notice) => {
+  const permissions = useCurrentAccount()
+
+  /**
+   * 決策118 的三個動作：送簽 → 簽核 → （或）退回草稿。
+   * 簽核成功時才會建立表2／表8 草稿，故一併作廢那兩份快取。
+   */
+  const submitMutation = useMutation({
+    mutationFn: () => submitPackingNoticeForApproval(id!),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['packingNotices'] })
-      toast.success(`${notice.id} 已變更為「${notice.status}」`)
+      toast.success('已送簽，等待管理層簽核（草稿此時轉為唯讀）')
     },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: () => approvePackingNotice(id!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries()
+      toast.success('簽核通過，表1 已生效；表2／表8 草稿於此時建立')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => rejectPackingNotice(id!, reason),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['packingNotices'] })
+      toast.success('已退回草稿，回到業務手上可編輯（庫存預留不釋放）')
+    },
+    onError: (error: Error) => toast.error(error.message),
   })
 
   const notice = notices.find((n) => n.id === id)
@@ -112,6 +144,15 @@ export function PackingNoticeDetailPage() {
   const pendingSuggestions = relatedSuggestions.filter((sg) => sg.status === '待確認')
   const editable = isPackingNoticeEditable(notice)
   const fullyShipped = isPackingNoticeFullyShipped(notice, notice.id, shippingOrders)
+  const locks = packingNoticeLocks(notice)
+  const approvalState = packingNoticeApprovalState(notice)
+  // 決策118：草稿 → 送簽 → 管理層簽核 → 生效。業務自己沒有生效權
+  const canSubmit = notice.status === '草稿' && approvalState === '未送簽'
+  const canApprove = notice.status === '草稿' && approvalState === '待簽核'
+  const submitBlocked = permissions.blockedReason('表1', '送簽')
+  const approveBlocked = permissions.blockedReason('表1', '簽核', notice.createdByAccountId)
+  const rejectBlocked = permissions.blockedReason('表1', '退回')
+  const editBlocked = permissions.blockedReason('表1', '編輯草稿')
 
   return (
     <div>
@@ -133,34 +174,104 @@ export function PackingNoticeDetailPage() {
                 <Lock className="h-3 w-3" /> 已凍結
               </span>
             )}
-            {editable && (
+            {editable && !editBlocked && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/packing-notice/${notice.id}/edit`)}>
                 <Pencil className="mr-1 h-4 w-4" /> 編輯
               </Button>
             )}
-            {notice.status === '草稿' && (
+            {/* 決策118：業務送簽 */}
+            {canSubmit && !submitBlocked && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
-                disabled={statusMutation.isPending}
-                onClick={() => statusMutation.mutate('生效')}
+                disabled={submitMutation.isPending}
+                onClick={() => submitMutation.mutate()}
               >
-                確認建檔（轉生效）
+                <Send className="mr-1 h-4 w-4" /> 送簽
               </Button>
+            )}
+            {/* 決策118：管理層簽核即生效；建單者不得自行簽核 */}
+            {canApprove && (
+              <>
+                <Button
+                  size="sm"
+                  className="bg-brand hover:bg-brand-dark"
+                  disabled={approveMutation.isPending || Boolean(approveBlocked)}
+                  title={approveBlocked}
+                  onClick={() => approveMutation.mutate()}
+                >
+                  <CheckCircle2 className="mr-1 h-4 w-4" /> 簽核（即生效）
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={rejectMutation.isPending || Boolean(rejectBlocked)}
+                  title={rejectBlocked}
+                  onClick={() => {
+                    // 退回原因必填——沒有原因，業務無從修正（權限規格決策37）
+                    const reason = window.prompt('退回原因（必填）：')
+                    if (reason?.trim()) rejectMutation.mutate(reason)
+                  }}
+                >
+                  <Undo2 className="mr-1 h-4 w-4" /> 退回草稿
+                </Button>
+              </>
             )}
           </>
         }
       />
 
-      {!editable && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            {packingNoticeFreezeReason(notice)}，不再提供修改。
-            {notice.manualHoldPiId
-              ? '（表2／表4／表5 等下游單據不受影響，流程照常進行）'
-              : '（草稿狀態尚未生效，不受此限）'}
-          </span>
+      {/*
+        鎖定清單（權限規格決策30）：一張單可同時有多個鎖，全部解除才可編輯。
+        只講其中一個，使用者解掉還是動不了，故逐筆列出來源與解除條件。
+      */}
+      {locks.length > 0 && (
+        <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          <div className="flex items-start gap-2">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">
+                本單目前有 {locks.length} 個未解除的鎖，不可修改
+              </p>
+              <ul className="mt-1 space-y-0.5 text-xs">
+                {locks.map((lock, i) => (
+                  <li key={i}>
+                    {lock.source}
+                    <span className="text-warning/70">（解除條件：{lock.release}）</span>
+                  </li>
+                ))}
+              </ul>
+              {notice.manualHoldPiId && (
+                <p className="mt-1 text-xs">表2／表4／表5 等下游單據不受影響，流程照常進行。</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 決策118：簽核關卡的目前位置 */}
+      {notice.status === '草稿' && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          <span className="font-medium text-ink-body">簽核狀態：{approvalState}</span>
+          {approvalState === '未送簽' && '——業務編輯完成後按「送簽」，進入管理層的待簽清單。'}
+          {approvalState === '待簽核' && '——草稿已轉唯讀，等待管理層簽核；要修改請先請管理層退回。'}
+          <div className="mt-1 text-xs">
+            決策118：庫存預留已於建單當下完成；表2 訂購單與表8 出貨單草稿要等簽核生效才建立。
+          </div>
+        </div>
+      )}
+
+      {/* 歷次退回（決策37）：不覆蓋前次，反覆退回本身即為異常訊號 */}
+      {notice.rejections && notice.rejections.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+          <p className="font-medium text-ink">退回紀錄（{notice.rejections.length} 次）</p>
+          <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+            {notice.rejections.map((r, i) => (
+              <li key={i}>
+                {formatDate(r.at)}　{accounts.find((a) => a.id === r.byAccountId)?.name ?? r.byAccountId}：{r.reason}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

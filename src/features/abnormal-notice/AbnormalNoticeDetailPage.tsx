@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -24,6 +25,9 @@ import {
   markAbnormalBatchRolls,
   registerReturnedRoll,
   reviewReturnedRoll,
+  approveAbnormalNotice,
+  rejectAbnormalNotice,
+  signAbnormalNoticeAccounting,
   startAbnormalProcessing,
   updateAbnormalNoticeHandling,
 } from '@/mocks/mutations'
@@ -73,6 +77,40 @@ export function AbnormalNoticeDetailPage() {
     onSuccess: async () => {
       await invalidate()
       toast.success('處理方式與生管回覆已儲存')
+    },
+    onError,
+  })
+
+  const permissions = useCurrentAccount()
+
+  /**
+   * 表9 的簽核鏈（權限規格第四章第 4 節）：業務建單 → **管理層批准** → 生管收單。
+   * 批准前單據停留在「受理中」，不進入處理分流；管理層亦可退回業務補件（2026/09/21 新增）。
+   */
+  const approveMutation = useMutation({
+    mutationFn: () => approveAbnormalNotice(id!),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('管理層已批准，生管可收單並回覆處理方式')
+    },
+    onError,
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => rejectAbnormalNotice(id!, reason),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('已退回業務補件；單據仍停在「受理中」，不進入處理分流')
+    },
+    onError,
+  })
+
+  /** 會計簽核（決策25）：僅記錄簽核帳號與時間，表單上的會計簽名欄仍為列印後手簽 */
+  const accountingMutation = useMutation({
+    mutationFn: () => signAbnormalNoticeAccounting(id!),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('已完成會計簽核（系統僅記錄帳號與時間，紙本簽名欄不變）')
     },
     onError,
   })
@@ -192,12 +230,67 @@ export function AbnormalNoticeDetailPage() {
         actions={
           <>
             <StatusBadge status={notice.status} className="text-sm" />
+            {/*
+              表9 拆兩種收受方：主單給客戶（退款／扣款屬「售價」群，業務可見）、
+              上游追討附單給染整廠（索賠金額屬「加工與委外費用」群，生管可見）。
+              不拆的話不論誰列印都會有一欄空白（權限規格第七章第 3 節）。
+            */}
             <PrintActions
+              outboundDoc={isUpstream ? '表9 上游追討附單' : '表9 主單及對客戶附單'}
               sheets={[{ key: 'doc', label: isUpstream ? '列印附單' : '列印異常通知單', sheet: <AbnormalNoticePrint notice={notice} /> }]}
             />
-            {notice.status === '受理中' && (
-              <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={startMutation.isPending} onClick={() => startMutation.mutate()}>
-                完成簽核，開始處理
+            {/* 管理層批准／退回：核決在前、執行在後 */}
+            {notice.status === '受理中' && !notice.approvedAt && (
+              <>
+                {(() => {
+                  const blocked = permissions.blockedReason('表9', '批准', notice.createdByAccountId)
+                  return (
+                    <Button
+                      size="sm"
+                      className="bg-brand hover:bg-brand-dark"
+                      disabled={approveMutation.isPending || Boolean(blocked)}
+                      title={blocked}
+                      onClick={() => approveMutation.mutate()}
+                    >
+                      管理層批准
+                    </Button>
+                  )
+                })()}
+                {permissions.can('表9', '退回') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={rejectMutation.isPending}
+                    onClick={() => {
+                      const reason = window.prompt('退回原因（必填）：')
+                      if (reason?.trim()) rejectMutation.mutate(reason)
+                    }}
+                  >
+                    退回業務
+                  </Button>
+                )}
+              </>
+            )}
+            {/* 扣款路徑的會計簽核由財務執行 */}
+            {notice.handling.deduction && !notice.accountingSignedAt && permissions.can('表9', '會計簽核') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={accountingMutation.isPending}
+                onClick={() => accountingMutation.mutate()}
+              >
+                會計簽核
+              </Button>
+            )}
+            {notice.status === '受理中' && notice.approvedAt && (
+              <Button
+                size="sm"
+                className="bg-brand hover:bg-brand-dark"
+                disabled={startMutation.isPending || !permissions.can('表9', '收單處理')}
+                title={permissions.blockedReason('表9', '收單處理')}
+                onClick={() => startMutation.mutate()}
+              >
+                生管收單，開始處理
               </Button>
             )}
             {notice.status === '處理中' && (
@@ -208,6 +301,38 @@ export function AbnormalNoticeDetailPage() {
           </>
         }
       />
+
+      {/* 簽核鏈目前走到哪裡（權限規格第四章第 4 節） */}
+      {notice.status === '受理中' && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          <span className="font-medium text-ink-body">
+            簽核鏈：業務建單 → 管理層批准 → 生管收單
+          </span>
+          <div className="mt-1 text-xs">
+            {notice.approvedAt
+              ? `已於 ${formatDate(notice.approvedAt)} 由 ${getAccount(notice.approvedByAccountId ?? '')?.name ?? '管理層'} 批准，生管可收單處理。`
+              : '尚未經管理層批准，不可進入處理分流。'}
+            {notice.handling.deduction &&
+              (notice.accountingSignedAt
+                ? `　會計簽核：${formatDate(notice.accountingSignedAt)}（${getAccount(notice.accountingSignedByAccountId ?? '')?.name ?? '財務'}）`
+                : '　扣款路徑尚待財務完成會計簽核。')}
+          </div>
+        </div>
+      )}
+
+      {/* 歷次退回（決策37）：不覆蓋前次、不設次數上限 */}
+      {notice.rejections && notice.rejections.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+          <p className="font-medium text-ink">退回紀錄（{notice.rejections.length} 次）</p>
+          <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+            {notice.rejections.map((r, i) => (
+              <li key={i}>
+                {formatDate(r.at)}　{getAccount(r.byAccountId)?.name ?? r.byAccountId}：{r.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {isAbnormalCloseOverdue(notice) && (
         <p className="mb-4 flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-sm text-destructive">

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -22,6 +23,7 @@ import { getAccount, getCustomer } from '@/mocks/data'
 import { GOODS_RECEIPT_PURPOSES } from '@/types'
 import {
   completeShippingOrder,
+  rejectShippingOrder,
   setShippingOrderStatus,
   updateShippingOrderItems,
   updateShippingOrderHeader,
@@ -103,6 +105,21 @@ export function ShippingOrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const permissions = useCurrentAccount()
+
+  /**
+   * 表8 退回草稿（權限規格第四章第 3 節）：僅「已建立」可退回。
+   * 「已完成」不可退——扣庫存已發生，退回等於要回沖庫存，性質上屬異常處理，應走表9。
+   */
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => rejectShippingOrder(id!, reason),
+    onSuccess: async (updated) => {
+      await invalidate()
+      toast.success(`${updated.id} 已退回草稿，回到業務手上可編輯`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const buildMutation = useMutation({
     mutationFn: () => setShippingOrderStatus(id!, '已建立'),
     onSuccess: async (updated) => {
@@ -173,6 +190,7 @@ export function ShippingOrderDetailPage() {
           <>
             <StatusBadge status={order.status} className="text-sm" />
             <PrintActions
+              outboundDoc="表8 出貨單"
               sheets={[
                 { key: 'doc', label: '列印出貨單', sheet: <ShippingOrderPrint order={order} /> },
                 // 嘜頭資料維護於表1，但貼箱是出貨當下的動作，故列印入口放在表8。
@@ -197,19 +215,61 @@ export function ShippingOrderDetailPage() {
                 ),
               ]}
             />
-            {order.status === '草稿' && (
+            {order.status === '草稿' && permissions.can('表8', '建立') && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={buildMutation.isPending} onClick={() => buildMutation.mutate()}>
                 建立出貨單
               </Button>
             )}
             {order.status === '已建立' && (
-              <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={completeMutation.isPending} onClick={() => completeMutation.mutate()}>
-                確認出貨完成
-              </Button>
+              <>
+                {/* 出貨完成會觸發扣庫存：僅生管可按，且不得為本單的建立者（權限規格第七章第 1 節） */}
+                {(() => {
+                  const blocked = permissions.blockedReason('表8', '改為出貨完成', order.createdByAccountId)
+                  return (
+                    <Button
+                      size="sm"
+                      className="bg-brand hover:bg-brand-dark"
+                      disabled={completeMutation.isPending || Boolean(blocked)}
+                      title={blocked}
+                      onClick={() => completeMutation.mutate()}
+                    >
+                      確認出貨完成
+                    </Button>
+                  )
+                })()}
+                {permissions.can('表8', '退回') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={rejectMutation.isPending}
+                    onClick={() => {
+                      // 退回原因必填（權限規格決策37）
+                      const reason = window.prompt('退回原因（必填）：')
+                      if (reason?.trim()) rejectMutation.mutate(reason)
+                    }}
+                  >
+                    退回草稿
+                  </Button>
+                )}
+              </>
             )}
           </>
         }
       />
+
+      {/* 歷次退回（決策37）：不覆蓋前次、不設次數上限；反覆退回本身即為異常訊號 */}
+      {order.rejections && order.rejections.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+          <p className="font-medium text-ink">退回紀錄（{order.rejections.length} 次）</p>
+          <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+            {order.rejections.map((r, i) => (
+              <li key={i}>
+                {formatDate(r.at)}　{getAccount(r.byAccountId)?.name ?? r.byAccountId}：{r.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -259,7 +319,8 @@ export function ShippingOrderDetailPage() {
             {/* 收貨地址沿 PI → 表1 帶入，出貨端只讀不填（決策40） */}
             {order.shippingAddress && <DetailField label="收貨地址" value={order.shippingAddress} />}
             <DetailField label="倉管人員" value={operator?.name ?? '-'} />
-            <DetailField label="出倉部門" value={operator?.roles[0] ?? '-'} />
+            {/* 決策117：改記並列印操作帳號姓名，不再依角色推導部門 */}
+            <DetailField label="出倉部門" value={operator?.name ?? '-'} />
             {itemsEditable ? (
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">用途</label>

@@ -197,7 +197,7 @@ export function PurchaseOrderDetailPage() {
         actions={
           <>
             <StatusBadge status={displayStatus} className="text-sm" />
-            <PrintActions sheets={[{ key: 'doc', label: '列印訂購單', sheet: <PurchaseOrderPrint order={order} /> }]} />
+            <PrintActions outboundDoc="表2 訂購單" sheets={[{ key: 'doc', label: '列印訂購單', sheet: <PurchaseOrderPrint order={order} /> }]} />
             {!editable && (
               <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
                 <Lock className="h-3 w-3" /> 已凍結

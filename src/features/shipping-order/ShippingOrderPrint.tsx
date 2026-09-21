@@ -55,7 +55,8 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
     { label: '出貨日期', value: formatDate(order.shipDate) },
     { label: '客戶', value: customer ? `${customer.code}　${customer.shortName}` : order.customerId, span: 2 },
     { label: '倉管人員', value: operator?.name ?? ' ' },
-    { label: '出倉部門', value: operator?.roles.join('、') ?? ' ' },
+    // 決策117：列印操作帳號姓名，不再依角色推導部門
+    { label: '出倉部門', value: operator?.name ?? ' ' },
     { label: '客戶地址', value: customer?.address ?? ' ', span: 2 },
     { label: '用途', value: order.purpose ?? ' ' },
     { label: '數量輸入基準', value: `${itemUnit}（另一單位為換算值）` },

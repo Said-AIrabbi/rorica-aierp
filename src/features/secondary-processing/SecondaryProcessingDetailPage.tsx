@@ -152,7 +152,7 @@ export function SecondaryProcessingDetailPage() {
         actions={
           <>
             <StatusBadge status={order.status} />
-            <PrintActions sheets={[{ key: 'doc', label: '列印二次加工單', sheet: <SecondaryProcessingPrint order={order} /> }]} />
+            <PrintActions outboundDoc="表5 二次加工單" sheets={[{ key: 'doc', label: '列印二次加工單', sheet: <SecondaryProcessingPrint order={order} /> }]} />
             {order.status === '草稿' && (
               <Button
                 className="bg-brand hover:bg-brand-dark"

@@ -301,7 +301,8 @@ export function GoodsReceiptDetailPage() {
             )}
             <DetailField label="入庫日" value={formatDate(receipt.receiptDate)} />
             <DetailField label="倉管人員" value={operator?.name} />
-            <DetailField label="入倉部門" value={operator?.roles[0] ?? '-'} />
+            {/* 決策117：改記並列印操作帳號姓名，不再依角色推導部門——一個帳號可掛多個角色，推導不出唯一答案 */}
+            <DetailField label="入倉部門" value={operator?.name ?? '-'} />
             <DetailField label="廠商名稱" value={vendor?.name ?? '-'} />
             <DetailField label="廠商出貨單號（OCR）" value={receipt.vendorShipmentNo || '-'} />
             <DetailField label="出貨日期（OCR）" value={formatDate(receipt.vendorShipDate)} />

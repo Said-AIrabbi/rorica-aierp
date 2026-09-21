@@ -56,7 +56,8 @@ export function GoodsReceiptPrint({ receipt }: { receipt: GoodsReceipt }) {
       span: 2,
     },
     { label: '倉管人員', value: operator?.name ?? receipt.operatorAccountId },
-    { label: '入倉部門', value: operator?.roles.join('、') ?? ' ' },
+    // 決策117：列印操作帳號姓名，不再依角色推導部門
+    { label: '入倉部門', value: operator?.name ?? ' ' },
     { label: '廠商名稱', value: vendorDisplayName(vendor), span: 2 },
     { label: '廠商出貨單號', value: receipt.vendorShipmentNo ?? ' ' },
     { label: '廠商出貨日期', value: receipt.vendorShipDate ? formatDate(receipt.vendorShipDate) : ' ' },
