@@ -910,9 +910,21 @@ if (abnormalNotices.length > 0) {
  * 嘜頭與收貨地址一併帶入），而不是掛到既有的表1 上——掛既有單會出現「PI 寫客戶 A、
  * 點進去的表1 卻是客戶 B、PO 也對不上」這種自相矛盾的展示資料。
  */
-const PI_STATUS_PLAN: { status: ProformaInvoice['status']; daysAgo: number; convertCount: number }[] = [
-  { status: '已轉換', daysAgo: 38, convertCount: 2 },
-  { status: '已轉換', daysAgo: 26, convertCount: 1 },
+const PI_STATUS_PLAN: {
+  status: ProformaInvoice['status']
+  daysAgo: number
+  convertCount: number
+  /**
+   * 該 PI 的表1 是否已有「對外發出」的下游（表2 已送出）。
+   * true 的那一張，按下「作廢並重開」就會走到規則3——取代版留在草稿並掛待人工處理；
+   * false 的那一張則是正常的覆蓋路徑。兩種情境都要有，客戶才點得到。
+   */
+  downstreamDispatched?: boolean
+}[] = [
+  // 兩張已轉換的 PI 皆取近期日期：其表1 仍在生效後 7 個工作天內（未凍結），
+  // 覆蓋規則才示範得出規則1／2／3 的差異——凍結（規則0）優先序最高，會把其他規則整個蓋掉
+  { status: '已轉換', daysAgo: 8, convertCount: 2, downstreamDispatched: true },
+  { status: '已轉換', daysAgo: 6, convertCount: 1 },
   { status: '已簽回', daysAgo: 9, convertCount: 0 },
   { status: '待簽回', daysAgo: 4, convertCount: 0 },
   { status: '待批准', daysAgo: 2, convertCount: 0 },
@@ -1042,6 +1054,41 @@ export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) 
       return noticeId
     })
     pi.packingNoticeIds = noticeIds
+
+    if (plan.downstreamDispatched && noticeIds.length > 0) {
+      // 表2 已送出（待簽回）＝已讓外部廠商動起來，這張 PI 的取代版就會被規則3 擋下
+      const noticeId = noticeIds[0]
+      const notice = packingNotices.find((n) => n.id === noticeId)!
+      const poId = `${noticeId}-P1`
+      purchaseOrders.unshift({
+        id: poId,
+        parentId: noticeId,
+        type: '胚布',
+        hasDyeVendor: true,
+        dyeVendorId: vendors.find((v) => v.types.includes('染整廠'))?.id,
+        vendorId: (vendors.find((v) => v.types.includes('胚布供應商')) ?? vendors[0]).id,
+        status: '待簽回',
+        createdAt: effectiveAt.add(1, 'day').toISOString(),
+        effectiveAt: effectiveAt.add(1, 'day').toISOString(),
+        dueDate: effectiveAt.add(21, 'day').toISOString(),
+        note: '配合染整廠排缸',
+        items: notice.items.map((item) => ({
+          id: `${poId}-${item.id}`,
+          customerProductName: item.customerProductName,
+          roricaProductName: item.roricaProductName,
+          productId: item.productId,
+          color: item.color,
+          yard: item.yard,
+          meter: item.meter,
+          packingMethod: item.packingMethod,
+          fixedLengthMeter: item.fixedLengthMeter,
+          colorRatios: item.colorRatios,
+          unitPrice: Number(faker.number.float({ min: 20, max: 80, fractionDigits: 1 }).toFixed(1)),
+          note: item.note,
+        })),
+        embossing: notice.embossing.join('、'),
+      })
+    }
   }
 
   return pi

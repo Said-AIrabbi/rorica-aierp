@@ -34,6 +34,7 @@ import {
   canSignBackPi,
   effectivePiStatus,
   isPiOnManualHold,
+  piDownstreamBlockers,
   piDueDate,
   piTotalAmount,
 } from '@/lib/pi'
@@ -48,6 +49,13 @@ export function PiDetailPage() {
   const [signedFileName, setSignedFileName] = useState('')
   const { data = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
+  // 下游三張單：用來預告「作廢並重開」會不會落入規則3（畫面提示，判定本身在資料層）
+  const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
+  const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
+  const { data: secondaryProcessingOrders = [] } = useQuery({
+    queryKey: ['secondaryProcessingOrders'],
+    queryFn: api.secondaryProcessingOrders,
+  })
   const pi = data.find((x) => x.id === id)
 
   const refresh = async () => {
@@ -80,6 +88,10 @@ export function PiDetailPage() {
   const isReplacement = Boolean(pi.previousPiId)
   // 待人工處理不是狀態：PI 留在草稿但整條流程卡住，裁決前不得送批准／簽回／套用（決策27）
   const onHold = isPiOnManualHold(pi)
+  // 已對外發出的下游：有的話，按「作廢並重開」會直接進入待人工處理（決策27）
+  const dispatchedDownstream = pi.packingNoticeIds.flatMap((noticeId) =>
+    piDownstreamBlockers(noticeId, purchaseOrders, dyeOrders, secondaryProcessingOrders),
+  )
 
   const run = (fn: () => Promise<unknown>, successText: string) =>
     action.mutate(fn, { onSuccess: () => toast.success(successText) })
@@ -237,8 +249,13 @@ export function PiDetailPage() {
                     },
                   })
                 }
+                title={
+                  dispatchedDownstream.length > 0
+                    ? `下游已對外發出（${dispatchedDownstream.join('；')}），建立取代版後將留在草稿並轉入待人工處理`
+                    : '建立取代版，內容照抄並覆蓋既有表1'
+                }
               >
-                作廢並重開
+                作廢並重開{dispatchedDownstream.length > 0 ? '（將待人工處理）' : ''}
               </Button>
             )}
             {status !== '已作廢' && status !== '已轉換' && !onHold && (
@@ -257,6 +274,21 @@ export function PiDetailPage() {
       />
 
       <div className="space-y-4">
+        {!onHold && status === '已轉換' && dispatchedDownstream.length > 0 && (
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+            <p className="font-medium">本 PI 的下游已對外發出，改版將需管理層裁決</p>
+            <ul className="mt-1 list-disc pl-5 text-xs">
+              {dispatchedDownstream.map((reason, i) => (
+                <li key={i}>{reason}</li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs">
+              此時按「作廢並重開」，取代版會留在草稿並轉入待人工處理：本 PI 與其表1 一併凍結、一張表1 都不會被改到，
+              待管理層裁決「繼續（依舊 PI 出貨）」或「作廢（整筆終止）」。
+            </p>
+          </div>
+        )}
+
         {onHold && pi.manualHandling && (
           <Card className="border-destructive/40">
             <CardHeader>
