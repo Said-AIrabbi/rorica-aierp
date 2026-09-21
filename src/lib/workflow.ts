@@ -35,10 +35,29 @@ export function isFrozen(effectiveAt: string | undefined): boolean {
 /**
  * 包裝通知單是否可編輯：凍結後整份單據不再提供修改；
  * 「草稿」狀態尚未正式生效，不受凍結旗標限制，可隨時修改。
+ * 凍結有兩種來源（Phase 2 決策39）：①生效滿 7 個工作天自動；
+ * ②取代版 PI 套用被擋下（規則3）時，連同該張表1 一併人工凍結，直到管理層裁決。
+ * 後者不分狀態一律凍結——草稿也擋，因為爭議中的內容不該繼續被改。
  */
-export function isPackingNoticeEditable(notice: Pick<PackingNotice, 'effectiveAt' | 'status'>): boolean {
+export function isPackingNoticeEditable(
+  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId'>,
+): boolean {
+  if (notice.manualHoldPiId) return false
   if (notice.status === '草稿') return true
   return !isFrozen(notice.effectiveAt)
+}
+
+/** 凍結原因（供畫面說明為何不能改）；未凍結回傳 undefined */
+export function packingNoticeFreezeReason(
+  notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId'>,
+): string | undefined {
+  if (notice.manualHoldPiId) {
+    return `取代版 PI ${notice.manualHoldPiId} 因下游已對外發出轉入「待人工處理」，本單與該 PI 一併凍結，待管理層裁決`
+  }
+  if (notice.status !== '草稿' && isFrozen(notice.effectiveAt)) {
+    return '自生效日起算滿 7 個工作天，已自動凍結'
+  }
+  return undefined
 }
 
 /**

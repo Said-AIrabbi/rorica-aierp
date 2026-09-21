@@ -338,7 +338,7 @@ export function PiDetailPage() {
                     <TableHead>成分／幅寬／碼重</TableHead>
                     <TableHead>顏色</TableHead>
                     <TableHead className="text-right">數量</TableHead>
-                    <TableHead className="text-right">單價</TableHead>
+                    <TableHead className="text-right">單價（/碼）</TableHead>
                     <TableHead className="text-right">金額</TableHead>
                     <TableHead>包裝方式</TableHead>
                     <TableHead>彩條</TableHead>

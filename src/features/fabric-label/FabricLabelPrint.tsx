@@ -37,8 +37,9 @@ export function FabricLabelPrint({ label }: { label: FabricLabel }) {
             <dt>顏色</dt>
             <dd>{label.color}</dd>
             <dt>幅寬</dt>
-            {/* 實體標籤僅印英吋，不印公分換算 */}
-            <dd>{label.width}"</dd>
+            {/* 決策115：印「幅寬原文」，範圍寫法照印（58/60"）；主檔未提供原文者退回印計算基準。
+                實體標籤一律僅印英吋，不印公分換算 */}
+            <dd>{label.widthSpec ?? `${label.width}"`}</dd>
             <dt>批</dt>
             <dd>{label.batchCode ?? '—'}</dd>
             <dt>產品編號</dt>

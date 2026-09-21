@@ -339,7 +339,7 @@ export function FabricLabelDetailPage() {
               <DetailField label="成分" value={label.composition ?? '-'} />
               <DetailField label="顏色" value={label.color} />
               {/* 系統畫面以英吋為主並附註公分換算；下方實體標籤列印僅印英吋 */}
-              <DetailField label="幅寬" value={`${label.width}"（≈ ${formatNumber(inchToCm(label.width), 1)} cm）`} />
+              <DetailField label="幅寬" value={`${label.widthSpec ?? label.width}"（≈ ${formatNumber(inchToCm(label.width), 1)} cm）`} />
               <DetailField label="批" value={label.batchCode ?? '-'} />
               <DetailField label="長度（雙單位）" value={dualUnitLength(label.length, label.unit)} />
               <DetailField label="分割來源布卷" value={label.splitFromRollCode ?? '-'} />

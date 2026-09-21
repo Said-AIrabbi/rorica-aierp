@@ -143,6 +143,9 @@ export function PackingNoticeFormPage() {
           packagingType: existing.packagingType,
           tolerance: existing.tolerance,
           items: existing.items.map((item) => ({
+            // id 與來源 PI 對位鍵一併帶回，存檔時沿用不重編（見 buildItems）
+            id: item.id,
+            sourcePiItemId: item.sourcePiItemId,
             colorRatios: item.colorRatios ?? [],
             customerProductName: item.customerProductName,
             roricaProductName: item.roricaProductName,

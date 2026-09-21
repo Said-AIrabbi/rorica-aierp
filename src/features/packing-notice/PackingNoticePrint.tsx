@@ -93,7 +93,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
       docNo={notice.id}
       date={notice.createdAt}
       meta={meta}
-      signatures={['業務', '生管', '倉管', '主管']}
+      signatures={['業務', '生管', '倉管', '管理層']}
       footNote="本單為生產與出貨依據，明細數量為下單時的計畫值。"
     >
       <PrintSection title="明細">

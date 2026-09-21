@@ -85,7 +85,8 @@ function pad(n: number, len = 3) {
 
 // ---------- 表1 包裝通知單 ----------
 
-export type PackingNoticeItemInput = Omit<PackingNoticeItem, 'id' | 'meter'>
+/** 明細輸入：既有列帶 id（沿用不重編），新增列不帶 id */
+export type PackingNoticeItemInput = Omit<PackingNoticeItem, 'id' | 'meter'> & { id?: string }
 
 export interface PackingNoticeInput {
   /** 客戶名稱：文字輸入，符合既有客戶簡稱/全稱則沿用，否則自動建立新客戶主檔並給予編號 */
@@ -108,10 +109,20 @@ export interface PackingNoticeInput {
   edgeCut: boolean
 }
 
+/**
+ * 明細建構：**既有列一律沿用原本的明細 id**。
+ * 下游（表4 的 sourceItemId、庫存預留的 packingNoticeItemId、表8 的 sourceItemId）都以此 id 對位，
+ * 若每次存檔都重新編號，使用者刪掉中間一列後，L2 就會變成原本 L3 的品項，下游會悄悄對到別的東西。
+ * 新增的列才給新號，且流水號接在目前最大值之後，不與既有列重號。
+ */
 function buildItems(id: string, items: PackingNoticeItemInput[]): PackingNoticeItem[] {
-  return items.map((item, i) => ({
+  let maxSeq = items.reduce((max, item) => {
+    const seq = Number(/-L(\d+)$/.exec(item.id ?? '')?.[1] ?? 0)
+    return seq > max ? seq : max
+  }, 0)
+  return items.map((item) => ({
     ...item,
-    id: `${id}-L${i + 1}`,
+    id: item.id ?? `${id}-L${(maxSeq += 1)}`,
     meter: Number(yardToMeter(item.yard).toFixed(1)),
     // 彩條：空字串不存，最多 3 組（客人指定1～3）
     colorRatios: (item.colorRatios ?? []).map((v) => v.trim()).filter(Boolean).slice(0, COLOR_RATIO_MAX),
@@ -168,7 +179,7 @@ function resolveCustomerByName(name: string): Customer {
  * 可接疋時依接疋規則提供拼接組合建議。庫存不足的明細，於全部明細判斷完畢後統一觸發表2訂購單草稿
  * （無庫存路徑，見 autoCreatePurchaseOrderDraft）。
  */
-function autoReserveStockForNotice(notice: PackingNotice): void {
+function autoReserveStockForNotice(notice: PackingNotice, keepExpiresAt?: string): void {
   const outOfStockItems: PackingNoticeItem[] = []
 
   notice.items.forEach((item) => {
@@ -208,7 +219,7 @@ function autoReserveStockForNotice(notice: PackingNotice): void {
       outOfStockItems.push(item)
       return
     }
-    reserveRollsForItem(notice, item, chosen)
+    reserveRollsForItem(notice, item, chosen, keepExpiresAt)
   })
 
   if (outOfStockItems.length > 0) {
@@ -221,7 +232,12 @@ function autoReserveStockForNotice(notice: PackingNotice): void {
  * 並自動建立／併入表8出貨單草稿——有庫存路徑貨已在庫存中，是表8兩個進入點之一。
  * 拼接出貨時捲號組合完整記錄於出貨明細的 rollCodes，供日後客訴回溯。
  */
-function reserveRollsForItem(notice: PackingNotice, item: PackingNoticeItem, chosen: FabricLabel[]): StockReservation {
+function reserveRollsForItem(
+  notice: PackingNotice,
+  item: PackingNoticeItem,
+  chosen: FabricLabel[],
+  keepExpiresAt?: string,
+): StockReservation {
   const qty = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
   const createdAt = dayjs().toISOString()
   const reservation: StockReservation = {
@@ -236,7 +252,8 @@ function reserveRollsForItem(notice: PackingNotice, item: PackingNoticeItem, cho
     unit: 'Yard',
     status: '預留中',
     createdAt,
-    expiresAt: reservationExpiresAt(createdAt).toISOString(),
+    // 重算時沿用原本的到期日（決策50：效期不重置），首次建立才由建立日起算 14 天
+    expiresAt: keepExpiresAt ?? reservationExpiresAt(createdAt).toISOString(),
   }
   stockReservations.unshift(reservation)
 
@@ -299,6 +316,7 @@ export function rejectSplicingSuggestion(id: string): Promise<SplicingSuggestion
   const available = availableFabricLabels(item.roricaProductName, item.color, fabricLabels, stockReservations, item.productId)
   const chosen = allocateWholeRolls(item.yard, available)
   if (chosen) {
+    // 改為整捲裁切屬新的一次配貨，效期自今天起算，不沿用舊到期日
     reserveRollsForItem(notice, item, chosen)
   } else {
     autoCreatePurchaseOrderDraft(notice, [item])
@@ -381,6 +399,26 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
   return delay(notice)
 }
 
+/**
+ * 明細異動後重算庫存預留（Phase 2 決策50；表1 自身編輯亦適用）。
+ * 先釋放這張表1 目前仍預留中的紀錄，再依新明細重新配貨——
+ * 不重算的話，預留仍綁在舊的明細列 id 上，數量改小沒有釋放、品項換掉還會對到不相干的布。
+ * **效期不重置**：沿用原本最早的一筆到期日，避免以改版變相延長鎖庫。
+ */
+function recalcReservationsForNotice(notice: PackingNotice): void {
+  const current = stockReservations.filter((r) => r.packingNoticeId === notice.id && r.status === '預留中')
+  const keepExpiresAt = current
+    .map((r) => r.expiresAt)
+    .sort()
+    .find(Boolean)
+  const now = dayjs().toISOString()
+  current.forEach((r) => {
+    const idx = stockReservations.findIndex((x) => x.id === r.id)
+    stockReservations[idx] = { ...stockReservations[idx], status: '已釋放', releasedAt: now }
+  })
+  autoReserveStockForNotice(notice, keepExpiresAt)
+}
+
 /** 手動釋放庫存預留（例如客戶取消需求）；14天效期到期則由 effectiveReservationStatus 自動視為已釋放 */
 export function releaseStockReservation(id: string): Promise<StockReservation> {
   const idx = stockReservations.findIndex((r) => r.id === id)
@@ -393,6 +431,10 @@ export function releaseStockReservation(id: string): Promise<StockReservation> {
 export function updatePackingNotice(id: string, input: PackingNoticeInput): Promise<PackingNotice> {
   const idx = packingNotices.findIndex((n) => n.id === id)
   if (idx === -1) throw new Error(`包裝通知單 ${id} 不存在`)
+  // 取代版 PI 爭議期間一併凍結本單（決策27、39）；畫面已擋，此處為資料層守門
+  if (packingNotices[idx].manualHoldPiId) {
+    throw new Error(`本單因取代版 PI ${packingNotices[idx].manualHoldPiId} 待人工處理而凍結，待管理層裁決後才可修改`)
+  }
   const customer = resolveCustomerByName(input.customerName)
   const updated: PackingNotice = {
     ...packingNotices[idx],
@@ -414,12 +456,37 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
     edgeCut: input.edgeCut,
   }
   packingNotices[idx] = updated
+  // 明細可能被改量或刪列，預留必須跟著重算（效期沿用原到期日，不因編輯而展延）
+  recalcReservationsForNotice(updated)
   return delay(updated)
+}
+
+/**
+ * PI 交期的 Day 0 落地（決策36、49）：某張表1 轉生效時，若它是該 PI 底下第一張生效的表1，
+ * 就以它的生效日為 Day 0，把該 PI 所有表1 的「出貨日期」一次改寫為 生效日＋交期天數。
+ * 全批共用同一個到期日，不因後續分批建單而各自重算；之後人工調整的出貨日期不再被覆寫
+ * （因為 Day 0 已經確定，本函式只在「第一張生效」那一刻跑一次）。
+ */
+function applyPiDueDateOnEffective(notice: PackingNotice): void {
+  if (!notice.sourcePiId || !notice.effectiveAt) return
+  const pi = proformaInvoices.find((x) => x.id === notice.sourcePiId)
+  if (!pi) return
+  const alreadyEffective = packingNotices.some(
+    (n) => n.id !== notice.id && n.sourcePiId === pi.id && n.effectiveAt,
+  )
+  if (alreadyEffective) return
+  const dueDate = dayjs(notice.effectiveAt).add(pi.leadTimeDays, 'day').format('YYYY-MM-DD')
+  packingNotices.forEach((n, i) => {
+    if (n.sourcePiId === pi.id) packingNotices[i] = { ...packingNotices[i], expectedDeliveryAt: dueDate }
+  })
 }
 
 export function setPackingNoticeStatus(id: string, status: PackingNotice['status']): Promise<PackingNotice> {
   const idx = packingNotices.findIndex((n) => n.id === id)
   if (idx === -1) throw new Error(`包裝通知單 ${id} 不存在`)
+  if (packingNotices[idx].manualHoldPiId) {
+    throw new Error(`本單因取代版 PI ${packingNotices[idx].manualHoldPiId} 待人工處理而凍結，待管理層裁決後才可變更狀態`)
+  }
   const updated: PackingNotice = {
     ...packingNotices[idx],
     status,
@@ -427,7 +494,9 @@ export function setPackingNoticeStatus(id: string, status: PackingNotice['status
     effectiveAt: status !== '草稿' ? (packingNotices[idx].effectiveAt ?? dayjs().toISOString()) : packingNotices[idx].effectiveAt,
   }
   packingNotices[idx] = updated
-  return delay(updated)
+  // 第一張表1 生效即確定 PI 交期的 Day 0，應出貨日於此統一落地
+  applyPiDueDateOnEffective(updated)
+  return delay(packingNotices[idx])
 }
 
 // ---------- 表2 訂購單 ----------
@@ -1436,6 +1505,8 @@ function buildFabricLabelsForReceipt(receipt: GoodsReceipt): { label: FabricLabe
         composition: product?.material,
         color: item?.color ?? '未指定',
         width: product?.width ?? 0,
+        // 幅寬原文供標籤列印（決策115）；主檔未提供原文時留空，標籤退回印 width
+        widthSpec: product?.widthSpec,
         // 批號為廠商單據上的批次號，由 OCR 帶入或倉管補填；未提供則留空，不自行造號
         batchCode: roll.batchCode,
         length: roll.length,
@@ -1608,6 +1679,7 @@ export function splitFabricLabel(id: string, firstLength: number): Promise<Fabri
     composition: original.composition,
     color: original.color,
     width: original.width,
+    widthSpec: original.widthSpec,
     batchCode: original.batchCode,
     length,
     unit: original.unit,
@@ -1661,9 +1733,16 @@ export interface ShippingOrderInput {
  */
 function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, newItems: ShippingOrderItem[]): void {
   if (newItems.length === 0) return
+  // 收貨地址沿表1 續帶（決策40）：PI → 表1 → 表8 為同一筆，只在 PI 填一次
+  const sourceNotice = packingNotices.find((n) => n.id === parentId)
+  // 售價自 PI 單價帶入（決策45）；已自行填過售價的明細不覆蓋
+  const withPrice = newItems.map((item) => ({
+    ...item,
+    unitPrice: item.unitPrice ?? piUnitPriceForNoticeItem(sourceNotice, item.sourceItemId),
+  }))
   const draftIdx = shippingOrders.findIndex((s) => s.parentId === parentId && s.status === '草稿')
   if (draftIdx !== -1) {
-    shippingOrders[draftIdx] = { ...shippingOrders[draftIdx], items: [...shippingOrders[draftIdx].items, ...newItems] }
+    shippingOrders[draftIdx] = { ...shippingOrders[draftIdx], items: [...shippingOrders[draftIdx].items, ...withPrice] }
     return
   }
   const existingForParent = shippingOrders.filter((s) => s.parentId === parentId).length
@@ -1672,26 +1751,46 @@ function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, n
     id: `${parentId}-S${existingForParent + 1}`,
     parentId,
     customerId,
+    shippingAddress: sourceNotice?.shippingAddress,
     status: '草稿',
     shipDate: dayjs().toISOString(),
     isSampleOrder: false,
-    items: newItems,
+    items: withPrice,
     operatorAccountId: warehouseAccount.id,
   })
+}
+
+/**
+ * 表8 明細售價：PI 明細的單價隨表1 一路帶到出貨單（決策45），不必在表8 重打一次。
+ * 對位鏈為 表8 明細.sourceItemId → 表1 明細.sourcePiItemId → PI 明細.unitPrice；
+ * 未經 PI 的表1（或查無對應列）回傳 undefined，售價仍由倉管於草稿階段自行填寫。
+ */
+function piUnitPriceForNoticeItem(notice: PackingNotice | undefined, sourceItemId: string | undefined): number | undefined {
+  if (!notice?.sourcePiId || !sourceItemId) return undefined
+  const noticeItem = notice.items.find((i) => i.id === sourceItemId)
+  if (!noticeItem?.sourcePiItemId) return undefined
+  const pi = proformaInvoices.find((x) => x.id === notice.sourcePiId)
+  return pi?.items.find((i) => i.id === noticeItem.sourcePiItemId)?.unitPrice
 }
 
 /** 建立出貨單：明細以布卷條碼組合記錄（拼接出貨即為實際使用的捲號組合） */
 export function createShippingOrder(input: ShippingOrderInput): Promise<ShippingOrder> {
   const existingForParent = shippingOrders.filter((s) => s.parentId === input.parentId).length
   const warehouseAccount = accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]
+  const sourceNotice = packingNotices.find((n) => n.id === input.parentId)
   const order: ShippingOrder = {
     id: `${input.parentId}-S${existingForParent + 1}`,
     parentId: input.parentId,
     customerId: input.customerId,
+    shippingAddress: sourceNotice?.shippingAddress,
     status: '草稿',
     shipDate: dayjs().toISOString(),
     isSampleOrder: input.isSampleOrder,
-    items: input.items.map((item) => ({ ...item, meter: Number(yardToMeter(item.yard).toFixed(1)) })),
+    items: input.items.map((item) => ({
+      ...item,
+      meter: Number(yardToMeter(item.yard).toFixed(1)),
+      unitPrice: item.unitPrice ?? piUnitPriceForNoticeItem(sourceNotice, item.sourceItemId),
+    })),
     operatorAccountId: warehouseAccount.id,
     purpose: input.purpose,
   }
@@ -2309,6 +2408,7 @@ export function reviewReturnedRoll(
         composition: sample?.composition,
         color: notice.color,
         width: sample?.width ?? 0,
+        widthSpec: sample?.widthSpec,
         length: returned.yard,
         unit: 'Yard',
         status: '已建立',
@@ -2769,6 +2869,16 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
   const id = revisionBase
     ? `${revisionBase}-RV${proformaInvoices.filter((pi) => pi.id.startsWith(`${revisionBase}-RV`)).length + 1}`
     : nextPiId(today)
+  // 同一條取代鏈上還有案子卡在「待人工處理」時，不得再開下一張取代版（決策27）
+  if (previous) {
+    const chainRoot = previous.id.replace(/-RV\d+$/, '')
+    const pendingCase = proformaInvoices.find(
+      (x) => x.status === '待人工處理' && x.id.replace(/-RV\d+$/, '') === chainRoot,
+    )
+    if (pendingCase) {
+      throw new Error(`${pendingCase.id} 仍在待人工處理，本案處理完畢前不可再建立取代版`)
+    }
+  }
   const { customerId, customerName } = resolvePiCustomer(input.customerName)
 
   const pi: ProformaInvoice = {
@@ -2871,8 +2981,9 @@ export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
     ...current,
     status: '待簽回',
     approvedAt: now.toISOString(),
-    // 逾期後重新報價：效期自批准當下重新起算 14 天；3 個月自動作廢的時鐘不受影響（決策2）
-    quoteValidUntil: piQuoteValidUntil(now).toISOString(),
+    // 第一次批准沿用「建單日 +14 天」的原效期；**僅逾期後重新報價**才自批准當下重新起算 14 天
+    // （決策1／8：效期以建單日計，重新報價視為新的一次報價）。3 個月自動作廢的時鐘不受影響（決策2）
+    quoteValidUntil: effective === '已逾期' ? piQuoteValidUntil(now).toISOString() : current.quoteValidUntil,
   }
   proformaInvoices[idx] = updated
   return delay(updated)
@@ -2955,6 +3066,8 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
       customerOrderNo: poNo,
       status: '草稿',
       createdAt: today.toISOString(),
+      // 暫定值：交期的 Day 0 是「第一張表1 的生效日」（決策36），此刻表1 還是草稿、尚未起算，
+      // 故先以今天推算；待第一張表1 轉生效時由 applyPiDueDateOnEffective 統一改寫為正式的應出貨日
       expectedDeliveryAt: today.add(current.leadTimeDays, 'day').format('YYYY-MM-DD'),
       items: current.items
         .filter((item) => item.poNo === poNo)
@@ -3051,6 +3164,9 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
 
   const result: PiOverwriteResult = { pi: current, updated: [], frozen: [], blocked: [] }
 
+  // 第一階段：全部判定，先不寫入任何一張表1。
+  // 若邊判邊寫，遇到最後一張才擋下時，前面幾張早已被改掉——規則3 講的「維持現狀」就不成立了。
+  const pending: { nIdx: number; notice: PackingNotice }[] = []
   previous.packingNoticeIds.forEach((noticeId) => {
     const nIdx = packingNotices.findIndex((n) => n.id === noticeId)
     if (nIdx === -1) return
@@ -3064,9 +3180,31 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
       result.blocked.push(...rule.blockers)
       return
     }
+    pending.push({ nIdx, notice })
+  })
+
+  if (result.blocked.length > 0) {
+    // 規則3：一張都不寫入，PI 轉待人工處理，並連同其表1 一併人工凍結，等管理層裁決（決策27、39）
+    const now = dayjs().toISOString()
+    proformaInvoices[idx] = {
+      ...current,
+      status: '待人工處理',
+      manualHandling: { detectedAt: now, blockedBy: result.blocked },
+    }
+    previous.packingNoticeIds.forEach((noticeId) => {
+      const nIdx = packingNotices.findIndex((n) => n.id === noticeId)
+      if (nIdx !== -1) packingNotices[nIdx] = { ...packingNotices[nIdx], manualHoldPiId: current.id }
+    })
+    result.pi = proformaInvoices[idx]
+    result.updated = []
+    return delay(result)
+  }
+
+  // 第二階段：確定沒有任何一張被擋下，才實際覆蓋
+  pending.forEach(({ nIdx, notice }) => {
     const items = current.items.filter((item) => item.poNo === notice.customerOrderNo)
     if (items.length === 0) return
-    packingNotices[nIdx] = {
+    const updatedNotice: PackingNotice = {
       ...notice,
       items: items.map((item, j) => piItemToPackingItem(item, notice.id, j)),
       itemUnit: current.itemUnit,
@@ -3074,20 +3212,11 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
       shippingAddress: current.shippingAddress,
       sourcePiId: current.id,
     }
+    packingNotices[nIdx] = updatedNotice
+    // 明細換了，預留必須重算（決策50）；效期沿用原到期日，不因改版展延
+    recalcReservationsForNotice(updatedNotice)
     result.updated.push(notice.id)
   })
-
-  if (result.blocked.length > 0) {
-    // 規則3：轉待人工處理並凍結兩張 PI 與其表1，等管理層裁決（決策27）
-    const now = dayjs().toISOString()
-    proformaInvoices[idx] = {
-      ...current,
-      status: '待人工處理',
-      manualHandling: { detectedAt: now, blockedBy: result.blocked },
-    }
-    result.pi = proformaInvoices[idx]
-    return delay(result)
-  }
 
   proformaInvoices[idx] = {
     ...current,
@@ -3120,6 +3249,13 @@ export function resolvePiManualHandling(id: string, resolution: '繼續' | '作�
       : undefined,
   }
   proformaInvoices[idx] = updated
+
+  // 裁決完成，解除表1 的人工凍結（決策39 的第二種凍結來源到此結束）
+  packingNotices.forEach((notice, nIdx) => {
+    if (notice.manualHoldPiId === current.id) {
+      packingNotices[nIdx] = { ...notice, manualHoldPiId: undefined }
+    }
+  })
 
   if (resolution === '繼續' && current.previousPiId) {
     // 舊 PI 回復為已轉換，繼續出貨

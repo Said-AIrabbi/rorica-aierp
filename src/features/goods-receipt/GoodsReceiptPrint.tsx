@@ -74,7 +74,7 @@ export function GoodsReceiptPrint({ receipt }: { receipt: GoodsReceipt }) {
       docNo={receipt.id}
       date={receipt.receiptDate}
       meta={meta}
-      signatures={['倉管', '複核', '主管']}
+      signatures={['倉管', '複核', '管理層']}
       footNote="縮率＝（投胚量－入庫總碼數）÷ 投胚量；低信心度欄位須經人工複核後方可確認入庫。"
     >
       <PrintSection title="入庫明細">

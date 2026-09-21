@@ -352,6 +352,13 @@ export interface PackingNotice {
    * 三張單據為同一筆地址、只填一次。未經 PI 的表1 留空。
    */
   shippingAddress?: string
+  /**
+   * 人工凍結來源（Phase 2 決策27、39）：取代版 PI 套用時偵測到下游已對外發出，
+   * 該 PI 轉「待人工處理」並凍結它與這張表1，直到管理層裁決為止。
+   * 凍結旗標因此有兩種來源——①生效滿 7 個工作天自動；②本欄位有值。
+   * 其他單據（表2／表4／表5）不受影響，流程照常進行。
+   */
+  manualHoldPiId?: string
   /** 燙金：多選（布邊/布頭/否），新增於表2、表4唯讀帶入（帶入時以頓號連接顯示） */
   embossing: (typeof EMBOSSING_OPTIONS)[number][]
   /** 裁邊：是/否 */
@@ -672,6 +679,12 @@ export interface FabricLabelLengthChange {
 }
 
 export interface FabricLabel {
+  /**
+   * 幅寬原文（決策115）：標籤是給人辨識的實體憑證，須與皇加產品表及客戶手上的規格一致，
+   * 故範圍寫法照印（58/60"）。下方 width 為計算基準（範圍低標），僅供接疋與規格運算，不上標籤。
+   * 舊資料或主檔未提供原文者留空，此時標籤退回列印 width。
+   */
+  widthSpec?: string
   id: string
   receiptId: string
   rollCode: string
@@ -727,6 +740,8 @@ export interface ShippingOrderSignatures {
 }
 
 export interface ShippingOrder {
+  /** 收貨地址（決策40）：自表1 帶入（表1 再自 PI 帶入），三張單據共用同一筆、只填一次 */
+  shippingAddress?: string
   id: string
   parentId: string
   customerId: string

@@ -19,7 +19,12 @@ import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { effectiveReservationStatus } from '@/lib/inventory'
-import { colorRatioText, freezeDate, isPackingNoticeEditable, isPackingNoticeFullyShipped } from '@/lib/workflow'
+import {
+  colorRatioText,
+  isPackingNoticeEditable,
+  isPackingNoticeFullyShipped,
+  packingNoticeFreezeReason,
+} from '@/lib/workflow'
 import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
 import { smallMarkingLines } from '@/lib/workflow'
 import type { PackingNoticeStatus } from '@/types'
@@ -151,7 +156,10 @@ export function PackingNoticeDetailPage() {
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
           <Lock className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            已於 {formatDate(freezeDate(notice.effectiveAt))} 自動凍結（自生效日起算滿 7 個工作天；草稿狀態尚未生效不受此限），不再提供修改。
+            {packingNoticeFreezeReason(notice)}，不再提供修改。
+            {notice.manualHoldPiId
+              ? '（表2／表4／表5 等下游單據不受影響，流程照常進行）'
+              : '（草稿狀態尚未生效，不受此限）'}
           </span>
         </div>
       )}
@@ -175,6 +183,18 @@ export function PackingNoticeDetailPage() {
               <DetailField label="生效日" value={formatDate(notice.effectiveAt)} />
               <DetailField label="出貨日期" value={formatDate(notice.expectedDeliveryAt)} />
               <DetailField label="數量輸入基準" value={`${itemUnit}（另一單位為系統換算值）`} />
+              {/* PI → 表1 → 表8 的收貨地址只填一次（決策40）；未經 PI 的表1 兩欄皆不顯示 */}
+              {notice.sourcePiId && (
+                <DetailField
+                  label="來源 PI 單號"
+                  value={
+                    <Link to={`/proforma-invoice/${notice.sourcePiId}`} className="text-brand hover:underline">
+                      {notice.sourcePiId}
+                    </Link>
+                  }
+                />
+              )}
+              {notice.shippingAddress && <DetailField label="收貨地址（自 PI 帶入）" value={notice.shippingAddress} />}
             </DetailGrid>
           </CardContent>
         </Card>

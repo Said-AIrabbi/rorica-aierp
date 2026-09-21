@@ -28,6 +28,14 @@ export const packingNoticeMarkingSchema = z.object({
 export const packingNoticeItemSchema = z
   .object({
     /**
+     * 既有明細列的 id：編輯時原樣帶回，資料層才知道這是同一列。
+     * 下游（表4 sourceItemId、庫存預留、表8 明細）都以此對位，重新編號會讓它們對到別的品項。
+     * 新增的列沒有 id，由資料層接號。
+     */
+    id: z.string().optional(),
+    /** 來源 PI 明細列（決策42）：唯讀資訊，編輯表1 時必須保留，否則改版 PI 覆蓋時對不回來 */
+    sourcePiItemId: z.string().optional(),
+    /**
      * 彩條：最多 3 組「客人指定」內容，隨品項新增／刪減（決策105）。
      * 空白＝沒有任何一組；UI 以逐筆輸入框呈現，送出前會清掉空字串。
      */

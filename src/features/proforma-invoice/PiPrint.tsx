@@ -17,6 +17,8 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
   const symbol = PI_CURRENCY_SYMBOL[pi.currency]
   const total = piTotalAmount(pi)
   const totalQty = pi.items.reduce((sum, item) => sum + (pi.itemUnit === 'Yard' ? item.yard : item.meter), 0)
+  // 金額一律以碼數計算（單價為每碼），故合計列另附碼數總量供客戶核對
+  const totalYard = pi.items.reduce((sum, item) => sum + item.yard, 0)
 
   const columns: PrintColumn<ProformaInvoiceItem>[] = [
     { header: 'PO NO.', cell: (row) => row.poNo, width: '20mm' },
@@ -24,13 +26,17 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
     { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '24mm' },
     { header: 'COLOR', cell: (row) => row.color, width: '20mm' },
     {
+      // 報價基準為 Meter 時，另附碼數——單價是「每碼」，只印米數的話客戶拿數量乘單價會對不上金額
       header: `QTY (${pi.itemUnit})`,
-      cell: (row) => basisQtyText(row.yard, row.meter, pi.itemUnit),
+      cell: (row) =>
+        pi.itemUnit === 'Yard'
+          ? basisQtyText(row.yard, row.meter, pi.itemUnit)
+          : `${basisQtyText(row.yard, row.meter, pi.itemUnit)}（${formatNumber(row.yard, 1)} Y）`,
       align: 'right',
-      width: '20mm',
+      width: '26mm',
     },
     {
-      header: `UNIT PRICE (${symbol})`,
+      header: `UNIT PRICE (${symbol}/Y)`,
       cell: (row) => formatNumber(row.unitPrice, 2),
       align: 'right',
       width: '22mm',
@@ -68,7 +74,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
         },
       ]}
       signatures={PI_SIGNATURE_LABELS}
-      footNote={`報價自 ${formatDate(pi.createdAt)} 起 14 天內有效`}
+      footNote={`本報價有效期至 ${formatDate(pi.quoteValidUntil)}`}
     >
       <PrintSection title="明細 DESCRIPTION">
         <PrintTable
@@ -80,7 +86,9 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
             null,
             null,
             null,
-            `${formatNumber(totalQty, pi.itemUnit === 'Yard' ? 0 : 1)} ${pi.itemUnit}`,
+            pi.itemUnit === 'Yard'
+              ? `${formatNumber(totalQty, 0)} ${pi.itemUnit}`
+              : `${formatNumber(totalQty, 1)} ${pi.itemUnit}（${formatNumber(totalYard, 1)} Y）`,
             null,
             `${symbol} ${formatNumber(total, 2)}`,
           ]}

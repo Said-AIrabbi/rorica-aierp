@@ -613,6 +613,7 @@ export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) => {
     // 一張入庫單可能收多個品項，逐捲輪流對應來源明細
     const item = notice?.items.length ? notice.items[i % notice.items.length] : undefined
     const product = resolveProduct(item?.productId, item?.roricaProductName) ?? faker.helpers.arrayElement(orderableProducts)
+    // 幅寬原文供標籤列印（決策115）；width 為計算基準，只供接疋與規格運算
     const color = item?.color ?? product.colors[0]?.color ?? faker.helpers.arrayElement(COLOR_NAMES)
     return {
       id: `${gr.id}-L${roll.rollNo}`,
@@ -623,6 +624,7 @@ export const fabricLabels: FabricLabel[] = goodsReceipts.flatMap((gr) => {
       composition: product.material,
       color,
       width: product.width,
+      widthSpec: product.widthSpec,
       batchCode: roll.batchCode,
       length: roll.length,
       unit: 'Yard',
@@ -904,8 +906,9 @@ if (abnormalNotices.length > 0) {
 /**
  * PI 展示資料：涵蓋狀態流上的各個節點（草稿／待批准／待簽回／已簽回／已轉換／逾期／取代版），
  * 讓客戶一進畫面就能看到每種情境長什麼樣。
- * 前兩張為「已轉換」，其表1 取用既有的種子包裝通知單，並回頭補上來源 PI 與收貨地址，
- * 以呈現 PI → 表1 → 表8 收貨地址只填一次的串接（決策40）。
+ * 前兩張為「已轉換」，其表1 **由該張 PI 實際生成**（依 PO 拆單、帶入同一個客戶與明細、
+ * 嘜頭與收貨地址一併帶入），而不是掛到既有的表1 上——掛既有單會出現「PI 寫客戶 A、
+ * 點進去的表1 卻是客戶 B、PO 也對不上」這種自相矛盾的展示資料。
  */
 const PI_STATUS_PLAN: { status: ProformaInvoice['status']; daysAgo: number; convertCount: number }[] = [
   { status: '已轉換', daysAgo: 38, convertCount: 2 },
@@ -918,7 +921,8 @@ const PI_STATUS_PLAN: { status: ProformaInvoice['status']; daysAgo: number; conv
   { status: '待簽回', daysAgo: 21, convertCount: 0 },
 ]
 
-let piConvertCursor = 0
+/** PI 轉出的表1：接在既有種子單號之後編號，避免與前面的表1 重號 */
+let piNoticeSeq = 0
 
 export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) => {
   const createdAt = dayjs().subtract(plan.daysAgo, 'day')
@@ -959,8 +963,8 @@ export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) 
   const contactIndex = customer.contacts.length > 1 && i % 2 === 1 ? 1 : 0
   const contact = customer.contacts[contactIndex]
 
-  const converted = plan.convertCount > 0 ? packingNotices.slice(piConvertCursor, piConvertCursor + plan.convertCount) : []
-  piConvertCursor += plan.convertCount
+  // 嘜頭沿用既有種子的一組（欄位與表1 完全相同），轉出的表1 逐張帶入全部嘜頭（決策52）
+  const markings = packingNotices[i % packingNotices.length].markings
 
   const pi: ProformaInvoice = {
     id,
@@ -985,21 +989,60 @@ export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) 
     itemUnit: faker.helpers.arrayElement(['Yard', 'Meter'] as const),
     items,
     // 嘜頭與表1 為同一組資料，只填一次（決策20、52）；轉換時每張表1 帶入全部
-    markings: converted[0]?.markings ?? packingNotices[i % packingNotices.length].markings,
-    packingNoticeIds: converted.map((n) => n.id),
+    markings,
+    packingNoticeIds: [],
   }
 
-  // 已轉換者回頭在表1 記錄來源 PI 與收貨地址，串起 PI → 表1 → 表8 的地址傳遞
-  converted.forEach((notice) => {
-    const idx = packingNotices.findIndex((n) => n.id === notice.id)
-    if (idx !== -1) {
-      packingNotices[idx] = {
-        ...packingNotices[idx],
+  if (plan.status === '已轉換') {
+    // 依 PO 拆單：一張表1 只承載一個 PO 號（決策43）
+    const effectiveAt = createdAt.add(4, 'day')
+    // 交期 Day 0 為第一張表1 的生效日（決策36），故全批共用同一個應出貨日
+    const dueDate = effectiveAt.add(pi.leadTimeDays, 'day').format('YYYY-MM-DD')
+    const noticeIds = [...new Set(items.map((item) => item.poNo))].map((poNo) => {
+      piNoticeSeq += 1
+      const noticeId = `ORD-${effectiveAt.format('YYYYMMDD')}-${String(900 + piNoticeSeq).padStart(3, '0')}`
+      const poItems = items.filter((item) => item.poNo === poNo)
+      packingNotices.push({
+        id: noticeId,
+        customerId: customer.id,
+        customerOrderNo: poNo,
+        status: '生效',
+        createdAt: effectiveAt.toISOString(),
+        effectiveAt: effectiveAt.toISOString(),
+        expectedDeliveryAt: dueDate,
+        sampleQty: 0,
+        shipMethod: ['海運'],
+        labelTypes: [...LABEL_TYPES],
+        packagingType: '一般PP袋',
+        tolerance: { mode: '±5%' },
+        items: poItems.map((item, j) => ({
+          id: `${noticeId}-L${j + 1}`,
+          customerProductName: item.customerProductName,
+          roricaProductName: item.roricaProductName,
+          productId: item.productId,
+          color: item.color,
+          yard: item.yard,
+          meter: item.meter,
+          packingMethod: item.packingMethod,
+          fixedLengthMeter: item.fixedLengthMeter,
+          colorRatios: item.colorRatios,
+          note: item.note,
+          // 逐列對位鍵：改版 PI 覆蓋時要能對回是哪一列（決策42）
+          sourcePiItemId: item.id,
+        })),
+        itemUnit: pi.itemUnit,
+        allowSplicing: false,
+        markings,
+        embossing: ['否'],
+        edgeCut: false,
+        // PI → 表1 → 表8 的收貨地址只填一次（決策40）
         sourcePiId: id,
         shippingAddress: contact?.shippingAddress,
-      }
-    }
-  })
+      })
+      return noticeId
+    })
+    pi.packingNoticeIds = noticeIds
+  }
 
   return pi
 })

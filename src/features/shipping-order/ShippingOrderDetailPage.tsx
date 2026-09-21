@@ -256,6 +256,8 @@ export function ShippingOrderDetailPage() {
             ) : (
               <DetailField label="出貨日" value={formatDate(order.shipDate)} />
             )}
+            {/* 收貨地址沿 PI → 表1 帶入，出貨端只讀不填（決策40） */}
+            {order.shippingAddress && <DetailField label="收貨地址" value={order.shippingAddress} />}
             <DetailField label="倉管人員" value={operator?.name ?? '-'} />
             <DetailField label="出倉部門" value={operator?.roles[0] ?? '-'} />
             {itemsEditable ? (
