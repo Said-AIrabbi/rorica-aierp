@@ -23,7 +23,7 @@ import type { FabricLabel, PackingNoticeItem, StockReservation } from '@/types'
  *      故這種明細也進得來，讓生管重挑並留下依據。
  *
  * 做不出來的組合（沒選、總量不足）擋下；做得出來但有代價的（超過 3 捲、湊不到整疋）
- * 只提醒不卡控，但要求填依據——客戶那端的同意系統拿不到證明，至少留得下是憑什麼這樣配。
+ * 只提醒不卡控——採不採用由生管決定，系統記下是誰、什麼時候決定的就夠了。
  */
 export function CustomSplicingDialog({
   open,
@@ -74,9 +74,6 @@ export function CustomSplicingDialog({
 
   const chosen = available.filter((l) => selected.includes(l.rollCode))
   const check = checkCustomSplicing(chosen, requiredQty, standardSize)
-  // 有代價的組合要留下依據：客戶那端的同意系統拿不到證明
-  const noteRequired = check.warnings.length > 0
-  const noteMissing = noteRequired && note.trim().length === 0
 
   const toggle = (rollCode: string) =>
     setSelected((prev) =>
@@ -173,31 +170,15 @@ export function CustomSplicingDialog({
           </ul>
         )}
 
-        {/*
-          接疋與裁切要不要接受，決定權在客戶而不是生管，而客戶那端的同意
-          （電話、mail、口頭）系統拿不到證明。有提醒時就要求把依據寫下來。
-        */}
+        {/* 決定權在生管；備註只是給自己或後手看的提示，不強制 */}
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-ink-body">
-            依據{noteRequired && <span className="text-destructive">（必填）</span>}
-          </span>
-          <textarea
+          <span className="mb-1 block text-sm font-medium text-ink-body">備註（選填）</span>
+          <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder={
-              noteRequired
-                ? '例：9/20 與客戶採購王小姐電話確認，同意 3 捲接疋、尾段裁切'
-                : '選填，例：同批染缸'
-            }
+            placeholder="例：同批染缸"
             className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand"
           />
-          {noteRequired && (
-            <span className="mt-1 block text-xs text-muted-foreground">
-              這個組合會接疋或裁剩零碼布，要不要接受是<b>客戶</b>的決定。系統拿不到客戶那端的同意證明，
-              請寫下依據（何時、與誰確認），隨單留存。
-            </span>
-          )}
         </label>
 
         <DialogFooter>
@@ -206,8 +187,7 @@ export function CustomSplicingDialog({
           </Button>
           <Button
             className="bg-brand hover:bg-brand-dark"
-            disabled={check.errors.length > 0 || noteMissing || pending}
-            title={noteMissing ? '請先填寫依據' : undefined}
+            disabled={check.errors.length > 0 || pending}
             onClick={() => onConfirm(selected, note)}
           >
             <Scissors className="mr-1 h-4 w-4" />

@@ -338,7 +338,7 @@ export function confirmSplicingSuggestion(id: string): Promise<SplicingSuggestio
  *
  * 檢核見 checkCustomSplicing()：做不出來的（沒選、總量不足）擋下；
  * 做得出來但有代價的（超過 3 捲、湊不到整疋會留零碼布）只提醒，不卡控——
- * 但要求填依據，因為客戶那端的同意系統拿不到證明。
+ * 採不採用由生管決定，系統記下是誰、什麼時候決定的（decidedAt＋操作帳號）即可。
  */
 export function applyCustomSplicingCombination(
   noticeId: string,
