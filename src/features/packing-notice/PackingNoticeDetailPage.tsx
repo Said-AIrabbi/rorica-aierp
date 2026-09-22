@@ -89,16 +89,16 @@ export function PackingNoticeDetailPage() {
   })
 
   const permissions = useCurrentAccount()
-  // 開著自訂拼接對話框的那一筆建議
-  const [customSplicingId, setCustomSplicingId] = useState<string | null>(null)
+  // 開著自訂拼接對話框的那一筆**表1 明細**（兩個入口共用，故以明細為鍵）
+  const [customSplicingItemId, setCustomSplicingItemId] = useState<string | null>(null)
 
   const customSplicingMutation = useMutation({
-    mutationFn: ({ id: sgId, rollCodes }: { id: string; rollCodes: string[] }) =>
-      applyCustomSplicingCombination(sgId, rollCodes),
+    mutationFn: ({ itemId, rollCodes, note }: { itemId: string; rollCodes: string[]; note: string }) =>
+      applyCustomSplicingCombination(id!, itemId, rollCodes, note),
     onSuccess: async () => {
       await invalidateSplicing()
-      setCustomSplicingId(null)
-      toast.success('已採用自訂拼接組合，並建立庫存預留')
+      setCustomSplicingItemId(null)
+      toast.success('已採用自訂拼接組合，並重建庫存預留')
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -584,7 +584,10 @@ export function PackingNoticeDetailPage() {
                       <TableCell>
                         <StatusBadge status={sg.status} />
                         {sg.customised && (
-                          <div className="mt-0.5 text-[11px] text-muted-foreground">生管自訂</div>
+                          <div className="mt-0.5 text-[11px] text-muted-foreground">
+                            生管自訂
+                            {sg.note && <div className="max-w-[12rem] whitespace-normal">依據：{sg.note}</div>}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
@@ -599,7 +602,11 @@ export function PackingNoticeDetailPage() {
                               確認採用
                             </Button>
                             {/* 生管自己挑捲：系統算不到的考量（同批染缸、同支布前後段、客戶指定捲號） */}
-                            <Button size="sm" variant="outline" onClick={() => setCustomSplicingId(sg.id)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setCustomSplicingItemId(sg.packingNoticeItemId)}
+                            >
                               自訂組合
                             </Button>
                             <Button
@@ -625,20 +632,30 @@ export function PackingNoticeDetailPage() {
         </Card>
       )}
 
-      {customSplicingId &&
+      {customSplicingItemId &&
         (() => {
-          const sg = relatedSuggestions.find((x) => x.id === customSplicingId)
-          if (!sg) return null
+          const target = notice.items.find((i) => i.id === customSplicingItemId)
+          if (!target) return null
+          const sg = pendingSuggestions.find((x) => x.packingNoticeItemId === target.id)
+          const reservation = relatedReservations.find(
+            (r) => r.packingNoticeItemId === target.id && effectiveReservationStatus(r) === '預留中',
+          )
+          const product = products.find((p) => p.id === target.productId)
           return (
             <CustomSplicingDialog
               open
-              onOpenChange={(open) => !open && setCustomSplicingId(null)}
-              suggestion={sg}
-              item={notice.items.find((i) => i.id === sg.packingNoticeItemId)}
+              onOpenChange={(open) => !open && setCustomSplicingItemId(null)}
+              item={target}
+              requiredQty={target.yard}
+              standardSize={sg?.standardSize ?? product?.originalRollStandardYard ?? 0}
+              currentRollCodes={sg?.rollCodes ?? reservation?.rollCodes ?? []}
+              hasSuggestion={Boolean(sg)}
               fabricLabels={fabricLabels}
               stockReservations={stockReservations}
               pending={customSplicingMutation.isPending}
-              onConfirm={(rollCodes) => customSplicingMutation.mutate({ id: sg.id, rollCodes })}
+              onConfirm={(rollCodes, note) =>
+                customSplicingMutation.mutate({ itemId: target.id, rollCodes, note })
+              }
             />
           )
         })()}
@@ -656,7 +673,15 @@ export function PackingNoticeDetailPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <Table className="min-w-[44rem]">
+              {/*
+                湊不出整疋時，系統依決策5 自動以整捲＋裁切配貨——但那等於系統自己決定了
+                要接幾捲、裁掉多少，而接疋與裁切要不要接受是客戶的事（決策120）。
+                故每一列都留「自訂組合」入口，讓生管重挑並留下依據。
+              */}
+              <p className="px-4 pb-2 text-xs text-muted-foreground">
+                預留到多捲即代表出貨時需接疋或裁切。要換成別的捲、或改用零碼布湊，按該列的「自訂組合」。
+              </p>
+              <Table className="min-w-[48rem]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>皇加品名</TableHead>
@@ -665,23 +690,52 @@ export function PackingNoticeDetailPage() {
                     <TableHead className="text-right">預留數量</TableHead>
                     <TableHead>效期至</TableHead>
                     <TableHead>狀態</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {relatedReservations.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{r.productName}</TableCell>
-                      <TableCell>{r.color}</TableCell>
-                      <TableCell>{r.rollCodes.join('、')}</TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(r.qty, 0)} {r.unit}
-                      </TableCell>
-                      <TableCell>{formatDateTime(r.expiresAt)}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={effectiveReservationStatus(r)} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {relatedReservations.map((r) => {
+                    const forItem = notice.items.find((i) => i.id === r.packingNoticeItemId)
+                    // 多捲＝系統已經自己決定要接疋或裁切了，而那是客戶要不要接受的事（決策120）
+                    const multiRoll = r.rollCodes.length > 1
+                    const canRepick =
+                      canConfirmSplicing &&
+                      forItem &&
+                      editable &&
+                      effectiveReservationStatus(r) === '預留中'
+                    return (
+                      <TableRow key={r.id}>
+                        <TableCell>{r.productName}</TableCell>
+                        <TableCell>{r.color}</TableCell>
+                        <TableCell>
+                          {r.rollCodes.join('、')}
+                          {multiRoll && (
+                            <span className="ml-1.5 rounded bg-warning/15 px-1 py-0.5 text-[10px] text-warning">
+                              {r.rollCodes.length} 捲
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(r.qty, 0)} {r.unit}
+                        </TableCell>
+                        <TableCell>{formatDateTime(r.expiresAt)}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={effectiveReservationStatus(r)} />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {canRepick && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setCustomSplicingItemId(r.packingNoticeItemId)}
+                            >
+                              自訂組合
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

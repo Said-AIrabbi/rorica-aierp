@@ -328,26 +328,49 @@ export function confirmSplicingSuggestion(id: string): Promise<SplicingSuggestio
  * 整捲加總仍不足時，該筆明細改走無現貨路徑，觸發表2訂購單草稿。
  */
 /**
- * 自訂拼接組合（主文件決策17：生管負責確認與執行拼接組合）。
+ * 自訂拼接組合（主文件決策17、決策120）。
  *
- * 系統的自動建議只找「剛好整疋、最多 3 捲」那種無耗損組合，但現場常有它算不到的考量——
- * 同批染缸、同一支布的前後段、客戶指定捲號。此入口讓生管**自己從現有可用布卷挑**，
- * 不採用系統建議的那一組。
+ * **以表1 明細為鍵，而不是以拼接建議為鍵**——因為要涵蓋兩種情境：
+ *   ① 系統湊得出整疋 → 有一筆「待確認」的建議，生管可改挑別的捲
+ *   ② 系統湊不出整疋但庫存總量夠 → 依決策5 自動以整捲＋裁切配貨，**沒有建議可按**。
+ *      但那等於系統自己決定了要接幾捲、裁掉多少，而接疋與裁切要不要接受是**客戶**的事，
+ *      不是系統或生管的事。故此入口也開放給這種明細，讓生管重挑並留下依據。
  *
  * 檢核見 checkCustomSplicing()：做不出來的（沒選、總量不足）擋下；
- * 做得出來但有代價的（超過 3 捲、湊不到整疋會留零碼布）只提醒，不卡控。
+ * 做得出來但有代價的（超過 3 捲、湊不到整疋會留零碼布）只提醒，不卡控——
+ * 但要求填依據，因為客戶那端的同意系統拿不到證明。
  */
-export function applyCustomSplicingCombination(id: string, rollCodes: string[]): Promise<SplicingSuggestion> {
+export function applyCustomSplicingCombination(
+  noticeId: string,
+  itemId: string,
+  rollCodes: string[],
+  note?: string,
+): Promise<SplicingSuggestion> {
   assertCanAct(getCurrentAccount(), '表1', '確認拼接組合')
-  const idx = splicingSuggestions.findIndex((sg) => sg.id === id)
-  if (idx === -1) throw new Error(`拼接建議 ${id} 不存在`)
-  const suggestion = splicingSuggestions[idx]
-  if (suggestion.status !== '待確認') throw new Error('此拼接建議已處理過')
-  const notice = packingNotices.find((n) => n.id === suggestion.packingNoticeId)
-  const item = notice?.items.find((i) => i.id === suggestion.packingNoticeItemId)
+  const notice = packingNotices.find((n) => n.id === noticeId)
+  const item = notice?.items.find((i) => i.id === itemId)
   if (!notice || !item) throw new Error('找不到對應的包裝通知單明細')
+  assertPackingNoticeUnlocked(notice)
 
-  // 一律以「目前可用庫存」重新驗證：建議產生後、確認前，布卷可能已被其他單據預留走
+  const pending = splicingSuggestions.find(
+    (sg) => sg.packingNoticeItemId === itemId && sg.status === '待確認',
+  )
+
+  // 這筆明細目前的預留要先釋放，否則它佔著的捲會被當成「不可用」而挑不到自己
+  const own = stockReservations.filter((r) => r.packingNoticeItemId === itemId && r.status === '預留中')
+  const releasedAt = dayjs().toISOString()
+  own.forEach((r) => {
+    const i = stockReservations.findIndex((x) => x.id === r.id)
+    stockReservations[i] = { ...stockReservations[i], status: '已釋放', releasedAt }
+  })
+
+  const restore = () => {
+    own.forEach((r) => {
+      const i = stockReservations.findIndex((x) => x.id === r.id)
+      stockReservations[i] = { ...stockReservations[i], status: '預留中', releasedAt: undefined }
+    })
+  }
+
   const available = availableFabricLabels(
     item.roricaProductName,
     item.color,
@@ -355,29 +378,72 @@ export function applyCustomSplicingCombination(id: string, rollCodes: string[]):
     stockReservations,
     item.productId,
   )
-  const chosen = rollCodes.map((code) => {
-    const roll = available.find((l) => l.rollCode === code)
-    if (!roll) throw new Error(`布卷 ${code} 已被其他單據使用或不在可用庫存中，請重新查詢`)
-    return roll
-  })
+  let chosen: FabricLabel[]
+  try {
+    chosen = rollCodes.map((code) => {
+      const roll = available.find((l) => l.rollCode === code)
+      if (!roll) throw new Error(`布卷 ${code} 已被其他單據使用或不在可用庫存中，請重新查詢`)
+      return roll
+    })
+    const standardSize = resolveProduct(item.productId, item.roricaProductName)?.originalRollStandardYard ?? 0
+    const { errors } = checkCustomSplicing(chosen, item.yard, pending?.standardSize ?? standardSize)
+    if (errors.length > 0) throw new Error(errors.join('；'))
+  } catch (error) {
+    // 檢核沒過就把原本的預留放回去——不能因為改到一半失敗，反而讓這筆明細變成沒有配貨
+    restore()
+    throw error
+  }
 
-  const { errors } = checkCustomSplicing(chosen, suggestion.requiredQty, suggestion.standardSize)
-  if (errors.length > 0) throw new Error(errors.join('；'))
-
+  // 效期沿用原預留的最早到期日（決策31：重算不重置效期，避免以改版變相延長鎖庫）
+  const keepExpiresAt = own
+    .map((r) => r.expiresAt)
+    .sort()
+    .find(Boolean)
   // 決策118：表1 還是草稿時只配貨、不建下游，等簽核生效才一起建
-  reserveRollsForItem(notice, item, chosen, undefined, notice.status !== '草稿')
+  reserveRollsForItem(notice, item, chosen, keepExpiresAt, notice.status !== '草稿')
+
   const totalLength = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
-  const updated: SplicingSuggestion = {
-    ...suggestion,
+  const standardSize =
+    pending?.standardSize ?? resolveProduct(item.productId, item.roricaProductName)?.originalRollStandardYard ?? 0
+  const decidedAt = dayjs().toISOString()
+
+  if (pending) {
+    const idx = splicingSuggestions.findIndex((sg) => sg.id === pending.id)
     // 記下實際採用的組合，而非系統原本建議的那一組——日後客訴回溯看的是這一筆
+    const updated: SplicingSuggestion = {
+      ...pending,
+      rollCodes: chosen.map((r) => r.rollCode),
+      totalLength,
+      status: '已採用',
+      decidedAt,
+      customised: true,
+      note: note?.trim() || undefined,
+    }
+    splicingSuggestions[idx] = updated
+    return delay(updated)
+  }
+
+  // 情境②：本來沒有建議（系統自動配好的），補一筆紀錄，讓這個決定也留在稽核軌跡上
+  const record: SplicingSuggestion = {
+    id: `${item.id}-SPL${splicingSuggestions.filter((x) => x.packingNoticeItemId === item.id).length + 1}`,
+    packingNoticeId: notice.id,
+    packingNoticeItemId: item.id,
+    customerId: notice.customerId,
+    productName: item.roricaProductName,
+    productId: item.productId,
+    color: item.color,
+    requiredQty: item.yard,
     rollCodes: chosen.map((r) => r.rollCode),
     totalLength,
+    standardSize,
     status: '已採用',
-    decidedAt: dayjs().toISOString(),
+    createdAt: decidedAt,
+    decidedAt,
     customised: true,
+    note: note?.trim() || undefined,
   }
-  splicingSuggestions[idx] = updated
-  return delay(updated)
+  splicingSuggestions.unshift(record)
+  return delay(record)
 }
 
 export function rejectSplicingSuggestion(id: string): Promise<SplicingSuggestion> {

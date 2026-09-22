@@ -470,6 +470,14 @@ export interface SplicingSuggestion {
    * 這個旗標讓畫面與日後回溯看得出「這是人工挑的」。
    */
   customised?: boolean
+  /**
+   * 自訂組合的依據（決策120）。
+   *
+   * 接疋與裁切要不要接受，決定權在**客戶**而不是生管，而客戶那端的同意
+   * （電話、mail、口頭）系統拿不到證明。故超過 3 捲或湊不到整疋時，
+   * 要求生管把依據寫下來——至少留得下「誰、什麼時候、憑什麼這樣配」。
+   */
+  note?: string
 }
 
 export type PurchaseOrderStatus = '草稿' | '待簽回' | '已簽回' | '已逾期' | '已完成'
