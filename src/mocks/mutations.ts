@@ -4,6 +4,7 @@ import { COLOR_RATIO_MAX } from '@/types'
 import {
   allocateWholeRolls,
   availableFabricLabels,
+  checkCustomSplicing,
   isRollReserved,
   reservationExpiresAt,
   suggestSplicingCombination,
@@ -300,6 +301,7 @@ function reserveRollsForItem(
  * 確認後才真正建立庫存預留與出貨單草稿明細，並記錄實際使用的捲號組合。
  */
 export function confirmSplicingSuggestion(id: string): Promise<SplicingSuggestion> {
+  assertCanAct(getCurrentAccount(), '表1', '確認拼接組合')
   const idx = splicingSuggestions.findIndex((sg) => sg.id === id)
   if (idx === -1) throw new Error(`拼接建議 ${id} 不存在`)
   const suggestion = splicingSuggestions[idx]
@@ -325,7 +327,61 @@ export function confirmSplicingSuggestion(id: string): Promise<SplicingSuggestio
  * 生管判定不採用拼接建議：改為整捲＋裁切分開出貨（裁剩零碼布留庫存待下次湊單）；
  * 整捲加總仍不足時，該筆明細改走無現貨路徑，觸發表2訂購單草稿。
  */
+/**
+ * 自訂拼接組合（主文件決策17：生管負責確認與執行拼接組合）。
+ *
+ * 系統的自動建議只找「剛好整疋、最多 3 捲」那種無耗損組合，但現場常有它算不到的考量——
+ * 同批染缸、同一支布的前後段、客戶指定捲號。此入口讓生管**自己從現有可用布卷挑**，
+ * 不採用系統建議的那一組。
+ *
+ * 檢核見 checkCustomSplicing()：做不出來的（沒選、總量不足）擋下；
+ * 做得出來但有代價的（超過 3 捲、湊不到整疋會留零碼布）只提醒，不卡控。
+ */
+export function applyCustomSplicingCombination(id: string, rollCodes: string[]): Promise<SplicingSuggestion> {
+  assertCanAct(getCurrentAccount(), '表1', '確認拼接組合')
+  const idx = splicingSuggestions.findIndex((sg) => sg.id === id)
+  if (idx === -1) throw new Error(`拼接建議 ${id} 不存在`)
+  const suggestion = splicingSuggestions[idx]
+  if (suggestion.status !== '待確認') throw new Error('此拼接建議已處理過')
+  const notice = packingNotices.find((n) => n.id === suggestion.packingNoticeId)
+  const item = notice?.items.find((i) => i.id === suggestion.packingNoticeItemId)
+  if (!notice || !item) throw new Error('找不到對應的包裝通知單明細')
+
+  // 一律以「目前可用庫存」重新驗證：建議產生後、確認前，布卷可能已被其他單據預留走
+  const available = availableFabricLabels(
+    item.roricaProductName,
+    item.color,
+    fabricLabels,
+    stockReservations,
+    item.productId,
+  )
+  const chosen = rollCodes.map((code) => {
+    const roll = available.find((l) => l.rollCode === code)
+    if (!roll) throw new Error(`布卷 ${code} 已被其他單據使用或不在可用庫存中，請重新查詢`)
+    return roll
+  })
+
+  const { errors } = checkCustomSplicing(chosen, suggestion.requiredQty, suggestion.standardSize)
+  if (errors.length > 0) throw new Error(errors.join('；'))
+
+  // 決策118：表1 還是草稿時只配貨、不建下游，等簽核生效才一起建
+  reserveRollsForItem(notice, item, chosen, undefined, notice.status !== '草稿')
+  const totalLength = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
+  const updated: SplicingSuggestion = {
+    ...suggestion,
+    // 記下實際採用的組合，而非系統原本建議的那一組——日後客訴回溯看的是這一筆
+    rollCodes: chosen.map((r) => r.rollCode),
+    totalLength,
+    status: '已採用',
+    decidedAt: dayjs().toISOString(),
+    customised: true,
+  }
+  splicingSuggestions[idx] = updated
+  return delay(updated)
+}
+
 export function rejectSplicingSuggestion(id: string): Promise<SplicingSuggestion> {
+  assertCanAct(getCurrentAccount(), '表1', '確認拼接組合')
   const idx = splicingSuggestions.findIndex((sg) => sg.id === id)
   if (idx === -1) throw new Error(`拼接建議 ${id} 不存在`)
   const suggestion = splicingSuggestions[idx]

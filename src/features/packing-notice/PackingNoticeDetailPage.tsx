@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Lock, Pencil, Send, Undo2 } from 'lucide-react'
@@ -14,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { api } from '@/mocks/api'
 import { accounts, getCustomer, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import {
+  applyCustomSplicingCombination,
   approvePackingNotice,
   confirmSplicingSuggestion,
   rejectPackingNotice,
@@ -21,6 +23,7 @@ import {
   submitPackingNoticeForApproval,
 } from '@/mocks/mutations'
 import { useCurrentAccount } from '@/lib/current-account-context'
+import { CustomSplicingDialog } from './CustomSplicingDialog'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
@@ -43,6 +46,7 @@ export function PackingNoticeDetailPage() {
 
   const { data: notices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
+  const { data: fabricLabels = [] } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
   const { data: dyeRequests = [] } = useQuery({ queryKey: ['dyeRequests'], queryFn: api.dyeRequests })
   const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
   const { data: goodsReceipts = [] } = useQuery({ queryKey: ['goodsReceipts'], queryFn: api.goodsReceipts })
@@ -85,6 +89,19 @@ export function PackingNoticeDetailPage() {
   })
 
   const permissions = useCurrentAccount()
+  // 開著自訂拼接對話框的那一筆建議
+  const [customSplicingId, setCustomSplicingId] = useState<string | null>(null)
+
+  const customSplicingMutation = useMutation({
+    mutationFn: ({ id: sgId, rollCodes }: { id: string; rollCodes: string[] }) =>
+      applyCustomSplicingCombination(sgId, rollCodes),
+    onSuccess: async () => {
+      await invalidateSplicing()
+      setCustomSplicingId(null)
+      toast.success('已採用自訂拼接組合，並建立庫存預留')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   /**
    * 決策118 的三個動作：送簽 → 簽核 → （或）退回草稿。
@@ -145,6 +162,9 @@ export function PackingNoticeDetailPage() {
   const editable = isPackingNoticeEditable(notice)
   const fullyShipped = isPackingNoticeFullyShipped(notice, notice.id, shippingOrders)
   const locks = packingNoticeLocks(notice)
+  // 拼接確認屬庫存配貨、不是編輯表1，故生管有此權限而其餘表1 動作仍唯讀（主文件決策17）
+  const splicingBlocked = permissions.blockedReason('表1', '確認拼接組合')
+  const canConfirmSplicing = !splicingBlocked
   const approvalState = packingNoticeApprovalState(notice)
   // 決策118：草稿 → 送簽 → 管理層簽核 → 生效。業務自己沒有生效權
   const canSubmit = notice.status === '草稿' && approvalState === '未送簽'
@@ -563,9 +583,12 @@ export function PackingNoticeDetailPage() {
                       <TableCell>{formatNumber(sg.standardSize, 0)} Yard</TableCell>
                       <TableCell>
                         <StatusBadge status={sg.status} />
+                        {sg.customised && (
+                          <div className="mt-0.5 text-[11px] text-muted-foreground">生管自訂</div>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {sg.status === '待確認' && (
+                        {sg.status === '待確認' && canConfirmSplicing && (
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -574,6 +597,10 @@ export function PackingNoticeDetailPage() {
                               onClick={() => confirmSplicingMutation.mutate(sg.id)}
                             >
                               確認採用
+                            </Button>
+                            {/* 生管自己挑捲：系統算不到的考量（同批染缸、同支布前後段、客戶指定捲號） */}
+                            <Button size="sm" variant="outline" onClick={() => setCustomSplicingId(sg.id)}>
+                              自訂組合
                             </Button>
                             <Button
                               size="sm"
@@ -585,6 +612,9 @@ export function PackingNoticeDetailPage() {
                             </Button>
                           </div>
                         )}
+                        {sg.status === '待確認' && !canConfirmSplicing && (
+                          <span className="text-xs text-muted-foreground">{splicingBlocked}</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -594,6 +624,24 @@ export function PackingNoticeDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {customSplicingId &&
+        (() => {
+          const sg = relatedSuggestions.find((x) => x.id === customSplicingId)
+          if (!sg) return null
+          return (
+            <CustomSplicingDialog
+              open
+              onOpenChange={(open) => !open && setCustomSplicingId(null)}
+              suggestion={sg}
+              item={notice.items.find((i) => i.id === sg.packingNoticeItemId)}
+              fabricLabels={fabricLabels}
+              stockReservations={stockReservations}
+              pending={customSplicingMutation.isPending}
+              onConfirm={(rollCodes) => customSplicingMutation.mutate({ id: sg.id, rollCodes })}
+            />
+          )
+        })()}
 
       <Card className="mt-4">
         <CardHeader>

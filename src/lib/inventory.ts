@@ -94,6 +94,57 @@ export function suggestSplicingCombination(
   return best
 }
 
+/**
+ * 自訂拼接組合的檢核（生管自己挑捲時用）。
+ *
+ * 分兩種：**擋下**的是做不出來的組合（沒選、總量不足出不了貨）；
+ * **提醒**的是做得出來但生管要自己承擔後果的（超過 3 捲＝接合次數變多、
+ * 湊不到整疋＝會產生裁剩的零碼布）。
+ *
+ * 提醒不卡控——系統的自動建議只找「剛好整疋、最多 3 捲」那種無耗損組合，
+ * 但現場常有系統算不到的考量（同批染缸、同一支布的前後段、客戶指定捲號），
+ * 生管知道自己在做什麼，規則不該把人擋死。比照決策22 的「出警示不卡控」慣例。
+ */
+export interface SplicingCheck {
+  /** 有值即不可執行 */
+  errors: string[]
+  /** 可執行，但要讓生管看到後果 */
+  warnings: string[]
+  totalLength: number
+}
+
+export function checkCustomSplicing(
+  rolls: FabricLabel[],
+  requiredQty: number,
+  standardSize: number,
+): SplicingCheck {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const totalLength = Number(rolls.reduce((sum, r) => sum + r.length, 0).toFixed(2))
+
+  if (rolls.length === 0) errors.push('請至少選擇一捲布')
+  if (rolls.length > 0 && totalLength < requiredQty) {
+    errors.push(
+      `選取的 ${rolls.length} 捲合計 ${totalLength} 碼，不足需求量 ${requiredQty} 碼，無法出貨`,
+    )
+  }
+
+  if (rolls.length > MAX_SPLICING_ROLLS) {
+    warnings.push(
+      `已選 ${rolls.length} 捲（${rolls.length - 1} 次接合），超過系統建議的 ${MAX_SPLICING_ROLLS} 捲上限`,
+    )
+  }
+  if (standardSize > 0 && rolls.length > 0 && !isMultipleOf(totalLength, standardSize)) {
+    const leftover = Number((totalLength - requiredQty).toFixed(2))
+    warnings.push(
+      `合計 ${totalLength} 碼不是原疋標準尺寸 ${standardSize} 碼的整數倍` +
+        (leftover > 0 ? `，出貨後將裁剩約 ${leftover} 碼零碼布` : ''),
+    )
+  }
+
+  return { errors, warnings, totalLength }
+}
+
 /** 浮點長度的整數倍判斷：容許 0.01 碼的誤差，避免 50.0 + 50.0 !== 100 這類浮點誤差誤判 */
 function isMultipleOf(total: number, unit: number): boolean {
   const ratio = total / unit

@@ -464,6 +464,12 @@ export interface SplicingSuggestion {
   status: SplicingSuggestionStatus
   createdAt: string
   decidedAt?: string
+  /**
+   * 是否為生管自訂的組合（而非採用系統建議）。
+   * 自訂時 rollCodes 與 totalLength 會被改寫為實際採用的那一組，
+   * 這個旗標讓畫面與日後回溯看得出「這是人工挑的」。
+   */
+  customised?: boolean
 }
 
 export type PurchaseOrderStatus = '草稿' | '待簽回' | '已簽回' | '已逾期' | '已完成'
