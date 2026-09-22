@@ -15,6 +15,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
+import { productBranchLabel, productBranchSuffix } from '@/mocks/data'
+import { DigitalColorDetail } from '@/components/shared/ColorSwatch'
+import { digitalColorFor } from '@/lib/digital-color'
 import {
   deleteFabricLabel,
   markFabricLabelDefective,
@@ -35,6 +38,7 @@ export function FabricLabelDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
+  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
   const label = data.find((l) => l.id === id)
 
   const [splitOpen, setSplitOpen] = useState(false)
@@ -89,6 +93,14 @@ export function FabricLabelDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  // 布卷不另存電腦色號，預覽色一律取自商品主檔（入庫時未記染整廠，故取該色最近一次的紀錄）
+  const colorRecord = label
+    ? digitalColorFor(
+        products.find((p) => p.id === label.productId),
+        label.color,
+      )
+    : undefined
+
   if (!label) {
     return (
       <div className="text-sm text-muted-foreground">
@@ -132,10 +144,10 @@ export function FabricLabelDetailPage() {
               className="print:hidden"
               onClick={() => {
                 setEditDraft({
-                  productName: label.productName,
+                  // 舊資料若沒有產品連結，以品名找回主檔；仍找不到就留空，逼使用者從主檔選
+                  productId:
+                    label.productId ?? products.find((p) => p.productName === label.productName)?.id ?? '',
                   color: label.color,
-                  composition: label.composition,
-                  width: label.width,
                   batchCode: label.batchCode,
                   length: label.length,
                   lengthChangeReason: '',
@@ -170,27 +182,49 @@ export function FabricLabelDetailPage() {
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
             條碼編號與來源入庫單不可修改：條碼已印在實體標籤上並被出貨明細引用。長度更動會寫入長度異動紀錄。
+            皇加品名從商品資料主檔選擇，成分與幅寬隨之帶入，不另外手填。
           </p>
           {editDraft && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>皇加品名</Label>
-                <Input
-                  value={editDraft.productName}
-                  onChange={(e) => setEditDraft({ ...editDraft, productName: e.target.value })}
-                />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>皇加品名（商品資料主檔的產品分支）</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={editDraft.productId}
+                  onChange={(e) => setEditDraft({ ...editDraft, productId: e.target.value })}
+                >
+                  <option value="">請選擇</option>
+                  {[...products]
+                    .sort((a, b) => a.productName.localeCompare(b.productName) || a.sortNo.localeCompare(b.sortNo))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {productBranchLabel(p)}（產品編號 {p.productCode}）
+                      </option>
+                    ))}
+                </select>
+                {editDraft.productId && editDraft.productId !== label.productId && (
+                  <p className="text-xs text-warning">
+                    改掛到別的產品分支：已被預留、出貨或異常單用到的布卷不可改。條碼編號不會跟著變。
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>顏色</Label>
-                <Input value={editDraft.color} onChange={(e) => setEditDraft({ ...editDraft, color: e.target.value })} />
+                <Input
+                  list="roll-color-options"
+                  value={editDraft.color}
+                  onChange={(e) => setEditDraft({ ...editDraft, color: e.target.value })}
+                />
+                {/* 建議值取自該產品的歷史色號，仍可輸入主檔沒有的顏色（新色尚未打色時） */}
+                <datalist id="roll-color-options">
+                  {products
+                    .find((p) => p.id === editDraft.productId)
+                    ?.colors.map((c) => <option key={`${c.color}-${c.dyeVendorId}`} value={c.color} />)}
+                </datalist>
               </div>
               <div className="space-y-1.5">
-                <Label>成分</Label>
-                <Input
-                  value={editDraft.composition ?? ''}
-                  onChange={(e) => setEditDraft({ ...editDraft, composition: e.target.value })}
-                  placeholder="非必填"
-                />
+                <Label>成分（主檔帶入）</Label>
+                <Input value={products.find((p) => p.id === editDraft.productId)?.material ?? ''} disabled />
               </div>
               <div className="space-y-1.5">
                 <Label>批號</Label>
@@ -201,13 +235,13 @@ export function FabricLabelDetailPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>幅寬（英吋）</Label>
+                <Label>幅寬（主檔帶入）</Label>
                 <Input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={editDraft.width}
-                  onChange={(e) => setEditDraft({ ...editDraft, width: Number(e.target.value) || 0 })}
+                  value={(() => {
+                    const p = products.find((x) => x.id === editDraft.productId)
+                    return p ? (p.widthSpec ?? `${p.width}"`) : ''
+                  })()}
+                  disabled
                 />
               </div>
               <div className="space-y-1.5">
@@ -238,7 +272,7 @@ export function FabricLabelDetailPage() {
             </Button>
             <Button
               className="bg-brand hover:bg-brand-dark"
-              disabled={editMutation.isPending}
+              disabled={editMutation.isPending || !editDraft?.productId}
               onClick={() => editMutation.mutate()}
             >
               儲存布卷資料
@@ -335,15 +369,36 @@ export function FabricLabelDetailPage() {
           <CardContent>
             <DetailGrid>
               <DetailField label="布卷條碼" value={label.rollCode} />
-              <DetailField label="皇加品名" value={label.productName} />
+              <DetailField label="皇加品名" value={`${label.productName}${productBranchSuffix(label.productId)}`} />
               <DetailField label="成分" value={label.composition ?? '-'} />
               <DetailField label="顏色" value={label.color} />
               {/* 系統畫面以英吋為主並附註公分換算；下方實體標籤列印僅印英吋 */}
-              <DetailField label="幅寬" value={`${label.widthSpec ?? label.width}"（≈ ${formatNumber(inchToCm(label.width), 1)} cm）`} />
+              <DetailField label="幅寬" value={`${label.widthSpec ?? `${label.width}"`}（≈ ${formatNumber(inchToCm(label.width), 1)} cm）`} />
               <DetailField label="批" value={label.batchCode ?? '-'} />
               <DetailField label="長度（雙單位）" value={dualUnitLength(label.length, label.unit)} />
               <DetailField label="分割來源布卷" value={label.splitFromRollCode ?? '-'} />
             </DetailGrid>
+          </CardContent>
+        </Card>
+
+        {/* 電腦色號：唯讀，取自商品主檔此產品此顏色最近一次的歷史色號；要改請到商品主檔 */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">電腦色號</CardTitle>
+            {label.productId && (
+              <Link to={`/masters/products/${label.productId}`} className="text-xs text-brand-dark underline">
+                前往商品主檔
+              </Link>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-2 text-xs">
+            <DigitalColorDetail digital={colorRecord?.digital} />
+            <p className="text-muted-foreground">
+              {colorRecord
+                ? `取自商品主檔歷史色號 ${colorRecord.sampleCode}（${label.color}）。`
+                : `商品主檔的「${label.color}」尚未登記電腦色號。`}
+              色塊為螢幕示意，以實體色卡為準。
+            </p>
           </CardContent>
         </Card>
 
@@ -384,7 +439,9 @@ export function FabricLabelDetailPage() {
 
                 {/* 中段欄位資訊 */}
                 <div className="mt-3 border-y border-dashed border-border py-3">
-                  <div className="text-sm font-semibold text-ink">皇加品名：{label.productName}</div>
+                  <div className="text-sm font-semibold text-ink">皇加品名：{label.productName}
+                    {productBranchSuffix(label.productId)}
+                  </div>
                   <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-ink-body">
                     <span className="text-muted-foreground">成分</span>
                     <span>{label.composition ?? '-'}</span>

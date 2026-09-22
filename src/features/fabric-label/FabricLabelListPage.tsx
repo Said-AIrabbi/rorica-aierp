@@ -7,8 +7,10 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { api } from '@/mocks/api'
-import { getProduct } from '@/mocks/data'
+import { getProduct, productBranchSuffix } from '@/mocks/data'
 import { rollLengthText } from '@/components/shared/BasisQty'
+import { ColorSwatch } from '@/components/shared/ColorSwatch'
+import { digitalColorFor } from '@/lib/digital-color'
 import type { FabricLabel } from '@/types'
 
 export function FabricLabelListPage() {
@@ -25,9 +27,27 @@ export function FabricLabelListPage() {
         accessorFn: (row) => (row.productId ? (getProduct(row.productId)?.productCode ?? row.productId) : '-'),
       },
       { accessorKey: 'receiptId', header: '來源入庫單' },
-      { accessorKey: 'productName', header: '皇加品名' },
+      {
+        id: 'productName',
+        header: '皇加品名',
+        // 與商品主檔一致：同品名有多個規格分支時附上分支序號（如 N120-02），單一分支不加
+        accessorFn: (row) => `${row.productName}${productBranchSuffix(row.productId)}`,
+      },
       { id: 'composition', header: '成分', accessorFn: (row) => row.composition ?? '-' },
-      { accessorKey: 'color', header: '顏色' },
+      {
+        accessorKey: 'color',
+        header: '顏色',
+        // 預覽色取自商品主檔的歷史色號（布卷本身不另存電腦色號）
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-1.5">
+            <ColorSwatch
+              compact
+              digital={digitalColorFor(getProduct(row.original.productId ?? ''), row.original.color)?.digital}
+            />
+            {row.original.color}
+          </span>
+        ),
+      },
       { id: 'width', header: '幅寬', accessorFn: (row) => `${row.width}"` },
       { id: 'batchCode', header: '批', accessorFn: (row) => row.batchCode ?? '-' },
       // 長度以該捲入庫時實際量測的單位為主值，另一單位標 ≈ 為換算值

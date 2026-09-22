@@ -11,12 +11,22 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/mocks/api'
 import { customers, getVendor } from '@/mocks/data'
-import { createProduct, deleteProduct, masterDefaults, updateProduct, type ProductInput } from '@/mocks/mutations'
+import {
+  createProduct,
+  deleteProduct,
+  masterDefaults,
+  updateProduct,
+  updateProductColorDigital,
+  type ProductInput,
+} from '@/mocks/mutations'
 import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import { formatDate, isColorStale } from '@/lib/dates'
 import { formatNumber, inchToCm, yardPriceToMeterPrice, yardWeightToMeterWeight } from '@/lib/units'
 import { PRODUCT_CATEGORIES, type Product } from '@/types'
 import { ProductStockCard } from './ProductStockCard'
+import { DigitalColorEditor } from '@/components/shared/DigitalColorEditor'
+import { useCurrentAccount } from '@/lib/current-account-context'
+import type { DigitalColor } from '@/types'
 
 function toInput(product: Product): ProductInput {
   return {
@@ -77,6 +87,7 @@ export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { canMaintain } = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
   // 新增與編輯共用同一份表單：路由 /masters/products/new 即為新增模式
   const isNew = id === 'new'
@@ -87,6 +98,16 @@ export function ProductDetailPage() {
     if (product) setDraft(toInput(product))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id])
+
+  const digitalMutation = useMutation({
+    mutationFn: (input: { color: string; dyeVendorId: string; digital: DigitalColor }) =>
+      updateProductColorDigital(id!, input.color, input.dyeVendorId, input.digital),
+    onSuccess: async (_saved, input) => {
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success(`「${input.color}」電腦色號已儲存`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   const mutation = useMutation({
     mutationFn: () => (isNew ? createProduct(draft!) : updateProduct(id!, draft!)),
@@ -400,11 +421,11 @@ export function ProductDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>歷史色號（唯讀，由表3／表4實際使用時累積）</CardTitle>
+            <CardTitle>歷史色號（由表3／表4實際使用時累積）</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-xs text-muted-foreground">
-              查詢鍵為「客戶＋皇加品名＋顏色＋染整廠」四者綁定，非通用色號；換一家染整廠即視為無色號。標示 ⚠ 表示超過12個月未使用，開單時系統會提醒可能需重新覆色，非自動擋單。
+              查詢鍵為「客戶＋皇加品名＋顏色＋染整廠」四者綁定，非通用色號；換一家染整廠即視為無色號。標示 ⚠ 表示超過12個月未使用，開單時系統會提醒可能需重新覆色，非自動擋單。電腦色號（LAB／HEX／CMYK）由表3 打色通知單登記後帶入，也可在此直接登記或更正；色塊為螢幕示意，以實體色卡為準。
             </p>
             {!product || product.colors.length === 0 ? (
               <p className="text-sm text-muted-foreground">尚無歷史色號紀錄</p>
@@ -415,8 +436,8 @@ export function ProductDetailPage() {
                     key={`${c.color}-${c.dyeVendorId}`}
                     className={
                       isColorStale(c.lastUsedAt)
-                        ? 'rounded border border-warning/40 bg-warning/10 p-2 text-xs'
-                        : 'rounded border border-border bg-muted p-2 text-xs'
+                        ? 'rounded border border-warning/40 bg-warning/10 p-2 text-xs [&:has([data-editing])]:col-span-full'
+                        : 'rounded border border-border bg-muted p-2 text-xs [&:has([data-editing])]:col-span-full'
                     }
                   >
                     <div className="font-medium text-ink">
@@ -427,6 +448,14 @@ export function ProductDetailPage() {
                       色樣編號 {c.sampleCode}　染整廠 {getVendor(c.dyeVendorId)?.name ?? c.dyeVendorId}
                     </div>
                     <div className="text-muted-foreground">最後使用：{formatDate(c.lastUsedAt)}</div>
+                    {/* 電腦色號：生管／管理員可直接在主檔登記（舊色號沒經過表3 時也補得進來），其餘角色唯讀 */}
+                    <DigitalColorEditor
+                      key={c.digital?.recordedAt ?? 'none'}
+                      value={c.digital}
+                      editable={canMaintain('商品')}
+                      pending={digitalMutation.isPending}
+                      onSave={(digital) => digitalMutation.mutate({ color: c.color, dyeVendorId: c.dyeVendorId, digital })}
+                    />
                   </div>
                 ))}
               </div>

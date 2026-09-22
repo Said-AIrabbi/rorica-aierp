@@ -30,8 +30,10 @@ import {
   type DocKey,
   type FieldGroup,
 } from '@/lib/permissions'
+import { validateDigitalColor } from '@/lib/digital-color'
 import { getCurrentAccount, requireCurrentAccount } from './session'
 import type {
+  DigitalColor,
   AbnormalHandling,
   AbnormalNotice,
   Account,
@@ -1314,10 +1316,95 @@ export function updateDyeRequestColors(id: string, colors: DyeRequestColorInput[
       id: c.id ?? `${id}-C${i + 1}`,
       color: c.color.trim(),
       sampleCode: c.sampleCode?.trim() || undefined,
+      // 數位色值另由 updateDyeRequestDigitalColor 維護，這裡只帶過去、不讓清單的儲存把它洗掉
+      digital: c.id ? current.colors.find((x) => x.id === c.id)?.digital : undefined,
     })),
   }
   dyeRequests[idx] = updated
   return delay(updated)
+}
+
+/**
+ * 登記單一色號列的數位色值（顏色圖示＋LAB／HEX／CMYK 電腦色號）。
+ *
+ * **結案後仍可補登**：數位色值是對已確認顏色的量測紀錄，不改變打色結果本身——
+ * 分光儀讀數往往在色卡通過之後才量，不應被「已完成即鎖定」擋掉。
+ * 已完成的單據會同步寫進商品主檔的歷史色號，業務與生管在主檔、表1 就看得到。
+ * 傳入空值即清除。
+ */
+export function updateDyeRequestDigitalColor(
+  id: string,
+  entryId: string,
+  input: DigitalColor,
+): Promise<DyeRequest> {
+  const account = getCurrentAccount()
+  assertCanAct(account, '表3', '建立')
+  const idx = dyeRequests.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
+  const current = dyeRequests[idx]
+  const entry = current.colors.find((c) => c.id === entryId)
+  if (!entry) throw new Error('找不到這一列色號，請先儲存色號清單')
+
+  const validated = validateDigitalColor(input)
+  const digital = validated && {
+    ...validated,
+    recordedAt: dayjs().toISOString(),
+    recordedByAccountId: account?.id,
+  }
+  const updated: DyeRequest = {
+    ...current,
+    colors: current.colors.map((c) => (c.id === entryId ? { ...c, digital } : c)),
+  }
+  dyeRequests[idx] = updated
+
+  if (current.status === '已完成' && entry.sampleCode) {
+    const pIdx = products.findIndex((p) => p.id === current.productId)
+    if (pIdx !== -1) {
+      const colors = [...products[pIdx].colors]
+      const hIdx = colors.findIndex((hc) => hc.color === entry.color && hc.dyeVendorId === current.dyeVendorId)
+      if (hIdx === -1) {
+        // 色卡通過時才會建立歷史色號；少了這筆（如通過時尚未填色樣編號）就在此補上
+        colors.push({
+          color: entry.color,
+          dyeVendorId: current.dyeVendorId,
+          lastUsedAt: current.colorSampleConfirmedAt ?? dayjs().toISOString(),
+          sampleCode: entry.sampleCode,
+          digital,
+        })
+      } else if (colors[hIdx].sampleCode === entry.sampleCode) {
+        colors[hIdx] = { ...colors[hIdx], digital }
+      }
+      // 同色同廠但色樣編號已被較新的打色取代：不動主檔，免得舊量測值蓋掉現行色號
+      products[pIdx] = { ...products[pIdx], colors }
+    }
+  }
+  return delay(updated)
+}
+
+/**
+ * 在商品主檔直接登記某一筆歷史色號的電腦色號。
+ * 用於沒經過表3 的舊色號（系統上線前就有的顏色），或事後補量、更正。
+ * 以「顏色＋染整廠」指到那一筆（主檔的歷史色號即以此為鍵）。傳入空值即清除。
+ * 與表3 是同一份資料：之後若再從表3 登記同一筆，以後寫入者為準。
+ */
+export function updateProductColorDigital(
+  productId: string,
+  color: string,
+  dyeVendorId: string,
+  input: DigitalColor,
+): Promise<Product> {
+  const account = getCurrentAccount()
+  assertCanMaintainMaster(account, '商品')
+  const idx = products.findIndex((p) => p.id === productId)
+  if (idx === -1) throw new Error(`商品 ${productId} 不存在`)
+  const hIdx = products[idx].colors.findIndex((c) => c.color === color && c.dyeVendorId === dyeVendorId)
+  if (hIdx === -1) throw new Error(`找不到歷史色號「${color}」`)
+  const validated = validateDigitalColor(input)
+  const digital = validated && { ...validated, recordedAt: dayjs().toISOString(), recordedByAccountId: account?.id }
+  const colors = [...products[idx].colors]
+  colors[hIdx] = { ...colors[hIdx], digital }
+  products[idx] = { ...products[idx], colors }
+  return delay(products[idx])
 }
 
 /**
@@ -1444,7 +1531,13 @@ export function submitDyeRequestColorSample(id: string, result: '通過' | '退�
       updated.colors.forEach((c) => {
         if (!c.sampleCode) return
         const existing = colors.findIndex((hc) => hc.color === c.color && hc.dyeVendorId === updated.dyeVendorId)
-        const record = { color: c.color, dyeVendorId: updated.dyeVendorId, lastUsedAt: now, sampleCode: c.sampleCode }
+        const record = {
+          color: c.color,
+          dyeVendorId: updated.dyeVendorId,
+          lastUsedAt: now,
+          sampleCode: c.sampleCode,
+          digital: c.digital,
+        }
         if (existing === -1) colors.push(record)
         else colors[existing] = record
       })
@@ -2039,6 +2132,8 @@ export function splitFabricLabel(id: string, firstLength: number): Promise<Fabri
     receiptId: original.receiptId,
     rollCode: `${prefix}-${pad(maxSeq + i + 1, 2)}`,
     productName: original.productName,
+    // 保留產品連結：少了它，新捲在布卷列表就沒有產品編號，庫存比對也分不出是哪個規格分支
+    productId: original.productId,
     composition: original.composition,
     color: original.color,
     width: original.width,
@@ -3260,11 +3355,15 @@ export const masterDefaults = {
  *
  * 條碼編號同樣不可改：它已經印在實體標籤上、貼在布捲上，也被出貨明細引用。
  */
+/**
+ * 布卷編輯：皇加品名改為從商品資料主檔選「產品分支」，品名／成分／幅寬一律由主檔帶入，
+ * 不再開放自由輸入——自由輸入會讓布卷的品名與它掛的產品編號各說各話，
+ * 庫存查的是 productId，畫面看的是 productName，兩邊一不一致就對不起來。
+ */
 export interface FabricLabelInput {
-  productName: string
+  /** 產品分支（記錄識別碼，如 8-13-02），決定皇加品名、成分、幅寬 */
+  productId: string
   color: string
-  composition?: string
-  width: number
   batchCode?: string
   /** 長度（碼）：更正量測或登打錯誤用；異動一律寫入長度異動紀錄 */
   length: number
@@ -3277,8 +3376,11 @@ export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<
   const idx = fabricLabels.findIndex((l) => l.id === id)
   if (idx === -1) throw new Error(`布卷 ${id} 不存在`)
   const current = fabricLabels[idx]
-  if (!input.productName.trim()) throw new Error('皇加品名為必填')
+  const product = products.find((p) => p.id === input.productId)
+  if (!product) throw new Error('請從商品資料主檔選擇皇加品名')
   if (!input.color.trim()) throw new Error('顏色為必填')
+  // 改掛到別的產品分支＝這捲布換了身分；已被單據用到的捲號不能換，否則預留、出貨、異常單的品名跟著變
+  if (product.id !== current.productId) assertRollNotReferenced(current, true)
   if (input.length < 0) throw new Error('長度不可為負數')
 
   const lengthChanged = Number(input.length.toFixed(2)) !== Number(current.length.toFixed(2))
@@ -3297,10 +3399,12 @@ export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<
 
   const updated: FabricLabel = {
     ...current,
-    productName: input.productName.trim(),
+    productId: product.id,
+    productName: product.productName,
+    composition: product.material,
+    width: product.width,
+    widthSpec: product.widthSpec,
     color: input.color.trim(),
-    composition: input.composition?.trim() || undefined,
-    width: input.width,
     batchCode: input.batchCode?.trim() || undefined,
     length: input.length,
     lengthHistory,
@@ -3318,7 +3422,17 @@ export function deleteFabricLabel(id: string): Promise<{ id: string }> {
   assertCanMaintainMaster(getCurrentAccount(), '布卷')
   const label = fabricLabels.find((l) => l.id === id)
   if (!label) throw new Error(`布卷 ${id} 不存在`)
-  assertNotReferenced(`布卷「${label.rollCode}」`, [
+  assertRollNotReferenced(label)
+  fabricLabels.splice(fabricLabels.indexOf(label), 1)
+  return delay({ id })
+}
+
+/**
+ * 布卷是否已被預留／出貨／異常單用到；用到了就不可刪除，也不可改掛到別的產品分支。
+ * 不傳 onChangeProduct 時沿用主檔共用的「不可刪除」訊息。
+ */
+function assertRollNotReferenced(label: FabricLabel, onChangeProduct = false) {
+  const refs = [
     {
       where: '庫存預留',
       ids: stockReservations
@@ -3339,9 +3453,17 @@ export function deleteFabricLabel(id: string): Promise<{ id: string }> {
         )
         .map((n) => n.id),
     },
-  ])
-  fabricLabels.splice(fabricLabels.indexOf(label), 1)
-  return delay({ id })
+  ]
+  if (!onChangeProduct) {
+    assertNotReferenced(`布卷「${label.rollCode}」`, refs)
+    return
+  }
+  const hit = refs.find((r) => r.ids.length > 0)
+  if (hit) {
+    throw new Error(
+      `布卷「${label.rollCode}」已被${hit.where}引用（${hit.ids.slice(0, 3).join('、')}），不可改掛到別的皇加品名；如為入庫登錯，請先解除引用`,
+    )
+  }
 }
 
 // ---------- Phase 2：PI 單（Proforma Invoice） ----------

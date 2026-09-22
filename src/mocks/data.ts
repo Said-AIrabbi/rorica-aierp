@@ -4,11 +4,13 @@ import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
 import { reservationExpiresAt } from '@/lib/inventory'
 import { buildSecondaryProcessingPackaging, defaultRollYard } from '@/lib/workflow'
 import { PI_PAYMENT_TERM_TEMPLATES, piQuoteValidUntil } from '@/lib/pi'
+import { hexToCmyk, labToHex } from '@/lib/digital-color'
 import { PRODUCT_CATALOG } from './product-catalog'
 import type {
   AbnormalNotice,
   Account,
   Customer,
+  DigitalColor,
   DyeOrder,
   DyeRequest,
   FabricLabel,
@@ -73,6 +75,36 @@ const COLOR_NAMES = [
   '象牙白', '香檳金', '珍珠白', '奶油白', '淺粉', '玫瑰粉', '天空藍', '寶石藍',
   '酒紅', '深卡其', '霧灰', '薄荷綠', '鵝黃', '丁香紫', '正黑', '銀灰',
 ]
+
+/**
+ * 模擬的分光儀讀數（CIELAB D65／10°）：各色名的代表值，僅供示範。
+ * 刻意不用 faker——這些值要穩定，才不會每次重整色塊就變色，也不擾動其他亂數種子。
+ */
+const REFERENCE_LAB: Record<string, { l: number; a: number; b: number }> = {
+  象牙白: { l: 93.2, a: 0.6, b: 9.1 },
+  香檳金: { l: 80.4, a: 3.2, b: 21.7 },
+  珍珠白: { l: 94.1, a: -0.2, b: 3.4 },
+  奶油白: { l: 95.0, a: -1.1, b: 12.3 },
+  淺粉: { l: 88.2, a: 12.4, b: 4.1 },
+  玫瑰粉: { l: 64.8, a: 39.6, b: 5.2 },
+  天空藍: { l: 74.9, a: -9.8, b: -25.3 },
+  寶石藍: { l: 34.6, a: 10.2, b: -49.8 },
+  酒紅: { l: 28.3, a: 39.7, b: 14.6 },
+  深卡其: { l: 50.1, a: 4.8, b: 24.9 },
+  霧灰: { l: 70.3, a: -0.4, b: -2.1 },
+  薄荷綠: { l: 85.2, a: -19.7, b: 5.3 },
+  鵝黃: { l: 92.1, a: -4.9, b: 44.6 },
+  丁香紫: { l: 69.8, a: 14.7, b: -18.2 },
+  正黑: { l: 14.9, a: 0.1, b: -0.6 },
+  銀灰: { l: 75.2, a: -0.3, b: -1.2 },
+}
+
+function seedDigitalColor(color: string, recordedAt: string): DigitalColor | undefined {
+  const lab = REFERENCE_LAB[color]
+  if (!lab) return undefined
+  const { hex } = labToHex(lab)
+  return { lab, hex, cmyk: hexToCmyk(hex), recordedAt }
+}
 
 const VENDOR_NAMES: { name: string; types: VendorType[]; siteCode?: string }[] = [
   { name: '永豐染整廠', types: ['染整廠'], siteCode: 'A' },
@@ -216,6 +248,8 @@ export const products: Product[] = PRODUCT_CATALOG.map((row) => {
         .toISOString(),
       sampleCode: `T${faker.string.numeric(7)}-${ci + 1}A`,
     }))
+    // 舊色號不一定量過電腦色號：隔一筆才有，示範「有登記」與「尚未登記」兩種樣子
+    .map((c, ci) => (ci % 2 === 0 ? { ...c, digital: seedDigitalColor(c.color, c.lastUsedAt) } : c))
 
   return {
     // 記錄識別碼＝產品編號-產品序號：N120 的 60" 與 120" 同為 8-13，靠分支序號區分
@@ -480,6 +514,8 @@ export const dyeRequests: DyeRequest[] = packingNotices.slice(0, 7).flatMap((pn,
         id: `${id}-C${k + 1}`,
         color,
         sampleCode: status === '草稿' || status === '已送出' ? undefined : `${id}-SAMPLE${k + 1}`,
+        // 電腦色號在色卡通過後量測登記，故僅已完成的單據有值
+        digital: colorSampleConfirmedAt ? seedDigitalColor(color, colorSampleConfirmedAt) : undefined,
       })),
       // 成品規格於打色過程中確認，故僅已進入色卡確認階段之後的單據才有值
       finishedSpec:

@@ -8,6 +8,7 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { DyeRequestPrint } from './DyeRequestPrint'
+import { DigitalColorEditor } from '@/components/shared/DigitalColorEditor'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,16 +20,20 @@ import {
   sendDyeRequest,
   submitDyeRequestColorSample,
   updateDyeRequestColors,
+  updateDyeRequestDigitalColor,
   updateDyeRequestDraft,
   updateDyeRequestFinishedSpec,
   type DyeRequestColorInput,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
+import { useCurrentAccount } from '@/lib/current-account-context'
+import type { DigitalColor } from '@/types'
 
 export function DyeRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const permissions = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['dyeRequests'], queryFn: api.dyeRequests })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const request = data.find((d) => d.id === id)
@@ -115,6 +120,20 @@ export function DyeRequestDetailPage() {
     onSuccess: async () => {
       await invalidate()
       toast.success(`${id} 色號清單已儲存`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const saveDigitalMutation = useMutation({
+    mutationFn: (input: { entryId: string; digital: DigitalColor }) =>
+      updateDyeRequestDigitalColor(id!, input.entryId, input.digital),
+    onSuccess: async (updated) => {
+      await Promise.all([invalidate(), queryClient.invalidateQueries({ queryKey: ['products'] })])
+      toast.success(
+        updated.status === '已完成'
+          ? '電腦色號已儲存，並同步到商品主檔的歷史色號'
+          : '電腦色號已儲存；色卡通過後會一併帶入商品主檔',
+      )
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -359,6 +378,18 @@ export function DyeRequestDetailPage() {
                     </Button>
                   )}
                 </div>
+                {/* 顏色圖示＋電腦色號：已存檔的列才能登記（要有列 id 才對得回去），結案後仍可補登 */}
+                {c.id && request.colors.some((x) => x.id === c.id) ? (
+                  <DigitalColorEditor
+                    key={`${c.id}-${request.colors.find((x) => x.id === c.id)?.digital?.recordedAt ?? 'none'}`}
+                    value={request.colors.find((x) => x.id === c.id)?.digital}
+                    editable={permissions.can('表3', '建立')}
+                    pending={saveDigitalMutation.isPending}
+                    onSave={(digital) => saveDigitalMutation.mutate({ entryId: c.id!, digital })}
+                  />
+                ) : (
+                  <div className="mt-2 text-xs text-muted-foreground">儲存色號清單後即可登記電腦色號。</div>
+                )}
               </div>
             ))}
 

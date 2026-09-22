@@ -27,6 +27,8 @@ import { CustomSplicingDialog } from './CustomSplicingDialog'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
+import { ColorSwatch } from '@/components/shared/ColorSwatch'
+import { digitalColorFor } from '@/lib/digital-color'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { effectiveReservationStatus, isExactMultipleOfStandard } from '@/lib/inventory'
 import {
@@ -381,7 +383,21 @@ export function PackingNoticeDetailPage() {
                       {/* 同品名有多個規格分支時附上分支序號，讓明細看得出指的是哪一個 */}
                       <span className="text-muted-foreground">{productBranchSuffix(item.productId)}</span>
                     </TableCell>
-                    <TableCell>{item.color}</TableCell>
+                    <TableCell>
+                      {/* 顏色圖示：取此商品此顏色最近一次打色登記的電腦色號；表1 尚未指定染整廠，故不分廠 */}
+                      <span className="inline-flex items-center gap-1.5">
+                        <ColorSwatch
+                          compact
+                          digital={
+                            digitalColorFor(
+                              products.find((p) => p.id === item.productId),
+                              item.color,
+                            )?.digital
+                          }
+                        />
+                        {item.color}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div>{itemUnit === 'Yard' ? formatNumber(item.yard, 0) : formatNumber(item.meter, 1)}</div>
                       <div className="text-xs text-muted-foreground">

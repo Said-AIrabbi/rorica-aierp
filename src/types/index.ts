@@ -88,12 +88,32 @@ export const PRODUCT_CATEGORIES = [
   { code: '19', zh: '材料配件', en: 'Accessories' },
 ] as const
 
+/**
+ * 數位色值：打色完成後登記的電腦色號，供業務／生管在畫面上看到「純白色」實際是哪個白，
+ * 並預留給日後串接 3D 服裝設計軟體（CLO3D、Browzwear）與布商的數位材質檔（U3M）。
+ *
+ * 三組色值各自選填、可只填其一。**LAB 為主值**——它與裝置無關（D65／10° 觀察者），
+ * 是分光儀量出來的讀數；HEX 與 CMYK 可由 LAB 換算，也可手動覆寫。
+ * 畫面上的色塊只是螢幕示意，一律以實體色卡為準。
+ */
+export interface DigitalColor {
+  lab?: { l: number; a: number; b: number }
+  /** 六位十六進位，含 #，大寫（如 #F7F7F2） */
+  hex?: string
+  /** 0–100 的百分比 */
+  cmyk?: { c: number; m: number; y: number; k: number }
+  recordedAt?: string
+  recordedByAccountId?: string
+}
+
 export interface ColorRecord {
   color: string
   dyeVendorId: string
   lastUsedAt: string
   /** 歷史色樣編號：查詢鍵為「客戶＋皇加品名＋顏色＋染整廠」，查得到則開染單時自動帶入 */
   sampleCode: string
+  /** 數位色值：由表3 打色通知單登記後帶入；舊色號可能沒有 */
+  digital?: DigitalColor
 }
 
 export interface Product {
@@ -546,6 +566,8 @@ export interface DyeRequestColorEntry {
   color: string
   /** 色樣編號：染整廠回覆後手動填入，建單當下通常留空 */
   sampleCode?: string
+  /** 數位色值（顏色圖示＋電腦色號）：打色完成後登記，結案後仍可補登 */
+  digital?: DigitalColor
 }
 
 export interface DyeRequest {

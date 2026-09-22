@@ -9,6 +9,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { api } from '@/mocks/api'
 import { getCategoryLabel, getCustomer } from '@/mocks/data'
 import { isRollReserved } from '@/lib/inventory'
+import { ColorSwatch } from '@/components/shared/ColorSwatch'
 import { formatDate, isColorStale } from '@/lib/dates'
 import { formatNumber, inchToCm, yardPriceToMeterPrice } from '@/lib/units'
 import type { Product } from '@/types'
@@ -94,10 +95,11 @@ export function ProductListPage() {
                 title={`最後使用：${formatDate(c.lastUsedAt)}`}
                 className={
                   isColorStale(c.lastUsedAt)
-                    ? 'rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-xs text-warning'
-                    : 'rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-ink-body'
+                    ? 'inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-xs text-warning'
+                    : 'inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-ink-body'
                 }
               >
+                <ColorSwatch digital={c.digital} compact />
                 {c.color}
                 {isColorStale(c.lastUsedAt) && ' ⚠'}
               </span>
