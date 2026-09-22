@@ -17,6 +17,8 @@ import { formatDateTime } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { effectiveReservationStatus, isRollReserved } from '@/lib/inventory'
 import { rollLengthText } from '@/components/shared/BasisQty'
+import { useCurrentAccount } from '@/lib/current-account-context'
+import { canReleaseReservation } from '@/lib/permissions'
 import type { FabricLabel } from '@/types'
 
 /** 凍結窗格用的 class：表頭卡上緣、固定欄卡左緣，邊線用 box-shadow 畫（collapse 版面下 border 會跟著捲走） */
@@ -39,6 +41,9 @@ interface StockRow {
 
 export function StockOverviewPage() {
   const queryClient = useQueryClient()
+  // 釋放預留與寫入端同一把尺（canReleaseReservation）：業務或生管，其餘角色只看
+  const { account } = useCurrentAccount()
+  const canRelease = canReleaseReservation(account)
   const { data: fabricLabels = [], isLoading } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
   const { data: reservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
 
@@ -238,15 +243,17 @@ export function StockOverviewPage() {
                       </TableCell>
                       <TableCell>{formatDateTime(r.expiresAt)}</TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          disabled={releaseMutation.isPending}
-                          onClick={() => releaseMutation.mutate(r.id)}
-                        >
-                          釋放
-                        </Button>
+                        {canRelease && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            disabled={releaseMutation.isPending}
+                            onClick={() => releaseMutation.mutate(r.id)}
+                          >
+                            釋放
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

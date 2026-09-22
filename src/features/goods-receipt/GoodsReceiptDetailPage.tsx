@@ -4,11 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { GoodsReceiptPrint } from './GoodsReceiptPrint'
-import { FabricLabelPrint } from '@/features/fabric-label/FabricLabelPrint'
+import { FabricLabelSheets, LABELS_PER_A4 } from '@/features/fabric-label/FabricLabelPrint'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,6 +42,7 @@ export function GoodsReceiptDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const permissions = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['goodsReceipts'], queryFn: api.goodsReceipts })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
@@ -82,7 +85,10 @@ export function GoodsReceiptDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receipt?.id, receipt?.purpose])
 
-  const editable = receipt?.status === '草稿'
+  // 草稿內容的修改（捲號明細、投胚量、用途、廠商資訊）在寫入端都檢查「複核」，畫面同一把尺
+  const canReview = permissions.can('表6', '複核')
+  const canConfirm = permissions.can('表6', '確認入庫')
+  const editable = receipt?.status === '草稿' && canReview
 
   const saveRollsMutation = useMutation({
     mutationFn: () => updateGoodsReceiptRolls(id!, rolls),
@@ -229,7 +235,7 @@ export function GoodsReceiptDetailPage() {
             <StatusBadge status={receipt.status} className="text-sm" />
             {/*
               入庫單本身為內部驗收存查；表7標籤實務上是整張入庫單一次印完（10捲即10張），
-              故第二個列印輸出直接把本單產生的布卷標籤全部排版，每張各佔一頁標籤紙。
+              故第二個列印輸出直接把本單產生的布卷標籤全部排版在 A4 標籤紙上，一頁 16 張，超過才接下一頁。
             */}
             <PrintActions
               sheets={[
@@ -238,20 +244,14 @@ export function GoodsReceiptDetailPage() {
                   ? [
                       {
                         key: 'labels',
-                        label: `列印布卷標籤（${receiptLabels.length}）`,
-                        sheet: (
-                          <>
-                            {receiptLabels.map((l) => (
-                              <FabricLabelPrint key={l.id} label={l} />
-                            ))}
-                          </>
-                        ),
+                        label: `列印布卷標籤（${receiptLabels.length} 張，A4 ${Math.ceil(receiptLabels.length / LABELS_PER_A4)} 頁）`,
+                        sheet: <FabricLabelSheets labels={receiptLabels} />,
                       },
                     ]
                   : []),
               ]}
             />
-            {receipt.status === '草稿' && (
+            {receipt.status === '草稿' && canReview && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -261,7 +261,7 @@ export function GoodsReceiptDetailPage() {
                 確認複核
               </Button>
             )}
-            {receipt.status === '已複核' && (
+            {receipt.status === '已複核' && canConfirm && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate('已完成')}>
                 標記完成入庫
               </Button>
@@ -269,6 +269,8 @@ export function GoodsReceiptDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="表6" />
 
       <Card>
         <CardHeader>

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -155,7 +156,9 @@ export function ShippingOrderDetailPage() {
   const customer = getCustomer(order.customerId)
   const operator = order.operatorAccountId ? getAccount(order.operatorAccountId) : undefined
   // 明細僅在草稿（尚未確認建單）階段可微調／刪除
-  const itemsEditable = order.status === '草稿'
+  // 草稿內容（明細、單頭、簽名欄）在寫入端檢查「編輯草稿」，畫面同一把尺
+  const canEditDraft = permissions.can('表8', '編輯草稿')
+  const itemsEditable = order.status === '草稿' && canEditDraft
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
   const notice = packingNotices.find((n) => n.id === order.parentId)
   const markings = notice?.markings ?? []
@@ -256,6 +259,8 @@ export function ShippingOrderDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="表8" />
 
       {/* 歷次退回（決策37）：不覆蓋前次、不設次數上限；反覆退回本身即為異常訊號 */}
       {order.rejections && order.rejections.length > 0 && (
@@ -557,26 +562,44 @@ export function ShippingOrderDetailPage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="space-y-1.5">
               <Label className="text-xs">處理人</Label>
-              <Input value={signatures.processedBy ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, processedBy: e.target.value }))} />
+              {canEditDraft ? (
+                <Input value={signatures.processedBy ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, processedBy: e.target.value }))} />
+              ) : (
+                <div className="text-sm text-ink">{order.signatures?.processedBy || '-'}</div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">倉管</Label>
-              <Input value={signatures.warehouse ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, warehouse: e.target.value }))} />
+              {canEditDraft ? (
+                <Input value={signatures.warehouse ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, warehouse: e.target.value }))} />
+              ) : (
+                <div className="text-sm text-ink">{order.signatures?.warehouse || '-'}</div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">出貨</Label>
-              <Input value={signatures.shipped ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, shipped: e.target.value }))} />
+              {canEditDraft ? (
+                <Input value={signatures.shipped ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, shipped: e.target.value }))} />
+              ) : (
+                <div className="text-sm text-ink">{order.signatures?.shipped || '-'}</div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">業務</Label>
-              <Input value={signatures.sales ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, sales: e.target.value }))} />
+              {canEditDraft ? (
+                <Input value={signatures.sales ?? ''} onChange={(e) => setSignatures((s) => ({ ...s, sales: e.target.value }))} />
+              ) : (
+                <div className="text-sm text-ink">{order.signatures?.sales || '-'}</div>
+              )}
             </div>
           </div>
-          <div className="mt-3 flex justify-end">
-            <Button type="button" variant="outline" size="sm" disabled={saveSignaturesMutation.isPending} onClick={() => saveSignaturesMutation.mutate()}>
-              儲存簽名欄
-            </Button>
-          </div>
+          {canEditDraft && (
+            <div className="mt-3 flex justify-end">
+              <Button type="button" variant="outline" size="sm" disabled={saveSignaturesMutation.isPending} onClick={() => saveSignaturesMutation.mutate()}>
+                儲存簽名欄
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

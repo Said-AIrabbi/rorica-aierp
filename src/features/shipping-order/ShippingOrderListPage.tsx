@@ -10,9 +10,12 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/mocks/api'
 import { getCustomer } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { ShippingOrder } from '@/types'
 
 export function ShippingOrderListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['shippingOrders'], queryFn: api.shippingOrders })
 
@@ -56,9 +59,11 @@ export function ShippingOrderListPage() {
         formCode="表8"
         description="有庫存路徑：直接由表1調撥；無庫存路徑：需等表6入庫單完成才可調撥。樣品出貨走一般出貨常規倉庫。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/shipping-order/new')}>
-            ＋ 新增出貨單
-          </Button>
+          can('表8', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/shipping-order/new')}>
+              ＋ 新增出貨單
+            </Button>
+          )
         }
       />
       <DataTable

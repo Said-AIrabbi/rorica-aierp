@@ -26,6 +26,8 @@ import {
   type FabricLabelInput,
 } from '@/mocks/mutations'
 import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, inchToCm } from '@/lib/units'
 import { rollLengthText } from '@/components/shared/BasisQty'
@@ -37,6 +39,12 @@ export function FabricLabelDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const permissions = useCurrentAccount()
+  // 表7 的動作（列印標籤／分割／標記瑕疵）看單據權限；編輯與刪除屬布卷主檔維護，看主檔權限——與寫入端同一把尺
+  const canPrint = permissions.can('表7', '列印標籤')
+  const canSplit = permissions.can('表7', '分割布卷')
+  const canMarkDefect = permissions.can('表7', '標記瑕疵')
+  const canMaintainRoll = permissions.canMaintain('布卷')
   const { data = [] } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
   const label = data.find((l) => l.id === id)
@@ -114,7 +122,10 @@ export function FabricLabelDetailPage() {
 
   return (
     <div>
-      <Link to="/fabric-label" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-ink print:hidden">
+      <Link
+        to="/fabric-label"
+        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-ink print:hidden"
+      >
         <ArrowLeft className="h-4 w-4" /> 返回布卷資料列表
       </Link>
 
@@ -132,41 +143,46 @@ export function FabricLabelDetailPage() {
         actions={
           <>
             <StatusBadge status={label.status} className="text-sm print:hidden" />
-            <PrintActions sheets={[{ key: 'label', label: '列印標籤', sheet: <FabricLabelPrint label={label} /> }]} />
-            {label.status === '已建立' && label.length > 0 && (
+            {canPrint && (
+              <PrintActions sheets={[{ key: 'label', label: '列印標籤', sheet: <FabricLabelPrint label={label} /> }]} />
+            )}
+            {label.status === '已建立' && label.length > 0 && canSplit && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setSplitOpen(true)}>
                 <Scissors className="mr-1 h-4 w-4" /> 分割布卷
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="print:hidden"
-              onClick={() => {
-                setEditDraft({
-                  // 舊資料若沒有產品連結，以品名找回主檔；仍找不到就留空，逼使用者從主檔選
-                  productId:
-                    label.productId ?? products.find((p) => p.productName === label.productName)?.id ?? '',
-                  color: label.color,
-                  batchCode: label.batchCode,
-                  length: label.length,
-                  lengthChangeReason: '',
-                })
-                setEditOpen(true)
-              }}
-            >
-              <Pencil className="mr-1 h-4 w-4" /> 編輯布卷資料
-            </Button>
-            <span className="print:hidden">
-              <DeleteMasterButton
-                label="布卷"
-                name={label.rollCode}
-                pending={deleteMutation.isPending}
-                onConfirm={() => deleteMutation.mutate()}
-              />
-            </span>
+            {canMaintainRoll && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="print:hidden"
+                onClick={() => {
+                  setEditDraft({
+                    // 舊資料若沒有產品連結，以品名找回主檔；仍找不到就留空，逼使用者從主檔選
+                    productId: label.productId ?? products.find((p) => p.productName === label.productName)?.id ?? '',
+                    color: label.color,
+                    batchCode: label.batchCode,
+                    length: label.length,
+                    lengthChangeReason: '',
+                  })
+                  setEditOpen(true)
+                }}
+              >
+                <Pencil className="mr-1 h-4 w-4" /> 編輯布卷資料
+              </Button>
+            )}
+            {canMaintainRoll && (
+              <span className="print:hidden">
+                <DeleteMasterButton
+                  label="布卷"
+                  name={label.rollCode}
+                  pending={deleteMutation.isPending}
+                  onConfirm={() => deleteMutation.mutate()}
+                />
+              </span>
+            )}
             {/* 瑕疵／報廢為布卷的另一個終態；已完成或已終止的布卷不再開放標記 */}
-            {(label.status === '已建立' || label.status === '已使用') && (
+            {(label.status === '已建立' || label.status === '已使用') && canMarkDefect && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setDefectOpen(true)}>
                 <AlertTriangle className="mr-1 h-4 w-4" /> 標記瑕疵／報廢
               </Button>
@@ -219,7 +235,9 @@ export function FabricLabelDetailPage() {
                 <datalist id="roll-color-options">
                   {products
                     .find((p) => p.id === editDraft.productId)
-                    ?.colors.map((c) => <option key={`${c.color}-${c.dyeVendorId}`} value={c.color} />)}
+                    ?.colors.map((c) => (
+                      <option key={`${c.color}-${c.dyeVendorId}`} value={c.color} />
+                    ))}
                 </datalist>
               </div>
               <div className="space-y-1.5">
@@ -287,10 +305,13 @@ export function FabricLabelDetailPage() {
             <DialogTitle>分割布卷 {label.rollCode}</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            分割後原條碼 {label.rollCode} 將標記為「已終止」，不可再用於出貨；系統會產生兩張新條碼，流水號接續本入庫單目前最大可用流水號。
+            分割後原條碼 {label.rollCode}{' '}
+            將標記為「已終止」，不可再用於出貨；系統會產生兩張新條碼，流水號接續本入庫單目前最大可用流水號。
           </p>
           <div className="space-y-1.5">
-            <Label>第一捲分割長度（{label.unit}，原長度 {label.length} {label.unit}）</Label>
+            <Label>
+              第一捲分割長度（{label.unit}，原長度 {label.length} {label.unit}）
+            </Label>
             <Input
               type="number"
               step="0.1"
@@ -325,8 +346,8 @@ export function FabricLabelDetailPage() {
             <DialogTitle>標記瑕疵／報廢 {label.rollCode}</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            標記後本捲進入終態，<strong>不可再被任何訂單挑選</strong>：可用庫存查詢不再取用，出貨單明細若含本捲亦會被擋下。
-            此動作不可復原，長度與異動紀錄皆完整保留供追溯。
+            標記後本捲進入終態，<strong>不可再被任何訂單挑選</strong>
+            ：可用庫存查詢不再取用，出貨單明細若含本捲亦會被擋下。 此動作不可復原，長度與異動紀錄皆完整保留供追溯。
           </p>
           <div className="space-y-1.5">
             <Label>原因（選填）</Label>
@@ -361,6 +382,8 @@ export function FabricLabelDetailPage() {
         </div>
       )}
 
+      <ReadOnlyNotice doc="表7" printable={false} />
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -373,7 +396,10 @@ export function FabricLabelDetailPage() {
               <DetailField label="成分" value={label.composition ?? '-'} />
               <DetailField label="顏色" value={label.color} />
               {/* 系統畫面以英吋為主並附註公分換算；下方實體標籤列印僅印英吋 */}
-              <DetailField label="幅寬" value={`${label.widthSpec ?? `${label.width}"`}（≈ ${formatNumber(inchToCm(label.width), 1)} cm）`} />
+              <DetailField
+                label="幅寬"
+                value={`${label.widthSpec ?? `${label.width}"`}（≈ ${formatNumber(inchToCm(label.width), 1)} cm）`}
+              />
               <DetailField label="批" value={label.batchCode ?? '-'} />
               <DetailField label="長度（雙單位）" value={dualUnitLength(label.length, label.unit)} />
               <DetailField label="分割來源布卷" value={label.splitFromRollCode ?? '-'} />
@@ -413,7 +439,8 @@ export function FabricLabelDetailPage() {
                   <li key={i} className="flex flex-wrap items-center gap-2 text-ink-body">
                     <span className="text-muted-foreground">{formatDate(change.at)}</span>
                     <span>
-                      {dualUnitLength(change.beforeLength, label.unit)} → {dualUnitLength(change.afterLength, label.unit)}
+                      {dualUnitLength(change.beforeLength, label.unit)} →{' '}
+                      {dualUnitLength(change.afterLength, label.unit)}
                     </span>
                     <span className="text-muted-foreground">（{change.reason}）</span>
                   </li>
@@ -425,7 +452,9 @@ export function FabricLabelDetailPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base print:hidden">實體標籤預覽（列印格式：上方條碼＋人讀碼／中段欄位資訊／下方再印一次條碼＋人讀碼）</CardTitle>
+            <CardTitle className="text-base print:hidden">
+              實體標籤預覽（列印格式：上方條碼＋人讀碼／中段欄位資訊／下方再印一次條碼＋人讀碼）
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mx-auto max-w-xs rounded-lg border-2 border-dashed border-border bg-surface-muted p-4 print:max-w-none print:border-none print:bg-white print:p-0">
@@ -439,7 +468,8 @@ export function FabricLabelDetailPage() {
 
                 {/* 中段欄位資訊 */}
                 <div className="mt-3 border-y border-dashed border-border py-3">
-                  <div className="text-sm font-semibold text-ink">皇加品名：{label.productName}
+                  <div className="text-sm font-semibold text-ink">
+                    皇加品名：{label.productName}
                     {productBranchSuffix(label.productId)}
                   </div>
                   <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-ink-body">

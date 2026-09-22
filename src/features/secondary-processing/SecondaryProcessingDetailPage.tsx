@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -32,6 +34,7 @@ import type { SecondaryProcessingItem } from '@/types'
 export function SecondaryProcessingDetailPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const permissions = useCurrentAccount()
   const { data = [] } = useQuery({
     queryKey: ['secondaryProcessingOrders'],
     queryFn: api.secondaryProcessingOrders,
@@ -112,7 +115,8 @@ export function SecondaryProcessingDetailPage() {
   }
 
   const vendor = getVendor(order.vendorId)
-  const itemsEditable = order.status === '草稿'
+  // 每個操作對應寫入端要求的動作權限（mutations 的 assertCanAct），唯讀角色一律只看
+  const itemsEditable = order.status === '草稿' && permissions.can('表5', '補齊加工廠')
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
   const vendorDirty =
     JSON.stringify(vendorDraft) !==
@@ -153,7 +157,7 @@ export function SecondaryProcessingDetailPage() {
           <>
             <StatusBadge status={order.status} />
             <PrintActions outboundDoc="表5 二次加工單" sheets={[{ key: 'doc', label: '列印二次加工單', sheet: <SecondaryProcessingPrint order={order} /> }]} />
-            {order.status === '草稿' && (
+            {order.status === '草稿' && permissions.can('表5', '轉生效') && (
               <Button
                 className="bg-brand hover:bg-brand-dark"
                 // 染整完成自動建立的草稿沒有加工廠，補齊後才能發包
@@ -163,7 +167,7 @@ export function SecondaryProcessingDetailPage() {
                 確認發包（轉生效）
               </Button>
             )}
-            {order.status === '生效' && (
+            {order.status === '生效' && permissions.can('表5', '結案') && (
               <Button
                 className="bg-brand hover:bg-brand-dark"
                 disabled={statusMutation.isPending}
@@ -175,6 +179,8 @@ export function SecondaryProcessingDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="表5" />
 
       <div className="space-y-4">
         <Card>

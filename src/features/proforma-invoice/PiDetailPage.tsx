@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -46,6 +48,9 @@ export function PiDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // 每個按鈕對應寫入端要求的 PI 動作權限（mutations 的 assertCanAct），唯讀角色一律只看
+  const { can } = useCurrentAccount()
+  const piCan = (action: Parameters<typeof can>[1]) => can('PI', action)
   const [signedFileName, setSignedFileName] = useState('')
   const { data = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
@@ -129,19 +134,23 @@ export function PiDetailPage() {
           <>
             {status === '草稿' && !onHold && (
               <>
-                <Button size="sm" variant="outline" onClick={() => navigate(`/proforma-invoice/${pi.id}/edit`)}>
-                  編輯草稿
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-brand hover:bg-brand-dark"
-                  onClick={() => run(() => submitProformaInvoice(pi.id), '已送出，等待管理層批准')}
-                >
-                  送出批准
-                </Button>
+                {piCan('編輯草稿') && (
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/proforma-invoice/${pi.id}/edit`)}>
+                    編輯草稿
+                  </Button>
+                )}
+                {piCan('送簽') && (
+                  <Button
+                    size="sm"
+                    className="bg-brand hover:bg-brand-dark"
+                    onClick={() => run(() => submitProformaInvoice(pi.id), '已送出，等待管理層批准')}
+                  >
+                    送出批准
+                  </Button>
+                )}
               </>
             )}
-            {(status === '待批准' || status === '已逾期') && !onHold && (
+            {(status === '待批准' || status === '已逾期') && !onHold && piCan('批准') && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -155,7 +164,7 @@ export function PiDetailPage() {
                 {status === '已逾期' ? '重新報價並批准' : '管理層批准'}
               </Button>
             )}
-            {canSignBackPi(pi) && (
+            {canSignBackPi(pi) && piCan('編輯草稿') && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -164,7 +173,7 @@ export function PiDetailPage() {
                 標記已簽回
               </Button>
             )}
-            {canConvertPi(pi) && !isReplacement && !onHold && (
+            {canConvertPi(pi) && !isReplacement && !onHold && piCan('結案') && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -180,7 +189,7 @@ export function PiDetailPage() {
                 轉換為包裝通知單（依 PO 拆單）
               </Button>
             )}
-            {canConvertPi(pi) && isReplacement && !onHold && (
+            {canConvertPi(pi) && isReplacement && !onHold && piCan('結案') && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -202,7 +211,7 @@ export function PiDetailPage() {
                 套用至既有表1（覆蓋規則）
               </Button>
             )}
-            {onHold && (
+            {onHold && piCan('批准') && (
               <>
                 <Button
                   size="sm"
@@ -221,6 +230,7 @@ export function PiDetailPage() {
                 </Button>
               </>
             )}
+            {piCan('建立') && (
             <Button
               size="sm"
               variant="outline"
@@ -236,7 +246,8 @@ export function PiDetailPage() {
             >
               複製為新 PI
             </Button>
-            {status === '已轉換' && (
+            )}
+            {status === '已轉換' && piCan('建立') && (
               <Button
                 size="sm"
                 variant="outline"
@@ -258,7 +269,7 @@ export function PiDetailPage() {
                 作廢並重開{dispatchedDownstream.length > 0 ? '（將待人工處理）' : ''}
               </Button>
             )}
-            {status !== '已作廢' && status !== '已轉換' && !onHold && (
+            {status !== '已作廢' && status !== '已轉換' && !onHold && piCan('編輯草稿') && (
               <Button
                 size="sm"
                 variant="outline"
@@ -272,6 +283,8 @@ export function PiDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="PI" />
 
       <div className="space-y-4">
         {!onHold && status === '已轉換' && dispatchedDownstream.length > 0 && (
@@ -351,7 +364,7 @@ export function PiDetailPage() {
               <DetailField label="作廢原因" value={pi.voidReason ?? '-'} />
             </DetailGrid>
 
-            {canSignBackPi(pi) && (
+            {canSignBackPi(pi) && piCan('編輯草稿') && (
               <div className="mt-4 flex max-w-md items-center gap-2">
                 <Input
                   value={signedFileName}

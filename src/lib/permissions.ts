@@ -562,6 +562,21 @@ export function separationViolation(
 }
 
 /**
+ * 手動釋放庫存預留：權限矩陣沒有這個動作，比照「改動表1 的配貨」處理——
+ * 能編輯表1 草稿者（業務，客戶取消需求時）或能確認拼接組合者（生管，庫存配貨）可以釋放。
+ */
+export function canReleaseReservation(account: Account | undefined): boolean {
+  return canDoAction(account, '表1', '編輯草稿') || canDoAction(account, '表1', '確認拼接組合')
+}
+
+export function assertCanReleaseReservation(account: Account | undefined): void {
+  if (!account) throw new Error('未指定操作帳號，無法執行此動作')
+  if (!canReleaseReservation(account)) {
+    throw new Error(`帳號「${account.name}」（${account.roles.join('、')}）沒有釋放庫存預留的權限`)
+  }
+}
+
+/**
  * 資料層的統一檢查：動作權限 ＋ 職責分離，兩者皆過才放行。
  * mutations.ts 於每個寫入點呼叫；違反時丟出可直接顯示給使用者的訊息。
  */

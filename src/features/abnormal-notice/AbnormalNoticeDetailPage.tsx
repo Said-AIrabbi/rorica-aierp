@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -184,7 +185,10 @@ export function AbnormalNoticeDetailPage() {
   }
 
   const isUpstream = notice.kind === '上游追討'
-  const editable = notice.status !== '已完成'
+  // 處理方式、生管回覆、同批標記、結案在寫入端都檢查「收單處理」；退貨登記與複核檢查「退貨收貨複核」
+  const canHandle = permissions.can('表9', '收單處理')
+  const canReviewReturn = permissions.can('表9', '退貨收貨複核')
+  const editable = notice.status !== '已完成' && canHandle
   const customer = notice.customerId ? getCustomer(notice.customerId) : undefined
   const author = getAccount(notice.createdByAccountId)
   const categoryItems = ABNORMAL_CATEGORIES.find((c) => c.name === categoryName)?.items ?? ([] as readonly string[])
@@ -282,18 +286,17 @@ export function AbnormalNoticeDetailPage() {
                 會計簽核
               </Button>
             )}
-            {notice.status === '受理中' && notice.approvedAt && (
+            {notice.status === '受理中' && notice.approvedAt && canHandle && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
-                disabled={startMutation.isPending || !permissions.can('表9', '收單處理')}
-                title={permissions.blockedReason('表9', '收單處理')}
+                disabled={startMutation.isPending}
                 onClick={() => startMutation.mutate()}
               >
                 生管收單，開始處理
               </Button>
             )}
-            {notice.status === '處理中' && (
+            {notice.status === '處理中' && canHandle && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={completeMutation.isPending} onClick={() => completeMutation.mutate()}>
                 結案
               </Button>
@@ -319,6 +322,8 @@ export function AbnormalNoticeDetailPage() {
           </div>
         </div>
       )}
+
+      <ReadOnlyNotice doc="表9" />
 
       {/* 歷次退回（決策37）：不覆蓋前次、不設次數上限 */}
       {notice.rejections && notice.rejections.length > 0 && (
@@ -408,7 +413,7 @@ export function AbnormalNoticeDetailPage() {
         <CardHeader>
           <CardTitle className="text-base">
             處理方式（可複選，非單選）與生管回覆
-            {!editable && '　—　已結案，僅供檢視'}
+            {notice.status === '已完成' && '　—　已結案，僅供檢視'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -568,6 +573,8 @@ export function AbnormalNoticeDetailPage() {
                   </Link>
                 </div>
               ) : (
+                // 換貨出貨單是開一張表8，看表8 的建立權限
+                permissions.can('表8', '建立') && (
                 <Button
                   type="button"
                   variant="outline"
@@ -577,6 +584,7 @@ export function AbnormalNoticeDetailPage() {
                 >
                   <Plus className="mr-1 h-4 w-4" /> 建立換貨出貨單
                 </Button>
+                )
               )}
             </div>
           </HandlingBlock>
@@ -630,7 +638,7 @@ export function AbnormalNoticeDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {notice.status === '處理中' && (
+            {notice.status === '處理中' && canReviewReturn && (
               <div className="mb-3 grid grid-cols-1 gap-3 rounded-lg border border-border p-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">退回布卷條碼（客戶端遺失條碼可留空）</Label>
@@ -697,7 +705,7 @@ export function AbnormalNoticeDetailPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{roll.reviewedAt ? formatDateTime(roll.reviewedAt) : '-'}</TableCell>
                       <TableCell>
-                        {roll.verdict === '待複核' && notice.status === '處理中' && (
+                        {roll.verdict === '待複核' && notice.status === '處理中' && canReviewReturn && (
                           <div className="flex gap-1.5">
                             <Button
                               type="button"
@@ -817,14 +825,16 @@ export function AbnormalNoticeDetailPage() {
                 向染整廠追討為平行進行的獨立流程，與本單各自結案
               </span>
             </CardTitle>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/abnormal-notice/new?kind=上游追討&parent=${notice.id}`)}
-            >
-              <Plus className="mr-1 h-4 w-4" /> 建立附單
-            </Button>
+            {permissions.can('表9', '建立') && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/abnormal-notice/new?kind=上游追討&parent=${notice.id}`)}
+              >
+                <Plus className="mr-1 h-4 w-4" /> 建立附單
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {children.length === 0 ? (

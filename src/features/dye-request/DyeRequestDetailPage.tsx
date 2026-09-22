@@ -28,6 +28,7 @@ import {
 import { formatDate } from '@/lib/dates'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import type { DigitalColor } from '@/types'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 
 export function DyeRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -153,11 +154,15 @@ export function DyeRequestDetailPage() {
   const vendor = getVendor(request.dyeVendorId)
   const pending = sendMutation.isPending || submitSampleMutation.isPending
   // 已完成後鎖定色號清單，其餘狀態皆可補填／追加（重新覆色不設次數上限）
-  const colorsEditable = request.status !== '已完成'
+  // 每個操作對應寫入端要求的動作權限（mutations 的 assertCanAct），唯讀角色一律只看
+  const canCreate = permissions.can('表3', '建立')
+  const canSend = permissions.can('表3', '送出')
+  const canConfirm = permissions.can('表3', '確認色卡')
+  const colorsEditable = request.status !== '已完成' && canCreate
   // 成品規格同樣在結案前可修改；結案後改為唯讀，並開放「納入商品主檔」
-  const specEditable = request.status !== '已完成'
+  const specEditable = request.status !== '已完成' && canCreate
   /** 單頭僅草稿階段可改：送出染整廠後對方已收到單，內容不應再變動 */
-  const headEditable = request.status === '草稿'
+  const headEditable = request.status === '草稿' && canCreate
 
   return (
     <div>
@@ -184,7 +189,7 @@ export function DyeRequestDetailPage() {
             <StatusBadge status={request.status} className="text-sm print:hidden" />
             {/* 列印格式保留貼色樣布留白區塊（PRD 決策64），畫面不顯示 */}
             <PrintActions sheets={[{ key: 'doc', label: '列印打色通知單', sheet: <DyeRequestPrint request={request} /> }]} />
-            {request.status === '草稿' && (
+            {request.status === '草稿' && canSend && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark print:hidden" disabled={pending} onClick={() => sendMutation.mutate()}>
                 送出染整廠
               </Button>
@@ -192,6 +197,8 @@ export function DyeRequestDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="表3" />
 
       <Card>
         <CardHeader>
@@ -276,7 +283,7 @@ export function DyeRequestDetailPage() {
               ) : (
                 <div className="text-sm text-ink-body">{request.finishedSpec || '-'}</div>
               )}
-              {!specEditable && (
+              {request.status === '已完成' && canConfirm && (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     variant="outline"
@@ -311,7 +318,12 @@ export function DyeRequestDetailPage() {
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">
-            色號清單{colorsEditable ? '（染整廠回覆後補填色樣編號；重新覆色請追加一筆並於備註註記原因）' : '（已完成，不再提供修改）'}
+            色號清單
+            {colorsEditable
+              ? '（染整廠回覆後補填色樣編號；重新覆色請追加一筆並於備註註記原因）'
+              : request.status === '已完成'
+                ? '（已完成，不再提供修改）'
+                : ''}
           </CardTitle>
           {colorsEditable && (
             <Button
@@ -425,7 +437,7 @@ export function DyeRequestDetailPage() {
                 ))}
               </ul>
             )}
-            {!request.colorSampleConfirmedAt && (
+            {!request.colorSampleConfirmedAt && canConfirm && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">退回原因（選填，僅登記退回時使用）</label>

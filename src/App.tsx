@@ -40,6 +40,7 @@ import { RoleMatrixPage } from '@/features/settings/RoleMatrixPage'
 import { ExclusionsPage } from '@/features/settings/ExclusionsPage'
 import { AccountListPage } from '@/features/masters/accounts/AccountListPage'
 import { AccountDetailPage } from '@/features/masters/accounts/AccountDetailPage'
+import { RequireAction } from '@/components/shared/ReadOnlyNotice'
 
 export default function App() {
   return (
@@ -51,25 +52,53 @@ export default function App() {
 
         {/* Phase 2：PI 單為表1 的上游，路由順序比照側欄排在表1 之前 */}
         <Route path="/proforma-invoice" element={<PiListPage />} />
-        <Route path="/proforma-invoice/new" element={<PiFormPage />} />
+        <Route path="/proforma-invoice/new" element={
+            <RequireAction doc="PI" action="建立" backTo="/proforma-invoice">
+              <PiFormPage />
+            </RequireAction>
+          } />
         <Route path="/proforma-invoice/:id" element={<PiDetailPage />} />
-        <Route path="/proforma-invoice/:id/edit" element={<PiFormPage />} />
+        <Route path="/proforma-invoice/:id/edit" element={
+            <RequireAction doc="PI" action="編輯草稿" backTo="/proforma-invoice">
+              <PiFormPage />
+            </RequireAction>
+          } />
 
         <Route path="/packing-notice" element={<PackingNoticeListPage />} />
-        <Route path="/packing-notice/new" element={<PackingNoticeFormPage />} />
+        <Route path="/packing-notice/new" element={
+            <RequireAction doc="表1" action="建立" backTo="/packing-notice">
+              <PackingNoticeFormPage />
+            </RequireAction>
+          } />
         <Route path="/packing-notice/:id" element={<PackingNoticeDetailPage />} />
-        <Route path="/packing-notice/:id/edit" element={<PackingNoticeFormPage />} />
+        <Route path="/packing-notice/:id/edit" element={
+            <RequireAction doc="表1" action="編輯草稿" backTo="/packing-notice">
+              <PackingNoticeFormPage />
+            </RequireAction>
+          } />
 
         <Route path="/purchase-order" element={<PurchaseOrderListPage />} />
-        <Route path="/purchase-order/new" element={<PurchaseOrderFormPage />} />
+        <Route path="/purchase-order/new" element={
+            <RequireAction doc="表2" action="建立" backTo="/purchase-order">
+              <PurchaseOrderFormPage />
+            </RequireAction>
+          } />
         <Route path="/purchase-order/:id" element={<PurchaseOrderDetailPage />} />
 
         <Route path="/dye-request" element={<DyeRequestListPage />} />
-        <Route path="/dye-request/new" element={<DyeRequestFormPage />} />
+        <Route path="/dye-request/new" element={
+            <RequireAction doc="表3" action="建立" backTo="/dye-request">
+              <DyeRequestFormPage />
+            </RequireAction>
+          } />
         <Route path="/dye-request/:id" element={<DyeRequestDetailPage />} />
 
         <Route path="/dye-order" element={<DyeOrderListPage />} />
-        <Route path="/dye-order/new" element={<DyeOrderFormPage />} />
+        <Route path="/dye-order/new" element={
+            <RequireAction doc="表4" action="建立" backTo="/dye-order">
+              <DyeOrderFormPage />
+            </RequireAction>
+          } />
         <Route path="/dye-order/:id" element={<DyeOrderDetailPage />} />
 
         <Route path="/goods-receipt" element={<GoodsReceiptListPage />} />
@@ -79,15 +108,27 @@ export default function App() {
         <Route path="/fabric-label/:id" element={<FabricLabelDetailPage />} />
 
         <Route path="/shipping-order" element={<ShippingOrderListPage />} />
-        <Route path="/shipping-order/new" element={<ShippingOrderFormPage />} />
+        <Route path="/shipping-order/new" element={
+            <RequireAction doc="表8" action="建立" backTo="/shipping-order">
+              <ShippingOrderFormPage />
+            </RequireAction>
+          } />
         <Route path="/shipping-order/:id" element={<ShippingOrderDetailPage />} />
 
         <Route path="/secondary-processing" element={<SecondaryProcessingListPage />} />
-        <Route path="/secondary-processing/new" element={<SecondaryProcessingFormPage />} />
+        <Route path="/secondary-processing/new" element={
+            <RequireAction doc="表5" action="補齊加工廠" backTo="/secondary-processing">
+              <SecondaryProcessingFormPage />
+            </RequireAction>
+          } />
         <Route path="/secondary-processing/:id" element={<SecondaryProcessingDetailPage />} />
 
         <Route path="/abnormal-notice" element={<AbnormalNoticeListPage />} />
-        <Route path="/abnormal-notice/new" element={<AbnormalNoticeFormPage />} />
+        <Route path="/abnormal-notice/new" element={
+            <RequireAction doc="表9" action="建立" backTo="/abnormal-notice">
+              <AbnormalNoticeFormPage />
+            </RequireAction>
+          } />
         <Route path="/abnormal-notice/:id" element={<AbnormalNoticeDetailPage />} />
 
         <Route path="/masters/customers" element={<CustomerListPage />} />

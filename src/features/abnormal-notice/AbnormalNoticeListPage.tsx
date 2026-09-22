@@ -12,6 +12,7 @@ import { getCustomer } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { isAbnormalCloseOverdue } from '@/lib/workflow'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { AbnormalNotice } from '@/types'
 
 /** 已勾選的處理方式（可複選）：列表以標籤並列，一眼看出這張單同時在處理幾件事 */
@@ -25,6 +26,8 @@ function handlingLabels(notice: AbnormalNotice): string[] {
 }
 
 export function AbnormalNoticeListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['abnormalNotices'], queryFn: api.abnormalNotices })
 
@@ -101,9 +104,11 @@ export function AbnormalNoticeListPage() {
         formCode="表9"
         description="客訴分兩條路徑：①不退貨（依異常程度向廠商申請扣款）②退貨（退貨＋運費＋退款）；處理方式可複選。客戶簽收後 6 個月內受理，成案後 12 個月內結案。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/abnormal-notice/new')}>
-            ＋ 受理客訴
-          </Button>
+          can('表9', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/abnormal-notice/new')}>
+              ＋ 受理客訴
+            </Button>
+          )
         }
       />
       <DataTable

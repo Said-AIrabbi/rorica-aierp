@@ -9,9 +9,12 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/mocks/api'
 import { getCustomer } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { PackingNotice } from '@/types'
 
 export function PackingNoticeListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
 
@@ -56,9 +59,11 @@ export function PackingNoticeListPage() {
         formCode="表1"
         description="流程起點：客戶訂單建立主單號（ORD-YYYYMMDD-NNN），後續各表以此貫穿。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/packing-notice/new')}>
-            ＋ 新增包裝通知單
-          </Button>
+          can('表1', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/packing-notice/new')}>
+              ＋ 新增包裝通知單
+            </Button>
+          )
         }
       />
       <DataTable

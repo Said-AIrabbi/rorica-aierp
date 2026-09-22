@@ -10,10 +10,13 @@
   margin: 12mm 10mm;
 }
 
-/* 表7布疋條碼標籤：貼附於布捲上的標籤紙，非 A4 */
+/*
+ * 表7布疋條碼標籤：印在 A4 標籤紙上，每張 寬45mm×長62mm，一頁 4×4＝16 張。
+ * 頁邊界即為標籤區置中後的留白：左右 (210−180)/2＝15mm、上下 (297−248)/2＝24.5mm
+ */
 @page pr-label {
-  size: 100mm 75mm;
-  margin: 4mm;
+  size: A4 portrait;
+  margin: 24.5mm 15mm;
 }
 
 #print-root {
@@ -112,14 +115,22 @@
 
 .pr-label-sheet {
   page: pr-label;
-  width: 92mm;
-  font-size: 8pt;
+  width: 180mm;
+  font-size: 7pt;
+  line-height: 1.25;
 }
 
 .pr-preview .pr-label-sheet {
-  width: 100mm;
-  min-height: 75mm;
-  padding: 4mm;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 24.5mm 15mm;
+}
+
+/* 4 欄 × 4 列的固定格位：尺寸寫死，不隨內容伸縮，才對得上標籤紙的裁切線 */
+.pr-label-a4 {
+  display: grid;
+  grid-template-columns: repeat(4, 45mm);
+  grid-auto-rows: 62mm;
 }
 
 /* ---------- 抬頭 ---------- */
@@ -337,37 +348,54 @@
 /* ---------- 表7 標籤 ---------- */
 
 .pr-label {
-  border: 0.5pt solid #000;
-  padding: 2mm;
+  box-sizing: border-box;
+  width: 45mm;
+  height: 62mm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  /* 細框兼作裁切參考線 */
+  border: 0.25pt solid #000;
+  padding: 1.5mm;
   text-align: center;
+  break-inside: avoid;
 }
 
 .pr-label-code {
   font-family: ui-monospace, "Menlo", monospace;
-  font-size: 9pt;
-  letter-spacing: 1.5pt;
-  margin-top: 0.5mm;
+  font-size: 7pt;
+  letter-spacing: 0.5pt;
+  margin-top: 0.3mm;
 }
 
 .pr-label-fields {
+  flex: 1;
   border-top: 0.5pt dashed #000;
   border-bottom: 0.5pt dashed #000;
-  margin: 1.5mm 0;
-  padding: 1.5mm 0;
+  margin: 1mm 0;
+  padding: 1mm 0;
   text-align: left;
+  overflow: hidden;
 }
 
 .pr-label-name {
-  font-size: 11pt;
+  font-size: 8pt;
   font-weight: 700;
+  line-height: 1.2;
 }
 
+/* 寬度只有 42mm，改為「欄名｜值」兩欄一列；值過長時換行而非撐破格子 */
 .pr-label-grid {
   display: grid;
-  grid-template-columns: 14mm 1fr 10mm 1fr;
-  gap: 0.5mm 1.5mm;
-  margin-top: 1mm;
-  font-size: 7.5pt;
+  grid-template-columns: 11mm 1fr;
+  gap: 0.2mm 1mm;
+  margin-top: 0.8mm;
+  font-size: 6pt;
+}
+
+.pr-label-grid dd {
+  overflow-wrap: anywhere;
 }
 
 .pr-label-grid dt {

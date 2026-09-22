@@ -24,6 +24,7 @@ import {
 import {
   assertCanAct,
   assertCanMaintainMaster,
+  assertCanReleaseReservation,
   canDoActionByRoles,
   canSeeFieldGroupByRoles,
   type DocAction,
@@ -755,6 +756,7 @@ function recalcReservationsForNotice(notice: PackingNotice): void {
 
 /** 手動釋放庫存預留（例如客戶取消需求）；14天效期到期則由 effectiveReservationStatus 自動視為已釋放 */
 export function releaseStockReservation(id: string): Promise<StockReservation> {
+  assertCanReleaseReservation(getCurrentAccount())
   const idx = stockReservations.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`庫存預留紀錄 ${id} 不存在`)
   const updated: StockReservation = { ...stockReservations[idx], status: '已釋放', releasedAt: dayjs().toISOString() }
@@ -2000,7 +2002,8 @@ function resolveDyeOrderIndexForReceipt(receipt: GoodsReceipt): number {
  *    委外加工路徑則不需再結案（表4染單於大貨樣通過當下已完成）。
  */
 export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']): Promise<GoodsReceipt> {
-  assertCanAct(getCurrentAccount(), '表6', '確認入庫')
+  // 複核與確認入庫是矩陣上兩個獨立動作，分開檢查——個別排除其一時才擋得住
+  assertCanAct(getCurrentAccount(), '表6', status === '已複核' ? '複核' : '確認入庫')
   const idx = goodsReceipts.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
   if (status === '已複核' && goodsReceipts[idx].rolls.some((r) => r.ocrConfidence === '低' && !r.reviewed)) {
@@ -2540,7 +2543,8 @@ export function setSecondaryProcessingStatus(
   id: string,
   status: SecondaryProcessingOrder['status'],
 ): Promise<SecondaryProcessingOrder> {
-  assertCanAct(getCurrentAccount(), '表5', '轉生效')
+  // 發包與結案是矩陣上兩個獨立動作，分開檢查——個別排除「結案」時才擋得住
+  assertCanAct(getCurrentAccount(), '表5', status === '已完成' ? '結案' : '轉生效')
   const idx = secondaryProcessingOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`二次加工單 ${id} 不存在`)
   const current = secondaryProcessingOrders[idx]
@@ -3874,6 +3878,8 @@ export interface PiOverwriteResult {
  * 規則0 凍結略過、規則1／2 直接更新表1 明細、規則3 擋下並轉「待人工處理」同時凍結原 PI 與表1。
  */
 export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
+  // 與「轉換為包裝通知單」同一件事（把 PI 落到表1），同一個權限
+  assertCanAct(getCurrentAccount(), 'PI', '結案')
   const idx = piIndex(id)
   const current = proformaInvoices[idx]
   assertNotOnManualHold(current)

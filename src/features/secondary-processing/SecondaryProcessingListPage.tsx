@@ -9,9 +9,12 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/mocks/api'
 import { getCustomer, getVendor } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { SecondaryProcessingOrder } from '@/types'
 
 export function SecondaryProcessingListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色（如業務）只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({
     queryKey: ['secondaryProcessingOrders'],
@@ -62,9 +65,11 @@ export function SecondaryProcessingListPage() {
         formCode="表5"
         description="針對表1包裝通知單中已指定「加工方法」的品項對外發包；表4染整單結案時，需加工的品項會自動建立本單草稿（加工廠待生管補齊）。加工明細與包裝設定皆由表1帶入唯讀，僅加工單價為本單專屬可編輯欄位；同一張表1可依不同加工廠開立多張。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/secondary-processing/new')}>
-            ＋ 新增二次加工單
-          </Button>
+          can('表5', '補齊加工廠') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/secondary-processing/new')}>
+              ＋ 新增二次加工單
+            </Button>
+          )
         }
       />
       <DataTable

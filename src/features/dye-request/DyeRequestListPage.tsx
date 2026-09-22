@@ -9,9 +9,12 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/mocks/api'
 import { getProduct, getVendor } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { DyeRequest } from '@/types'
 
 export function DyeRequestListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色（如業務）只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['dyeRequests'], queryFn: api.dyeRequests })
 
@@ -59,9 +62,11 @@ export function DyeRequestListPage() {
         formCode="表3"
         description="色卡（客戶＋皇加品名＋色號＋染整廠）全新配色時自動觸發，與表4染整單為平行關係、無先後卡控。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/dye-request/new')}>
-            ＋ 新增打色通知單
-          </Button>
+          can('表3', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/dye-request/new')}>
+              ＋ 新增打色通知單
+            </Button>
+          )
         }
       />
       <DataTable

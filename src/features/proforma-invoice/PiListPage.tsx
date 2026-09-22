@@ -10,9 +10,12 @@ import { api } from '@/mocks/api'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { PI_CURRENCY_SYMBOL, effectivePiStatus, piDueDate, piTotalAmount } from '@/lib/pi'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { ProformaInvoice } from '@/types'
 
 export function PiListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
@@ -68,9 +71,11 @@ export function PiListPage() {
         formCode="PI"
         description="Phase 2：客戶在表1 之前先收到的報價／預估發票。客戶回簽後依 PO 拆單轉為表1 包裝通知單。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/proforma-invoice/new')}>
-            ＋ 新增 PI 單
-          </Button>
+          can('PI', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/proforma-invoice/new')}>
+              ＋ 新增 PI 單
+            </Button>
+          )
         }
       />
       <DataTable

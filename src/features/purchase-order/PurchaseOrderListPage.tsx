@@ -10,9 +10,12 @@ import { api } from '@/mocks/api'
 import { getVendor } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
 import { effectivePurchaseOrderStatus } from '@/lib/workflow'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { PurchaseOrder } from '@/types'
 
 export function PurchaseOrderListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色（如業務）只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
 
@@ -51,9 +54,11 @@ export function PurchaseOrderListPage() {
         formCode="表2"
         description="成品／胚布分類登打；2日內未簽回自動標記為「已逾期」，效果視同已確認，不阻擋後續流程。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/purchase-order/new')}>
-            ＋ 新增訂購單
-          </Button>
+          can('表2', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/purchase-order/new')}>
+              ＋ 新增訂購單
+            </Button>
+          )
         }
       />
       <DataTable

@@ -10,9 +10,12 @@ import { api } from '@/mocks/api'
 import { getVendor } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import type { DyeOrder } from '@/types'
 
 export function DyeOrderListPage() {
+  // 新增按鈕只給有建立權限的角色；唯讀角色（如業務）只能檢視
+  const { can } = useCurrentAccount()
   const navigate = useNavigate()
   const { data = [], isLoading } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
 
@@ -68,9 +71,11 @@ export function DyeOrderListPage() {
         formCode="表4"
         description="無色卡時亦可直接起單；優化取消大貨樣、色卡確認等前置流程，委外加工廠可直接製作大貨樣。確認後，明細有指定加工方法者觸發表5二次加工單，其餘觸發表6入庫單。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/dye-order/new')}>
-            ＋ 新增染整單
-          </Button>
+          can('表4', '建立') && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/dye-order/new')}>
+              ＋ 新增染整單
+            </Button>
+          )
         }
       />
       <DataTable

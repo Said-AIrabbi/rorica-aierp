@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -31,6 +33,7 @@ export function DyeOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const permissions = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
@@ -165,7 +168,11 @@ export function DyeOrderDetailPage() {
   // 查得到色號但超過12個月未使用＝「重新覆色」情境：系統僅提醒，不自動開立表3
   const staleItems = order.items.filter((item) => isColorStale(item.sampleCodeLastUsedAt))
   // 色樣編號在結案（已完成）前皆可修改，不受表3回填時機限制
-  const sampleCodeEditable = order.status !== '已完成'
+  // 每個操作對應寫入端要求的動作權限（mutations 的 assertCanAct），唯讀角色一律只看
+  const canEditDraft = permissions.can('表4', '編輯草稿')
+  const canConfirm = permissions.can('表4', '轉生效')
+  const canClose = permissions.can('表4', '結案')
+  const sampleCodeEditable = order.status !== '已完成' && canEditDraft
   const sampleCodeDirty = order.items.some((i) => (sampleCodeDraft[i.id] ?? '') !== (i.sampleCode ?? ''))
   // 單卷碼數上限：依來源表1該筆明細的定碼長度與生產數量容許誤差動態計算
   const notice = packingNotices.find((n) => n.id === order.parentId)
@@ -198,7 +205,7 @@ export function DyeOrderDetailPage() {
           <>
             <StatusBadge status={order.status} className="text-sm" />
             <PrintActions outboundDoc="表4 染整單" sheets={[{ key: 'doc', label: '列印染單', sheet: <DyeOrderPrint order={order} /> }]} />
-            {order.status === '草稿' && (
+            {order.status === '草稿' && canConfirm && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -212,6 +219,8 @@ export function DyeOrderDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="表4" />
 
       <Card>
         <CardHeader>
@@ -234,7 +243,7 @@ export function DyeOrderDetailPage() {
         </CardContent>
       </Card>
 
-      {order.status === '草稿' && (
+      {order.status === '草稿' && canEditDraft && (
         <Card className="mt-4 border-brand/30">
           <CardHeader>
             <CardTitle className="text-base">草稿編輯（確認正式建單後回復唯讀）</CardTitle>
@@ -318,6 +327,8 @@ export function DyeOrderDetailPage() {
               系統已沿用舊色號，未自動開立表3；如需重新覆色，請點右側按鈕自行建立打色通知單。
             </p>
           </div>
+          {/* 建立表3 需要表3 的建立權限，與本單的權限分開判斷 */}
+          {permissions.can('表3', '建立') && (
           <Button
             size="sm"
             variant="outline"
@@ -327,6 +338,7 @@ export function DyeOrderDetailPage() {
           >
             建立表3重新覆色
           </Button>
+          )}
         </div>
       )}
 
@@ -503,7 +515,7 @@ export function DyeOrderDetailPage() {
                 ))}
               </ul>
             )}
-            {!order.largeSampleConfirmedAt && (
+            {!order.largeSampleConfirmedAt && canClose && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">退回原因（選填，僅登記退回時使用）</label>

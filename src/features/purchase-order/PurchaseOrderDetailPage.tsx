@@ -32,11 +32,14 @@ import { colorRatioText,
   PURCHASE_ORDER_OVERDUE_DAYS,
 } from '@/lib/workflow'
 import type { PurchaseOrder } from '@/types'
+import { useCurrentAccount } from '@/lib/current-account-context'
+import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 
 export function PurchaseOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const permissions = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
   const { data: goodsReceipts = [] } = useQuery({ queryKey: ['goodsReceipts'], queryFn: api.goodsReceipts })
   const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
@@ -170,6 +173,10 @@ export function PurchaseOrderDetailPage() {
   const vendor = getVendor(order.vendorId)
   const overdue = isPurchaseOrderOverdue(order)
   const editable = isPurchaseOrderEditable(order)
+  // 每個操作對應寫入端要求的動作權限（mutations 的 assertCanAct），畫面與後端同一把尺
+  const canSend = permissions.can('表2', '送出')
+  const canEditDraft = permissions.can('表2', '編輯草稿')
+  const canClose = permissions.can('表2', '結案')
   const displayStatus = effectivePurchaseOrderStatus(order)
   const readyToTrigger = isPurchaseOrderReadyToTriggerFulfillment(order, goodsReceipts, dyeOrders)
   const linkedDyeOrders = order.hasDyeVendor ? dyeOrders.filter((d) => d.parentId === order.parentId) : []
@@ -203,12 +210,12 @@ export function PurchaseOrderDetailPage() {
                 <Lock className="h-3 w-3" /> 已凍結
               </span>
             )}
-            {order.status === '待簽回' && !order.signedAt && (
+            {order.status === '待簽回' && !order.signedAt && canSend && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={signMutation.isPending} onClick={() => signMutation.mutate()}>
                 確認已簽回
               </Button>
             )}
-            {readyToTrigger && (
+            {readyToTrigger && canSend && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={triggerMutation.isPending} onClick={() => triggerMutation.mutate()}>
                 {order.type === '胚布' && order.hasDyeVendor ? '建立染整單' : '建立入庫單'}
               </Button>
@@ -216,6 +223,8 @@ export function PurchaseOrderDetailPage() {
           </>
         }
       />
+
+      <ReadOnlyNotice doc="表2" />
 
       {overdue && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
@@ -235,7 +244,7 @@ export function PurchaseOrderDetailPage() {
         </div>
       )}
 
-      {order.status === '草稿' && (
+      {order.status === '草稿' && canEditDraft && (
         <Card className="mb-4 border-brand/30">
           <CardHeader>
             <CardTitle className="text-base">系統自動建立草稿（表1判斷無庫存時自動觸發），請補齊以下資訊後送出</CardTitle>
@@ -476,7 +485,7 @@ export function PurchaseOrderDetailPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {order.status === '草稿' ? (
+                      {order.status === '草稿' && canEditDraft ? (
                         <Input
                           type="number"
                           step="0.1"
@@ -517,7 +526,7 @@ export function PurchaseOrderDetailPage() {
                 ))}
               </ul>
             )}
-            {!order.largeSampleConfirmedAt && (
+            {!order.largeSampleConfirmedAt && canClose && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground">退回原因（選填，僅登記退回時使用）</label>
