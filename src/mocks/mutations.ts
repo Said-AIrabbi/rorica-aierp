@@ -236,6 +236,38 @@ function autoReserveStockForNotice(notice: PackingNotice, keepExpiresAt?: string
       outOfStockItems.push(item)
       return
     }
+
+    /**
+     * 決策121：**可接疋的單，只要配到一捲以上就要生管確認**，不自動預留。
+     *
+     * 決策5 原本讓系統在湊不出整疋時自動改整捲＋裁切，但那等於系統自己決定了
+     * 要接幾捲、裁掉多少碼，全程沒有人看過——而接疋與裁切要不要接受是客戶的事。
+     * 故改為掛一筆「待確認」的建議（內容就是系統本來要配的那一組），
+     * 由生管確認採用、改自訂組合、或改判不接疋。
+     *
+     * 不可接疋的單不受影響：客戶已經說了不接，整捲＋裁切就是決策5 定好的作法，
+     * 沒有判斷餘地。單捲即可覆蓋需求量者也不受影響——沒有接合，不構成決定。
+     */
+    if (notice.allowSplicing && chosen.length > 1) {
+      const product = resolveProduct(item.productId, item.roricaProductName)
+      splicingSuggestions.unshift({
+        id: `${item.id}-SPL${splicingSuggestions.filter((x) => x.packingNoticeItemId === item.id).length + 1}`,
+        packingNoticeId: notice.id,
+        packingNoticeItemId: item.id,
+        customerId: notice.customerId,
+        productName: item.roricaProductName,
+        productId: item.productId,
+        color: item.color,
+        requiredQty: item.yard,
+        rollCodes: chosen.map((r) => r.rollCode),
+        totalLength: Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2)),
+        standardSize: product?.originalRollStandardYard ?? 0,
+        status: '待確認',
+        createdAt: dayjs().toISOString(),
+      })
+      return
+    }
+
     reserveRollsForItem(notice, item, chosen, keepExpiresAt, withDownstream)
   })
 

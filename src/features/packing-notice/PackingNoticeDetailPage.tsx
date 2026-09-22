@@ -28,7 +28,7 @@ import { formatDate, formatDateTime } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { formatNumber, meterToYard } from '@/lib/units'
-import { effectiveReservationStatus } from '@/lib/inventory'
+import { effectiveReservationStatus, isExactMultipleOfStandard } from '@/lib/inventory'
 import {
   colorRatioText,
   isPackingNoticeEditable,
@@ -545,13 +545,15 @@ export function PackingNoticeDetailPage() {
         <Card className="mt-4">
           <CardHeader>
             <CardTitle className="text-base">
-              接疋拼接組合建議（系統提供建議，非全自動執行，仍由人工最終確認）
+              接疋配貨待確認（系統提供建議，非全自動執行，仍由生管最終確認）
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0">
             <p className="px-4 pb-2 text-xs text-muted-foreground">
-              判斷基準：零星捲加總等於原疋標準尺寸的整數倍，最多 3 捲（2 次接合），因湊出剛好整疋、天生無耗損。
-              確認採用後才會建立庫存預留並記錄實際使用的捲號組合；改判不接疋則改為整捲＋裁切分開出貨，裁剩的零碼布留庫存等待下次湊單。
+本單為「可接疋」，故<b>凡是要用到一捲以上的明細都列在這裡等你確認</b>，系統不會自行預留（決策121）。
+              兩種情況：①<b>湊得出整疋</b>——零星捲加總剛好是原疋標準尺寸的整數倍，最多 3 捲（2 次接合），天生無耗損；
+              ②<b>湊不出整疋</b>——系統改以整捲＋裁切配出下列組合，出貨時會裁剩零碼布。
+              確認採用後才建立庫存預留並記錄實際使用的捲號組合；按「自訂組合」可自行改挑布卷。
             </p>
             <div className="overflow-x-auto">
               <Table className="min-w-[44rem]">
@@ -577,7 +579,13 @@ export function PackingNoticeDetailPage() {
                       <TableCell className="text-right">
                         {formatNumber(sg.totalLength, 0)} Yard
                         <span className="ml-1 text-xs text-muted-foreground">
-                          （{sg.standardSize > 0 ? `${Math.round(sg.totalLength / sg.standardSize)} 整疋` : '-'}）
+                          （
+                          {sg.standardSize <= 0
+                            ? '-'
+                            : isExactMultipleOfStandard(sg.totalLength, sg.standardSize)
+                              ? `${Math.round(sg.totalLength / sg.standardSize)} 整疋`
+                              : `非整疋，出貨後約裁剩 ${formatNumber(sg.totalLength - sg.requiredQty, 1)} 碼`}
+                          ）
                         </span>
                       </TableCell>
                       <TableCell>{formatNumber(sg.standardSize, 0)} Yard</TableCell>
@@ -609,14 +617,20 @@ export function PackingNoticeDetailPage() {
                             >
                               自訂組合
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={rejectSplicingMutation.isPending}
-                              onClick={() => rejectSplicingMutation.mutate(sg.id)}
-                            >
-                              不接疋（整捲＋裁切）
-                            </Button>
+                            {/*
+                              「不接疋」只對湊得出整疋的組合有意義——非整疋的建議本身
+                              就是整捲＋裁切的方案，再按一次不接疋等於同一件事
+                            */}
+                            {isExactMultipleOfStandard(sg.totalLength, sg.standardSize) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={rejectSplicingMutation.isPending}
+                                onClick={() => rejectSplicingMutation.mutate(sg.id)}
+                              >
+                                不接疋（整捲＋裁切）
+                              </Button>
+                            )}
                           </div>
                         )}
                         {sg.status === '待確認' && !canConfirmSplicing && (
@@ -668,7 +682,7 @@ export function PackingNoticeDetailPage() {
           {relatedReservations.length === 0 ? (
             <p className="px-4 text-sm text-muted-foreground">
               {pendingSuggestions.length > 0
-                ? '可用庫存需靠拼接才足夠，系統已提供拼接組合建議（見上方卡片），待人工確認後才會建立庫存預留。'
+                ? '本單為可接疋，需用到一捲以上的明細一律等生管確認後才建立庫存預留（見上方卡片）。'
                 : '查無可用庫存可自動預留，本單走無現貨路徑（下訂購單／染整生產）。'}
             </p>
           ) : (

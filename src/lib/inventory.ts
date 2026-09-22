@@ -145,6 +145,15 @@ export function checkCustomSplicing(
   return { errors, warnings, totalLength }
 }
 
+/**
+ * 這個組合是不是剛好落在整疋上（無耗損）。
+ * 畫面要用它區分兩種拼接建議：湊得出整疋的、與湊不出而以整捲＋裁切配的。
+ */
+export function isExactMultipleOfStandard(totalLength: number, standardSize: number): boolean {
+  if (!(standardSize > 0)) return false
+  return isMultipleOf(totalLength, standardSize)
+}
+
 /** 浮點長度的整數倍判斷：容許 0.01 碼的誤差，避免 50.0 + 50.0 !== 100 這類浮點誤差誤判 */
 function isMultipleOf(total: number, unit: number): boolean {
   const ratio = total / unit
