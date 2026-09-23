@@ -17,6 +17,7 @@ import { api } from '@/mocks/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { effectivePurchaseOrderStatus } from '@/lib/workflow'
+import { PendingApprovals } from './PendingApprovals'
 
 interface DocCardConfig<T> {
   to: string
@@ -84,6 +85,9 @@ export function HomePage() {
         </p>
       </div>
 
+      {/* 核決者的入口：有待簽的單才出現，故放在最上方；其餘角色首頁不變 */}
+      <PendingApprovals />
+
       {/*
         原型使用說明：客戶很容易把這個原型當成已上線的系統，
         故把「沒有後端／資料不共享／資料會重置」三件事直接寫在首頁，不能只寫在 README。
@@ -94,14 +98,21 @@ export function HomePage() {
           <div className="text-sm text-ink-body">
             <div className="font-semibold text-ink">這是流程原型（Prototype），不是已上線的系統</div>
             <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[13px]">
-              <li>畫面上所有客戶、廠商、商品、單據皆為<strong>模擬資料</strong>，與實際營運資料無關。</li>
+              <li>
+                畫面上所有客戶、廠商、商品、單據皆為<strong>模擬資料</strong>，與實際營運資料無關。
+              </li>
               <li>
                 沒有後端資料庫，您建立或修改的單據<strong>只存在您自己的瀏覽器分頁</strong>——
                 同事開同一個網址不會看到您建的單據，關閉分頁後也會回到預設展示資料。
               </li>
               <li>右上角「重置模擬資料」可隨時清除測試內容，回到初始狀態，請放心操作。</li>
-              <li>尚未實作登入與權限控管、真實 OCR 辨識、稽核異動比對、編輯鎖定與排程通知，這些屬於後端階段。</li>
-              <li>建議使用<strong>電腦瀏覽器</strong>操作，表單與明細表格較寬，手機版面會過於擁擠。</li>
+              <li>
+                登入與權限是<strong>流程示範</strong>——密碼不經驗證、權限只在瀏覽器內生效，不是真正的帳號安全機制。
+              </li>
+              <li>尚未實作真實 OCR 辨識、稽核異動比對、編輯鎖定與排程通知，這些屬於後端階段。</li>
+              <li>
+                建議使用<strong>電腦瀏覽器</strong>操作，表單與明細表格較寬，手機版面會過於擁擠。
+              </li>
             </ul>
           </div>
         </div>
