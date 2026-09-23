@@ -167,16 +167,17 @@ export function PackingNoticeDetailPage() {
   const fullyShipped = isPackingNoticeFullyShipped(notice, notice.id, shippingOrders)
   const locks = packingNoticeLocks(notice)
   // 拼接確認屬庫存配貨、不是編輯表1，故生管有此權限而其餘表1 動作仍唯讀（主文件決策17）
-  const splicingBlocked = permissions.blockedReason('表1', '確認拼接組合')
-  const canConfirmSplicing = !splicingBlocked
+  const canConfirmSplicing = permissions.can('表1', '確認拼接組合')
   const approvalState = packingNoticeApprovalState(notice)
   // 決策118：草稿 → 送簽 → 管理層簽核 → 生效。業務自己沒有生效權
   const canSubmit = notice.status === '草稿' && approvalState === '未送簽'
   const canApprove = notice.status === '草稿' && approvalState === '待簽核'
-  const submitBlocked = permissions.blockedReason('表1', '送簽')
+  const canSubmitNotice = permissions.can('表1', '送簽')
+  // 有沒有權限 → 決定按鈕出不出現；有權限之後才問職責分離 → 決定按不按得下去
+  const canApproveNotice = permissions.can('表1', '簽核')
+  const canRejectNotice = permissions.can('表1', '退回')
   const approveBlocked = permissions.blockedReason('表1', '簽核', notice.createdByAccountId)
-  const rejectBlocked = permissions.blockedReason('表1', '退回')
-  const editBlocked = permissions.blockedReason('表1', '編輯草稿')
+  const canEditNotice = permissions.can('表1', '編輯草稿')
 
   return (
     <div>
@@ -198,13 +199,13 @@ export function PackingNoticeDetailPage() {
                 <Lock className="h-3 w-3" /> 已凍結
               </span>
             )}
-            {editable && !editBlocked && (
+            {editable && canEditNotice && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/packing-notice/${notice.id}/edit`)}>
                 <Pencil className="mr-1 h-4 w-4" /> 編輯
               </Button>
             )}
             {/* 決策118：業務送簽 */}
-            {canSubmit && !submitBlocked && (
+            {canSubmit && canSubmitNotice && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
@@ -214,28 +215,31 @@ export function PackingNoticeDetailPage() {
                 <Send className="mr-1 h-4 w-4" /> 送簽
               </Button>
             )}
-            {/* 決策118：管理層簽核即生效；建單者不得自行簽核 */}
-            {canApprove && (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-brand hover:bg-brand-dark"
-                  disabled={approveMutation.isPending || Boolean(approveBlocked)}
-                  title={approveBlocked}
-                  onClick={() => approveMutation.mutate()}
-                >
-                  <CheckCircle2 className="mr-1 h-4 w-4" /> 簽核（即生效）
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-reject text-reject-foreground hover:bg-reject/90"
-                  disabled={rejectMutation.isPending || Boolean(rejectBlocked)}
-                  title={rejectBlocked}
-                  onClick={() => setRejectOpen(true)}
-                >
-                  <Undo2 className="mr-1 h-4 w-4" /> 退回
-                </Button>
-              </>
+            {/*
+              決策118：管理層簽核即生效。沒有簽核權的角色**整顆按鈕不出現**（權限規格決策44），
+              反灰只會讓人以為是時機未到而一直等；真正反灰的只有職責分離——
+              有權簽但這張是自己建的，此時要看得到按鈕與原因，否則會以為系統壞了
+            */}
+            {canApprove && canApproveNotice && (
+              <Button
+                size="sm"
+                className="bg-brand hover:bg-brand-dark"
+                disabled={approveMutation.isPending || Boolean(approveBlocked)}
+                title={approveBlocked}
+                onClick={() => approveMutation.mutate()}
+              >
+                <CheckCircle2 className="mr-1 h-4 w-4" /> 簽核（即生效）
+              </Button>
+            )}
+            {canApprove && canRejectNotice && (
+              <Button
+                size="sm"
+                className="bg-reject text-reject-foreground hover:bg-reject/90"
+                disabled={rejectMutation.isPending}
+                onClick={() => setRejectOpen(true)}
+              >
+                <Undo2 className="mr-1 h-4 w-4" /> 退回
+              </Button>
             )}
           </>
         }
@@ -659,8 +663,9 @@ export function PackingNoticeDetailPage() {
                             )}
                           </div>
                         )}
+                        {/* 這一列不是按鈕而是說明：建議還等著人處理，看的人得知道卡在誰身上 */}
                         {sg.status === '待確認' && !canConfirmSplicing && (
-                          <span className="text-xs text-muted-foreground">{splicingBlocked}</span>
+                          <span className="text-xs text-muted-foreground">待生管確認拼接組合</span>
                         )}
                       </TableCell>
                     </TableRow>

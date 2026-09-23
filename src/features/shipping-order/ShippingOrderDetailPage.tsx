@@ -228,20 +228,21 @@ export function ShippingOrderDetailPage() {
             {order.status === '已建立' && (
               <>
                 {/* 出貨完成會觸發扣庫存：僅生管可按，且不得為本單的建立者（權限規格第七章第 1 節） */}
-                {(() => {
-                  const blocked = permissions.blockedReason('表8', '改為出貨完成', order.createdByAccountId)
-                  return (
-                    <Button
-                      size="sm"
-                      className="bg-brand hover:bg-brand-dark"
-                      disabled={completeMutation.isPending || Boolean(blocked)}
-                      title={blocked}
-                      onClick={() => completeMutation.mutate()}
-                    >
-                      確認出貨完成
-                    </Button>
-                  )
-                })()}
+                {permissions.can('表8', '改為出貨完成') &&
+                  (() => {
+                    const blocked = permissions.blockedReason('表8', '改為出貨完成', order.createdByAccountId)
+                    return (
+                      <Button
+                        size="sm"
+                        className="bg-brand hover:bg-brand-dark"
+                        disabled={completeMutation.isPending || Boolean(blocked)}
+                        title={blocked}
+                        onClick={() => completeMutation.mutate()}
+                      >
+                        確認出貨完成
+                      </Button>
+                    )
+                  })()}
                 {permissions.can('表8', '退回') && (
                   <Button
                     size="sm"

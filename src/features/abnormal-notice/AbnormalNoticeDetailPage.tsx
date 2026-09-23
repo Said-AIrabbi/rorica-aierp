@@ -248,20 +248,25 @@ export function AbnormalNoticeDetailPage() {
             {/* 管理層批准／退回：核決在前、執行在後 */}
             {notice.status === '受理中' && !notice.approvedAt && (
               <>
-                {(() => {
-                  const blocked = permissions.blockedReason('表9', '批准', notice.createdByAccountId)
-                  return (
-                    <Button
-                      size="sm"
-                      className="bg-brand hover:bg-brand-dark"
-                      disabled={approveMutation.isPending || Boolean(blocked)}
-                      title={blocked}
-                      onClick={() => approveMutation.mutate()}
-                    >
-                      管理層批准
-                    </Button>
-                  )
-                })()}
+                {/*
+                  沒有批准權的角色整顆按鈕不出現（權限規格決策44）；反灰只留給職責分離——
+                  有權批准但這張是自己建的，那時要看得到按鈕與原因
+                */}
+                {permissions.can('表9', '批准') &&
+                  (() => {
+                    const blocked = permissions.blockedReason('表9', '批准', notice.createdByAccountId)
+                    return (
+                      <Button
+                        size="sm"
+                        className="bg-brand hover:bg-brand-dark"
+                        disabled={approveMutation.isPending || Boolean(blocked)}
+                        title={blocked}
+                        onClick={() => approveMutation.mutate()}
+                      >
+                        管理層批准
+                      </Button>
+                    )
+                  })()}
                 {permissions.can('表9', '退回') && (
                   <Button
                     size="sm"
