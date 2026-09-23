@@ -317,9 +317,27 @@ let settings: PermissionSettings =
 let auditLog: PermissionAuditEntry[] =
   typeof window === 'undefined' ? [] : loadJson<PermissionAuditEntry[]>(AUDIT_KEY, [])
 
+/**
+ * 設定變更的訂閱：每次存檔版本號加一並通知訂閱者，
+ * 讓畫面（側欄、按鈕、唯讀提示）與資料查詢在管理員改完當下就換成新設定，不必重新登入。
+ */
+let settingsVersion = 0
+const settingsListeners = new Set<() => void>()
+
+export function subscribePermissionSettings(listener: () => void): () => void {
+  settingsListeners.add(listener)
+  return () => settingsListeners.delete(listener)
+}
+
+export function permissionSettingsVersion(): number {
+  return settingsVersion
+}
+
 function persist(): void {
   saveJson(SETTINGS_KEY, settings)
   saveJson(AUDIT_KEY, auditLog)
+  settingsVersion += 1
+  settingsListeners.forEach((listener) => listener())
 }
 
 function writeAudit(by: Account, description: string): void {

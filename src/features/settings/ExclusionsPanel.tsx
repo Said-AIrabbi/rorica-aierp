@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { UserMinus } from 'lucide-react'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/mocks/api'
 import { setAccountExclusions } from '@/mocks/mutations'
@@ -28,7 +26,7 @@ import type { Account } from '@/types'
  * **只能收緊、不能放寬**：本頁只列出該帳號的角色「本來就給了」的項目，
  * 沒給的根本不出現——要放寬就去加角色，不能從這裡開後門。
  */
-export function ExclusionsPage() {
+export function ExclusionsPanel() {
   const queryClient = useQueryClient()
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: api.accounts })
   const [selectedId, setSelectedId] = useState<string>()
@@ -66,18 +64,7 @@ export function ExclusionsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="權限設定 — 個別排除"
-        description="針對單一帳號勾掉特定動作或欄位群組。排除永遠勝過角色聯集。"
-        actions={
-          <Link
-            to="/settings/permissions"
-            className="inline-flex items-center rounded-md border border-border px-2.5 py-1.5 text-sm text-ink-body hover:bg-muted"
-          >
-            角色矩陣（上一頁）
-          </Link>
-        }
-      />
+      <p className="mb-3 text-sm text-muted-foreground">針對單一帳號勾掉特定動作或欄位群組。排除永遠勝過角色聯集。</p>
 
       <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
         <p className="font-medium text-ink-body">
@@ -114,7 +101,9 @@ export function ExclusionsPage() {
                 >
                   <span>
                     <span className="font-mono text-xs">{a.code}</span>　{a.name}
-                    <span className={`block text-xs ${a.id === selected.id ? 'text-white/80' : 'text-muted-foreground'}`}>
+                    <span
+                      className={`block text-xs ${a.id === selected.id ? 'text-white/80' : 'text-muted-foreground'}`}
+                    >
                       {a.roles.join('、')}
                       {a.status === '停用' && '（已停用）'}
                     </span>
@@ -146,9 +135,7 @@ export function ExclusionsPage() {
               <div className="space-y-3">
                 {DOC_KEYS.map((doc) => {
                   // 只列出這個帳號的角色本來就給了的動作
-                  const granted = DOC_ACTIONS[doc].filter((action) =>
-                    canDoActionByRoles(selected.roles, doc, action),
-                  )
+                  const granted = DOC_ACTIONS[doc].filter((action) => canDoActionByRoles(selected.roles, doc, action))
                   if (granted.length === 0) return null
                   return (
                     <div key={doc}>

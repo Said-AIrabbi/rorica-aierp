@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { accounts } from '@/mocks/data'
 import { getCurrentAccountId, setCurrentAccountId, signIn, signOut } from '@/mocks/session'
@@ -11,7 +11,9 @@ import {
   canViewDoc,
   canViewMaster,
   docAccess,
+  permissionSettingsVersion,
   separationViolation,
+  subscribePermissionSettings,
 } from './permissions'
 import { CurrentAccountContext, type CurrentAccountValue } from './current-account-context'
 
@@ -53,6 +55,12 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
 
   const account = accountId === null ? undefined : accounts.find((a) => a.id === accountId)
 
+  // 管理員調整權限設定後：查詢介面重建（側欄、按鈕即時更新），已取回的資料重取（欄位可見性可能變了）
+  const settingsVersion = useSyncExternalStore(subscribePermissionSettings, permissionSettingsVersion)
+  useEffect(() => {
+    if (settingsVersion > 0) queryClient.invalidateQueries()
+  }, [settingsVersion, queryClient])
+
   const value = useMemo<CurrentAccountValue | null>(() => {
     if (!account) return null
     return {
@@ -73,7 +81,9 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
       canViewMasterData: (master) => canViewMaster(account, master),
       canMaintain: (master) => canMaintainMaster(account, master),
     }
-  }, [account, switchTo, handleSignOut])
+    // settingsVersion 不在函式內使用，但變了就要產生新物件，下游才會重繪
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account, switchTo, handleSignOut, settingsVersion])
 
   // 未登入（或帳號已被刪除）一律回登入頁
   if (!value) return <LoginPage onSignIn={handleSignIn} />

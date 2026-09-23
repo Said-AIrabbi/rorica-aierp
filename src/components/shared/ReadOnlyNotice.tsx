@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { Eye } from 'lucide-react'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DOC_LABELS, type DocAction, type DocKey } from '@/lib/permissions'
@@ -44,6 +44,37 @@ export function RequireAction({
       你的角色（{account.roles.join('、')}）沒有{DOC_LABELS[doc]}的「{action}」權限。
       <Link to={backTo} className="ml-2 text-brand-dark underline">
         返回列表
+      </Link>
+    </div>
+  )
+}
+
+/**
+ * 路由層的檢視保護：該角色對這張單據為「無權限」時，整組頁面（列表、詳情、新增）都不渲染。
+ * 側欄已經不顯示入口，但網址直接打進來仍要擋——否則只是看到一張空列表，像是壞掉而不是沒權限。
+ */
+export function RequireView({ doc }: { doc: DocKey }) {
+  const { account, canView } = useCurrentAccount()
+  if (canView(doc)) return <Outlet />
+  return (
+    <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm text-ink-body">
+      你的角色（{account.roles.join('、')}）沒有{DOC_LABELS[doc]}的檢視權限。
+      <Link to="/" className="ml-2 text-brand-dark underline">
+        返回首頁
+      </Link>
+    </div>
+  )
+}
+
+/** 帳戶主檔（含角色權限、個別排除分頁）僅管理員可進入（權限規格第七章第 1 節：帳號管理僅管理員） */
+export function RequireAdmin() {
+  const { account } = useCurrentAccount()
+  if (account.roles.includes('管理員')) return <Outlet />
+  return (
+    <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm text-ink-body">
+      帳戶主檔與權限設定僅管理員可進入。
+      <Link to="/" className="ml-2 text-brand-dark underline">
+        返回首頁
       </Link>
     </div>
   )

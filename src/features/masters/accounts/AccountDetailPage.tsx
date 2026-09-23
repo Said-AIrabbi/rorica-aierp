@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
 import { createAccount, deleteAccount, masterDefaults, updateAccount, type AccountInput } from '@/mocks/mutations'
-import { ROLE_PERMISSION_MATRIX, type Account, type AccountRole } from '@/types'
+import type { Account } from '@/types'
+import { ACCOUNT_ROLES } from '@/lib/permissions'
 
-const ACCOUNT_ROLES = Object.keys(ROLE_PERMISSION_MATRIX) as AccountRole[]
 
 function toInput(account: Account): AccountInput {
   const { id: _id, ...rest } = account

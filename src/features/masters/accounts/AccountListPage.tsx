@@ -1,22 +1,34 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RoleMatrixPanel } from '@/features/settings/RoleMatrixPanel'
+import { ExclusionsPanel } from '@/features/settings/ExclusionsPanel'
 import { api } from '@/mocks/api'
-import type { Account, PermissionField } from '@/types'
-import { ROLE_PERMISSION_MATRIX } from '@/types'
+import type { Account } from '@/types'
 
-const PERMISSION_FIELDS: PermissionField[] = ['訂單基本資訊', '售價', '進價', '客戶聯絡資訊', '帳號管理']
+const TABS = ['accounts', 'roles', 'exclusions'] as const
+type Tab = (typeof TABS)[number]
 
+/**
+ * 帳戶主檔：帳號清單與權限設定集中在同一處，分三個分頁。
+ *   帳號清單 — 誰有帳號、掛哪些角色
+ *   角色權限 — 每個角色看得到哪些單據、可做哪些動作、看得到哪些欄位群組
+ *   個別排除 — 針對單一帳號收緊（排除永遠勝過角色聯集）
+ * 角色權限與個別排除仍分成兩個分頁（權限規格第二章「為何分兩頁」）：放在同一張表上，
+ * 取消勾選對單角色的人是禁止、對多角色的人卻無效，管理員會設了以為有效。
+ * 分頁記在網址（?tab=roles），重新整理或分享連結都停在同一頁。
+ */
 export function AccountListPage() {
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = TABS.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'accounts'
   const { data = [], isLoading } = useQuery({ queryKey: ['accounts'], queryFn: api.accounts })
 
   const columns = useMemo<ColumnDef<Account, unknown>[]>(
@@ -44,7 +56,10 @@ export function AccountListPage() {
         id: 'status',
         header: '帳戶狀態',
         cell: ({ row }) => (
-          <Badge variant={row.original.status === '啟用' ? 'default' : 'outline'} className={row.original.status === '啟用' ? 'bg-brand hover:bg-brand' : ''}>
+          <Badge
+            variant={row.original.status === '啟用' ? 'default' : 'outline'}
+            className={row.original.status === '啟用' ? 'bg-brand hover:bg-brand' : ''}
+          >
             {row.original.status}
           </Badge>
         ),
@@ -57,50 +72,41 @@ export function AccountListPage() {
     <div>
       <PageHeader
         title="帳戶主檔"
-        description="點選任一列可開啟編輯視窗。角色（生管／業務／倉管／財務／管理層／管理員，多對多）搭配欄位層級權限矩陣，示範架構，細節待客戶逐一核對確認。"
+        description="帳號清單與權限設定。角色（業務／生管／倉管／財務／管理層／管理員）可多選，帳號的最終權限＝所有角色的聯集－個別排除。"
         actions={
-          <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/masters/accounts/new')}>
-            <Plus className="mr-1 h-4 w-4" /> 新增帳號
-          </Button>
+          tab === 'accounts' && (
+            <Button className="bg-brand hover:bg-brand-dark" onClick={() => navigate('/masters/accounts/new')}>
+              <Plus className="mr-1 h-4 w-4" /> 新增帳號
+            </Button>
+          )
         }
       />
-      <DataTable
-        columns={columns}
-        data={data}
-        searchPlaceholder="搜尋姓名、代碼..."
-        onRowClick={(row) => navigate(`/masters/accounts/${row.id}`)}
-        emptyText={isLoading ? '載入中...' : '目前沒有帳戶資料'}
-      />
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-base">欄位層級權限矩陣（示範架構）</CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          <div className="overflow-x-auto">
-            <Table className="min-w-[44rem]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>角色</TableHead>
-                  {PERMISSION_FIELDS.map((field) => (
-                    <TableHead key={field}>{field}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(Object.keys(ROLE_PERMISSION_MATRIX) as Array<keyof typeof ROLE_PERMISSION_MATRIX>).map((role) => (
-                  <TableRow key={role}>
-                    <TableCell className="font-medium">{role}</TableCell>
-                    {PERMISSION_FIELDS.map((field) => (
-                      <TableCell key={field}>{ROLE_PERMISSION_MATRIX[role][field]}</TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={tab} onValueChange={(value) => setParams(value === 'accounts' ? {} : { tab: value })}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="accounts">帳號清單</TabsTrigger>
+          <TabsTrigger value="roles">角色權限</TabsTrigger>
+          <TabsTrigger value="exclusions">個別排除</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="accounts">
+          <DataTable
+            columns={columns}
+            data={data}
+            searchPlaceholder="搜尋姓名、代碼..."
+            onRowClick={(row) => navigate(`/masters/accounts/${row.id}`)}
+            emptyText={isLoading ? '載入中...' : '目前沒有帳戶資料'}
+          />
+        </TabsContent>
+
+        <TabsContent value="roles">
+          <RoleMatrixPanel />
+        </TabsContent>
+
+        <TabsContent value="exclusions">
+          <ExclusionsPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
