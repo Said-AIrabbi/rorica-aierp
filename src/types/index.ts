@@ -1123,6 +1123,11 @@ export interface ProformaInvoice {
   /** 報價有效期限：建單日 +14 天，逾期價格作廢但單據保留、可複製（決策1） */
   quoteValidUntil: string
   approvedAt?: string
+  /**
+   * 歷次退回（比照表1、表9）：管理層不批准時把 PI 打回草稿，原因必填。
+   * 不覆蓋前次——同一張 PI 反覆被退回本身就是訊號。
+   */
+  rejections?: DocumentRejection[]
   signedBackAt?: string
   /** 客戶簽回附件：非必填、不作為轉表1 的卡控（決策48）；原型僅記檔名 */
   signedBackFileName?: string

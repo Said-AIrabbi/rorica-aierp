@@ -169,8 +169,8 @@ const DEFAULT_DOC_MATRIX: Record<DocKey, Record<AccountRole, DocPermission>> = {
     生管: READ,
     倉管: NONE,
     財務: READ,
-    管理層: can('批准'),
-    管理員: can('建立', '編輯草稿', '送簽', '批准', '結案'),
+    管理層: can('批准', '退回'),
+    管理員: can('建立', '編輯草稿', '送簽', '批准', '退回', '結案'),
   },
   表1: {
     業務: can('建立', '編輯草稿', '送簽'),

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { RejectDialog } from '@/components/shared/RejectDialog'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -14,13 +15,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getProduct } from '@/mocks/data'
+import { getAccount, getProduct } from '@/mocks/data'
 import {
   applyReplacementPi,
   approveProformaInvoice,
   convertPiToPackingNotices,
   copyProformaInvoiceAsNew,
   markPiSignedBack,
+  rejectProformaInvoice,
   resolvePiManualHandling,
   submitProformaInvoice,
   voidAndReopenProformaInvoice,
@@ -52,6 +54,7 @@ export function PiDetailPage() {
   const { can } = useCurrentAccount()
   const piCan = (action: Parameters<typeof can>[1]) => can('PI', action)
   const [signedFileName, setSignedFileName] = useState('')
+  const [rejectOpen, setRejectOpen] = useState(false)
   const { data = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   // 下游三張單：用來預告「作廢並重開」會不會落入規則3（畫面提示，判定本身在資料層）
@@ -162,6 +165,16 @@ export function PiDetailPage() {
                 }
               >
                 {status === '已逾期' ? '重新報價並批准' : '管理層批准'}
+              </Button>
+            )}
+            {/* 批准的另一半：不批准就得退回，否則單子只能卡在待批准（權限規格決策50） */}
+            {status === '待批准' && !onHold && piCan('退回') && (
+              <Button
+                size="sm"
+                className="bg-reject text-reject-foreground hover:bg-reject/90"
+                onClick={() => setRejectOpen(true)}
+              >
+                <Undo2 className="mr-1 h-4 w-4" /> 退回
               </Button>
             )}
             {canSignBackPi(pi) && piCan('編輯草稿') && (
@@ -285,6 +298,32 @@ export function PiDetailPage() {
       />
 
       <ReadOnlyNotice doc="PI" />
+
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title={`退回 PI ${pi.id}`}
+        description="退回後本單回到草稿，業務可修改後重新送出批准。報價效期不重新起算——退回不是重新報價。"
+        pending={action.isPending}
+        onConfirm={(reason) => {
+          setRejectOpen(false)
+          run(() => rejectProformaInvoice(pi.id, reason), '已退回草稿，業務可修改後重新送出')
+        }}
+      />
+
+      {/* 歷次退回：不覆蓋前次，反覆退回本身即為異常訊號（比照表1） */}
+      {pi.rejections && pi.rejections.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+          <p className="font-medium text-ink">退回紀錄（{pi.rejections.length} 次）</p>
+          <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+            {pi.rejections.map((r, i) => (
+              <li key={i}>
+                {formatDate(r.at)}　{getAccount(r.byAccountId)?.name ?? r.byAccountId}：{r.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="space-y-4">
         {!onHold && status === '已轉換' && dispatchedDownstream.length > 0 && (

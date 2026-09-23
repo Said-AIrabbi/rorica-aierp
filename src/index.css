@@ -33,6 +33,9 @@
   --success-foreground: #ffffff;
   --warning: #b8863b;
   --warning-foreground: #ffffff;
+  /* 退回：核決者把單子打回上一手的動作，全系統統一用這個色（2026/09/23 皇加指定） */
+  --reject: #b55650;
+  --reject-foreground: #ffffff;
   --border: #e3e5dc;
   --input: #e3e5dc;
   --ring: var(--brand);
@@ -61,6 +64,8 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-reject: var(--reject);
+  --color-reject-foreground: var(--reject-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

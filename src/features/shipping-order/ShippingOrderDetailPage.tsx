@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { RejectDialog } from '@/components/shared/RejectDialog'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -55,6 +56,7 @@ export function ShippingOrderDetailPage() {
   const [boxNoDraft, setBoxNoDraft] = useState<Record<number, string>>({})
   /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
   const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '' })
+  const [rejectOpen, setRejectOpen] = useState(false)
   useEffect(() => {
     if (order) setItemDraft(order.items)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -242,16 +244,12 @@ export function ShippingOrderDetailPage() {
                 })()}
                 {permissions.can('表8', '退回') && (
                   <Button
-                    variant="outline"
                     size="sm"
+                    className="bg-reject text-reject-foreground hover:bg-reject/90"
                     disabled={rejectMutation.isPending}
-                    onClick={() => {
-                      // 退回原因必填（權限規格決策37）
-                      const reason = window.prompt('退回原因（必填）：')
-                      if (reason?.trim()) rejectMutation.mutate(reason)
-                    }}
+                    onClick={() => setRejectOpen(true)}
                   >
-                    退回草稿
+                    <Undo2 className="mr-1 h-4 w-4" /> 退回
                   </Button>
                 )}
               </>
@@ -261,6 +259,18 @@ export function ShippingOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表8" />
+
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title={`退回 ${order.id}`}
+        description="退回後本單回到草稿，回到業務手上可編輯。已確認出貨完成者不可退回——扣庫存已經發生，該走表9 異常通知單。"
+        pending={rejectMutation.isPending}
+        onConfirm={(reason) => {
+          setRejectOpen(false)
+          rejectMutation.mutate(reason)
+        }}
+      />
 
       {/* 歷次退回（決策37）：不覆蓋前次、不設次數上限；反覆退回本身即為異常訊號 */}
       {order.rejections && order.rejections.length > 0 && (

@@ -24,6 +24,7 @@ import {
 } from '@/mocks/mutations'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { CustomSplicingDialog } from './CustomSplicingDialog'
+import { RejectDialog } from '@/components/shared/RejectDialog'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
@@ -93,6 +94,7 @@ export function PackingNoticeDetailPage() {
   const permissions = useCurrentAccount()
   // 開著自訂拼接對話框的那一筆**表1 明細**（兩個入口共用，故以明細為鍵）
   const [customSplicingItemId, setCustomSplicingItemId] = useState<string | null>(null)
+  const [rejectOpen, setRejectOpen] = useState(false)
 
   const customSplicingMutation = useMutation({
     mutationFn: ({ itemId, rollCodes, note }: { itemId: string; rollCodes: string[]; note: string }) =>
@@ -225,22 +227,30 @@ export function PackingNoticeDetailPage() {
                   <CheckCircle2 className="mr-1 h-4 w-4" /> 簽核（即生效）
                 </Button>
                 <Button
-                  variant="outline"
                   size="sm"
+                  className="bg-reject text-reject-foreground hover:bg-reject/90"
                   disabled={rejectMutation.isPending || Boolean(rejectBlocked)}
                   title={rejectBlocked}
-                  onClick={() => {
-                    // 退回原因必填——沒有原因，業務無從修正（權限規格決策37）
-                    const reason = window.prompt('退回原因（必填）：')
-                    if (reason?.trim()) rejectMutation.mutate(reason)
-                  }}
+                  onClick={() => setRejectOpen(true)}
                 >
-                  <Undo2 className="mr-1 h-4 w-4" /> 退回草稿
+                  <Undo2 className="mr-1 h-4 w-4" /> 退回
                 </Button>
               </>
             )}
           </>
         }
+      />
+
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title={`退回 ${notice.id}`}
+        description="退回後本單回到草稿，業務可修改後重新送簽。庫存預留不釋放——退回只是把工作丟回去改，貨還是要卡著。"
+        pending={rejectMutation.isPending}
+        onConfirm={(reason) => {
+          setRejectOpen(false)
+          rejectMutation.mutate(reason)
+        }}
       />
 
       {/*

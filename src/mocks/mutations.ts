@@ -3708,6 +3708,35 @@ export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
   return delay(updated)
 }
 
+/**
+ * PI 退回（2026/09/23，權限規格決策50）：管理層不批准時打回草稿，交還業務修改。
+ *
+ * 比照表1 與表9：原因必填、歷次不覆蓋、不設次數上限。
+ * 效期不重新起算——退回不是重新報價，14 天仍從建單日算（決策1）；
+ * 真要延長效期得走「已逾期後重新報價並批准」那條路，才留得下重新報價的事實。
+ */
+export function rejectProformaInvoice(id: string, reason: string): Promise<ProformaInvoice> {
+  const account = requireCurrentAccount()
+  assertCanAct(account, 'PI', '退回')
+  const idx = piIndex(id)
+  const current = proformaInvoices[idx]
+  assertNotOnManualHold(current)
+  if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
+  // 僅「待批准」可退回。「已逾期」看似也該退，但它是**批准之後**等客戶簽回才過期的，
+  // 單子早已對外發出，打回草稿等於當作沒報過價——那邊的對應動作是既有的「作廢」
+  if (effectivePiStatus(current) !== '待批准') throw new Error('僅待批准的 PI 可退回草稿')
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '草稿',
+    rejections: [
+      ...(current.rejections ?? []),
+      { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() },
+    ],
+  }
+  proformaInvoices[idx] = updated
+  return delay(updated)
+}
+
 /** 客戶回簽：待簽回 → 已簽回。附件非必填，不作為卡控（決策48） */
 export function markPiSignedBack(id: string, fileName?: string): Promise<ProformaInvoice> {
   assertCanAct(getCurrentAccount(), 'PI', '編輯草稿')

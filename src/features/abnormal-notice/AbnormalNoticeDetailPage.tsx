@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Plus, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
+import { RejectDialog } from '@/components/shared/RejectDialog'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -60,6 +61,7 @@ export function AbnormalNoticeDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notice?.id, notice?.handling, notice?.productionReply])
 
+  const [rejectOpen, setRejectOpen] = useState(false)
   const [returnRollCode, setReturnRollCode] = useState('')
   const [returnYard, setReturnYard] = useState('')
   const [batchSelection, setBatchSelection] = useState<string[]>([])
@@ -262,15 +264,12 @@ export function AbnormalNoticeDetailPage() {
                 })()}
                 {permissions.can('表9', '退回') && (
                   <Button
-                    variant="outline"
                     size="sm"
+                    className="bg-reject text-reject-foreground hover:bg-reject/90"
                     disabled={rejectMutation.isPending}
-                    onClick={() => {
-                      const reason = window.prompt('退回原因（必填）：')
-                      if (reason?.trim()) rejectMutation.mutate(reason)
-                    }}
+                    onClick={() => setRejectOpen(true)}
                   >
-                    退回業務
+                    <Undo2 className="mr-1 h-4 w-4" /> 退回
                   </Button>
                 )}
               </>
@@ -324,6 +323,18 @@ export function AbnormalNoticeDetailPage() {
       )}
 
       <ReadOnlyNotice doc="表9" />
+
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title={`退回 ${notice.id}`}
+        description="退回後本單仍停在「受理中」，不進入處理分流，由業務補件後再送批准。"
+        pending={rejectMutation.isPending}
+        onConfirm={(reason) => {
+          setRejectOpen(false)
+          rejectMutation.mutate(reason)
+        }}
+      />
 
       {/* 歷次退回（決策37）：不覆蓋前次、不設次數上限 */}
       {notice.rejections && notice.rejections.length > 0 && (
