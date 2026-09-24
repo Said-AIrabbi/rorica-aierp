@@ -2,7 +2,7 @@ import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaI
 import { PackagingPrintSection } from '@/components/print/PackagingPrintSection'
 import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/units'
+import { formatNumber, sumLineAmounts } from '@/lib/units'
 import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import { basisQtyColumns } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
@@ -48,7 +48,8 @@ const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] =>
  */
 export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessingOrder }) {
   const vendor = getVendor(order.vendorId)
-  const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
+  // 看不到單價的角色印出來是「-」，不是 0（決策16、29）
+  const amount = sumLineAmounts(order.items, (i) => i.unitPrice, (i) => i.yard)
   // 數量以來源表1 的建單基準為主值：加工廠看到的數字要跟客戶下單的單位一致
   const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
 
@@ -85,7 +86,7 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
             formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0), 1),
             null,
             null,
-            amount > 0 ? formatNumber(amount, 0) : null,
+            amount ? formatNumber(amount, 0) : null,
             null,
           ]}
         />

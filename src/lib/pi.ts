@@ -72,7 +72,13 @@ export function ntdToCurrency(ntd: number, currency: PiCurrency): number {
 }
 
 /** PI 總金額：單價 × 數量逐列加總（決策13） */
-export function piTotalAmount(pi: ProformaInvoice): number {
+/**
+ * PI 總金額。看不到售價的角色（生管、倉管）拿到的明細**沒有 unitPrice 這個欄位**
+ * （欄位可見性會直接刪掉），此時回傳 undefined 而不是 NaN——
+ * 算不出來要講「算不出來」，不是丟一個會在畫面上變成「NaN」的數字出去。
+ */
+export function piTotalAmount(pi: ProformaInvoice): number | undefined {
+  if (pi.items.some((item) => item.unitPrice == null)) return undefined
   return pi.items.reduce((sum, item) => sum + item.unitPrice * item.yard, 0)
 }
 

@@ -1,7 +1,7 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
 import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/units'
+import { formatNumber, sumLineAmounts } from '@/lib/units'
 import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import { basisQtyColumns } from '@/components/print/basisColumns'
 import type { QtyBasis } from '@/components/shared/BasisQty'
@@ -53,7 +53,8 @@ const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOr
 export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
   const vendor = getVendor(order.vendorId)
   const dyeVendor = order.dyeVendorId ? getVendor(order.dyeVendorId) : undefined
-  const amount = order.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.yard, 0)
+  // 看不到單價的角色印出來是「-」，不是 0（決策16、29）
+  const amount = sumLineAmounts(order.items, (i) => i.unitPrice, (i) => i.yard)
   const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
   // 胚布單：顏色未定、包裝屬成品規格，兩欄都不印
   const columns = buildColumns(itemUnit, order.type === '胚布')
@@ -95,7 +96,7 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
             if (i === qtyIndex + 1) {
               return formatNumber(order.items.reduce((s, item) => s + (itemUnit === 'Yard' ? item.meter : item.yard), 0), 1)
             }
-            if (col.header === '金額') return amount > 0 ? formatNumber(amount, 0) : null
+            if (col.header === '金額') return amount ? formatNumber(amount, 0) : null
             return null
           })}
         />

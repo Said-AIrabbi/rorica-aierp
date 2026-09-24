@@ -27,7 +27,7 @@ import {
 } from '@/mocks/mutations'
 import dayjs from 'dayjs'
 import { formatDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/units'
+import { formatNumber, sumLineAmounts } from '@/lib/units'
 import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import type { SecondaryProcessingItem } from '@/types'
 
@@ -129,7 +129,8 @@ export function SecondaryProcessingDetailPage() {
       dueDate: order.dueDate,
       note: order.note,
     })
-  const totalAmount = itemDraft.reduce((sum, item) => sum + (item.unitPrice ?? 0) * item.yard, 0)
+  // 看不到加工費的角色顯示「-」，不是 0（決策16）
+  const totalAmount = sumLineAmounts(itemDraft, (i) => i.unitPrice, (i) => i.yard)
 
   const updateItem = (index: number, patch: Partial<SecondaryProcessingItem>) =>
     setItemDraft((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
