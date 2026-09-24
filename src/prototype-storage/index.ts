@@ -133,3 +133,43 @@ export function installFlushOnLeave(): void {
     navigator.sendBeacon?.(endpoint(), new Blob([payload], { type: 'application/json' }))
   })
 }
+
+// ---------- 讀取：定期把別人的異動拉回來 ----------
+
+/**
+ * 通知要能到達「別人」，畫面就得知道伺服器上已經變了。
+ * 這裡不做長連線（原型沒有後端行程可以推播），改成定期問一次版本號：
+ * 版本沒變就什麼都不做，變了才把整包資料換掉。
+ *
+ * 三種情況跳過這一輪，避免把使用者自己還沒送出的東西洗掉：
+ *   ① 已進入衝突凍結 ② 自己正在寫或還有待寫 ③ 分頁在背景（看不到的畫面不需要即時）
+ */
+const POLL_MS = 15000
+
+let applyRemote: ((payload: unknown) => void) | undefined
+
+/** 由 boot.ts 註冊「拉回來的資料要怎麼套用」，這個模組一樣不碰資料層的細節 */
+export function registerRemoteApply(fn: (payload: unknown) => void): void {
+  applyRemote = fn
+}
+
+export function startRemotePolling(): void {
+  if (!isRemoteStorage() || typeof window === 'undefined') return
+  window.setInterval(() => {
+    if (conflicted || inFlight || saveTimer || pendingAfterFlight) return
+    if (document.hidden) return
+    void (async () => {
+      try {
+        const res = await fetch(endpoint(), { headers: { Accept: 'application/json' } })
+        if (!res.ok) return
+        const body = (await res.json()) as { version: number; snapshot: unknown | null }
+        // 只有伺服器比我們新才套用；相等代表最後一次寫入就是自己送的
+        if (body.version <= baseVersion || !body.snapshot) return
+        baseVersion = body.version
+        applyRemote?.(body.snapshot)
+      } catch {
+        // 網路暫時不通：下一輪再試，不打擾使用者
+      }
+    })()
+  }, POLL_MS)
+}

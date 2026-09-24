@@ -8,6 +8,7 @@ import { buildSecondaryProcessingPackaging, defaultRollYard } from '@/lib/workfl
 import { PI_PAYMENT_TERM_TEMPLATES, piQuoteValidUntil } from '@/lib/pi'
 import { hexToCmyk, labToHex } from '@/lib/digital-color'
 import { PRODUCT_CATALOG } from './product-catalog'
+import type { DocumentEvent } from './document-events'
 import type {
   AbnormalNotice,
   Account,
@@ -1225,6 +1226,15 @@ batchDefectLabels.forEach((label) => {
   }
 })
 
+/**
+ * 單據異動通知：全員共用同一份清單（見 document-events.ts）。
+ * 種子資料不預先塞通知——開站第一眼就有一串「別人剛改了什麼」會讓人以為真有人在線上操作。
+ */
+export const documentEvents: DocumentEvent[] = []
+
+/** 每個帳號讀到哪個時間點（ISO）。未列入者＝從未讀過 */
+export const documentEventReads: Record<string, string> = {}
+
 // 版號隨資料結構調整遞增：舊快照的欄位已不相容（如產品編號改制），沿用會讓畫面顯示舊資料
 const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v2'
 
@@ -1245,6 +1255,9 @@ export interface SessionSnapshot {
   products: Product[]
   customers: Customer[]
   vendors: Vendor[]
+  /** 單據異動通知與各帳號的已讀時間點，一併留存，否則換台裝置就看不到同事做了什麼 */
+  documentEvents: DocumentEvent[]
+  documentEventReads: Record<string, string>
 }
 
 /**
@@ -1268,6 +1281,8 @@ export function buildSessionSnapshot(): SessionSnapshot {
     products,
     customers,
     vendors,
+    documentEvents,
+    documentEventReads,
   }
 }
 
@@ -1293,6 +1308,12 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   if (snapshot.products) products.splice(0, products.length, ...snapshot.products)
   if (snapshot.customers) customers.splice(0, customers.length, ...snapshot.customers)
   if (snapshot.vendors) vendors.splice(0, vendors.length, ...snapshot.vendors)
+  // 通知為後續新增的快照欄位，舊快照沒有時視為尚無通知
+  if (snapshot.documentEvents) documentEvents.splice(0, documentEvents.length, ...snapshot.documentEvents)
+  if (snapshot.documentEventReads) {
+    for (const key of Object.keys(documentEventReads)) delete documentEventReads[key]
+    Object.assign(documentEventReads, snapshot.documentEventReads)
+  }
 }
 
 /**

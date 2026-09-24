@@ -7,7 +7,7 @@ import { CurrentAccountProvider } from '@/lib/current-account'
 import { HashRouter } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import App from './App.tsx'
-import { initPrototypeStorage } from '@/prototype-storage/boot'
+import { initPrototypeStorage, onRemoteSnapshotApplied } from '@/prototype-storage/boot'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -22,6 +22,10 @@ const queryClient = new QueryClient({
 // 遠端模式（Vercel 展示環境）要先把伺服器上的資料讀回來再開畫面，
 // 否則使用者會先看到一瞬間的種子資料再被覆蓋。本機模式（GitHub Pages）此呼叫立即返回。
 await initPrototypeStorage()
+
+// 輪詢到同事的異動後，記憶體裡的資料陣列已被整包換掉，
+// React Query 手上那份快取卻還是舊的——一律作廢，畫面才會跟著更新（通知也是這樣送到的）。
+onRemoteSnapshotApplied(() => void queryClient.invalidateQueries())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

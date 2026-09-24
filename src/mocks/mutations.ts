@@ -33,6 +33,7 @@ import {
 } from '@/lib/permissions'
 import { validateDigitalColor } from '@/lib/digital-color'
 import { getCurrentAccount, requireCurrentAccount } from './session'
+import { markDocumentEventsRead, recordDocumentChanges } from './document-events'
 import type {
   DigitalColor,
   AbnormalHandling,
@@ -91,8 +92,20 @@ import {
  * 讓使用者可連貫測試表1→表8整條流程且重新整理頁面不掉資料，分頁關閉後則自動清除、不污染預設模擬資料。
  */
 function delay<T>(value: T, ms = 300): Promise<T> {
+  // 先比對異動、再存檔：通知本身也是快照的一部分，順序反過來會慢一拍才同步出去
+  recordDocumentChanges()
   persistSessionSnapshot()
   return new Promise((resolve) => setTimeout(() => resolve(value), ms))
+}
+
+/**
+ * 把通知標成已讀（記錄到目前帳號的已讀時間點）。
+ * 走 mutation 而非純前端狀態，是因為已讀要跟著資料走——換一台裝置不該又看到同一批紅點。
+ */
+export function markNotificationsRead(): Promise<void> {
+  const account = requireCurrentAccount()
+  markDocumentEventsRead(account.id)
+  return delay(undefined, 0)
 }
 
 function pad(n: number, len = 3) {

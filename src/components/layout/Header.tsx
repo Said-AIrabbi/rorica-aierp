@@ -1,6 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { Bell, Download, LogOut, Menu, UserCog } from 'lucide-react'
+import { Download, LogOut, Menu, UserCog } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { api } from '@/mocks/api'
-import { buildNotifications } from '@/lib/notifications'
+import { NotificationBell } from './NotificationBell'
 import { accounts, buildSessionSnapshot } from '@/mocks/data'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { isRemoteStorage, workspaceId } from '@/prototype-storage'
@@ -36,14 +33,11 @@ function exportSnapshot() {
 
 export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
   const { account, switchTo, signOut } = useCurrentAccount()
-  const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
-  const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
-  const { data: stockReservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
-  const { data: proformaInvoices = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
-  const notifications = buildNotifications(packingNotices, purchaseOrders, stockReservations, proformaInvoices)
 
   return (
-    <header className={`flex h-16 items-center justify-between gap-2 border-b border-border bg-surface px-4 sm:px-6 ${className}`}>
+    <header
+      className={`flex h-16 items-center justify-between gap-2 border-b border-border bg-surface px-4 sm:px-6 ${className}`}
+    >
       <div className="flex min-w-0 items-center gap-2">
         {/* < md 沒有固定側欄，導覽入口改由此開啟抽屜 */}
         <button
@@ -72,38 +66,7 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
         >
           <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">匯出目前資料</span>
         </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-ink"
-              aria-label="通知"
-            >
-              <Bell className="h-5 w-5" />
-              {notifications.length > 0 && (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-2rem))]">
-            <DropdownMenuLabel>
-              通知中心（展示用，依現有資料即時運算，非真實推播機制）
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length === 0 ? (
-              <div className="px-2 py-3 text-sm text-muted-foreground">目前沒有待處理提醒</div>
-            ) : (
-              notifications.map((n) => (
-                <DropdownMenuItem key={n.id} asChild>
-                  <Link to={n.link} className="flex flex-col items-start gap-0.5 whitespace-normal">
-                    <span className="text-xs font-medium text-brand-dark">{n.type}</span>
-                    <span className="text-sm text-ink-body">{n.message}</span>
-                  </Link>
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationBell />
         {/*
           身分切換：原型沒有登入頁，改由此處切換帳號，
           讓權限規格的三層控制（側欄／按鈕／欄位）在畫面上看得出效果。
@@ -127,9 +90,7 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[min(18rem,calc(100vw-2rem))]">
-            <DropdownMenuLabel>
-              切換身分（原型展示用，不需重新輸入密碼）
-            </DropdownMenuLabel>
+            <DropdownMenuLabel>切換身分（原型展示用，不需重新輸入密碼）</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {accounts
               .filter((a) => a.status === '啟用')

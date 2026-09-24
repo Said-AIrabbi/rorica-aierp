@@ -6,23 +6,22 @@
  * 若 index.ts 反過來 import data.ts，兩邊的模組初始化順序就會互相卡住。
  * 這個檔案只有 main.tsx 會載入，站在相依鏈的最外圈。
  */
-import {
-  applySessionSnapshot,
-  buildSessionSnapshot,
-  type SessionSnapshot,
-} from '@/mocks/data'
+import { applySessionSnapshot, buildSessionSnapshot, type SessionSnapshot } from '@/mocks/data'
 import {
   exportPermissionState,
   importPermissionState,
   onPermissionSettingsPersisted,
   type PermissionState,
 } from '@/lib/permissions'
+import { resetDocumentEventBaseline } from '@/mocks/document-events'
 import {
   installFlushOnLeave,
   isRemoteStorage,
   loadRemoteSnapshot,
+  registerRemoteApply,
   registerSnapshotSource,
   scheduleRemoteSave,
+  startRemotePolling,
 } from './index'
 
 /**
@@ -33,6 +32,20 @@ import {
 interface RemotePayload {
   data: SessionSnapshot
   permissions?: PermissionState
+}
+
+const remoteApplied: (() => void)[] = []
+
+/**
+ * 訂閱「伺服器上的資料已換成新的一份」。
+ * 畫面層藉此重新整理查詢——資料陣列被抽換掉了，React Query 手上那份快取已是舊的。
+ */
+export function onRemoteSnapshotApplied(fn: () => void): () => void {
+  remoteApplied.push(fn)
+  return () => {
+    const i = remoteApplied.indexOf(fn)
+    if (i >= 0) remoteApplied.splice(i, 1)
+  }
 }
 
 /**
@@ -46,6 +59,7 @@ export async function initPrototypeStorage(): Promise<void> {
     const payload = (await loadRemoteSnapshot()) as RemotePayload | undefined
     if (payload?.data) applySessionSnapshot(payload.data)
     if (payload?.permissions) importPermissionState(payload.permissions)
+    resetDocumentEventBaseline()
   } catch (error) {
     console.error('[prototype-storage] 讀取伺服器資料失敗，改以預設展示資料起步', error)
   }
@@ -57,4 +71,14 @@ export async function initPrototypeStorage(): Promise<void> {
   // 權限設定不走 mutation 那條路，故另外掛一次存檔通知
   onPermissionSettingsPersisted(scheduleRemoteSave)
   installFlushOnLeave()
+
+  registerRemoteApply((raw) => {
+    const payload = raw as RemotePayload
+    if (payload?.data) applySessionSnapshot(payload.data)
+    if (payload?.permissions) importPermissionState(payload.permissions)
+    // 重建基準：對方改的東西已經是我們的現況，不可在自己下一次存檔時被當成自己改的再報一次
+    resetDocumentEventBaseline()
+    remoteApplied.forEach((fn) => fn())
+  })
+  startRemotePolling()
 }

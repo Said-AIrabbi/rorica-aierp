@@ -2,6 +2,7 @@ import {
   abnormalNotices,
   accounts,
   customers,
+  documentEvents,
   dyeOrders,
   dyeRequests,
   fabricLabels,
@@ -65,4 +66,15 @@ export const api = {
    */
   stockReservations: () => readDoc('stockReservations', '表1', stockReservations),
   splicingSuggestions: () => readDoc('splicingSuggestions', '表1', splicingSuggestions),
+  /**
+   * 單據異動通知：新的在前。
+   *
+   * 「通知所有人」仍受檢視權限節制——看不到表4 的角色不該從通知上得知表4 的單號與狀態，
+   * 否則通知就成了繞過第一層權限的縫隙。
+   */
+  documentEvents: () => {
+    const account = getCurrentAccount()
+    const rows = documentEvents.filter((e) => canViewDoc(account, e.doc))
+    return delay([...rows].reverse())
+  },
 }
