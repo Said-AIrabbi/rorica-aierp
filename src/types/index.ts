@@ -4,7 +4,12 @@
  * 客戶狀態：A～C 為往來等級（由業務依交易量與付款狀況評定），已歇業為終止往來。
  * 已歇業的客戶仍保留主檔與歷史單據——單據上的客戶是既成事實，不可刪除，只改狀態。
  */
-export const CUSTOMER_STATUSES = ['A level', 'B level', 'C level', '已歇業'] as const
+/**
+ * 客戶狀態：一條生命週期，不是四個並列的標籤。
+ * 潛客（PI 階段自動建檔、尚未成交）→ C／B／A level（往來等級，由業務評定）→ 已歇業（終止往來）。
+ * 潛客與已歇業都不是「等級」，但放同一欄，是因為使用者問的是同一個問題：這家現在算什麼。
+ */
+export const CUSTOMER_STATUSES = ['潛客', 'A level', 'B level', 'C level', '已歇業'] as const
 export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number]
 
 /**
@@ -62,7 +67,7 @@ export interface Customer {
   taxRate: string
   paymentTerms: string
   leadTimeDays: number
-  /** 客戶狀態：A～C 往來等級或已歇業；舊資料未設定者視為 B level */
+  /** 客戶狀態：潛客、A～C 往來等級或已歇業；舊資料未設定者視為 B level */
   status: CustomerStatus
 }
 

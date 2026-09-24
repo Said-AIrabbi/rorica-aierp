@@ -153,7 +153,7 @@ export function CustomerDetailPage() {
             </div>
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs">客戶狀態</Label>
-              {/* A～C 為往來等級，已歇業為終止往來；以分段按鈕呈現，一眼看得出目前落在哪一級 */}
+              {/* 潛客（尚未成交）→ A～C 往來等級 → 已歇業；以分段按鈕呈現，一眼看得出目前落在哪一段 */}
               <div className="inline-flex overflow-hidden rounded-md border border-input">
                 {CUSTOMER_STATUSES.map((status) => (
                   <button
@@ -164,7 +164,9 @@ export function CustomerDetailPage() {
                       draft.status === status
                         ? status === '已歇業'
                           ? 'bg-destructive px-3 py-1.5 text-xs font-medium text-white'
-                          : 'bg-brand px-3 py-1.5 text-xs font-medium text-white'
+                          : status === '潛客'
+                            ? 'bg-muted-foreground px-3 py-1.5 text-xs font-medium text-white'
+                            : 'bg-brand px-3 py-1.5 text-xs font-medium text-white'
                         : 'bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted'
                     }
                   >
@@ -173,7 +175,7 @@ export function CustomerDetailPage() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                往來等級由業務評定；已歇業僅停止往來，主檔與歷史單據一律保留
+                潛客為 PI 階段自動建檔、尚未成交，回簽轉表1 時自動轉為 C level；往來等級由業務評定；已歇業僅停止往來，主檔與歷史單據一律保留
               </p>
             </div>
             <div className="space-y-1">

@@ -246,12 +246,12 @@ export function PiFormPage() {
                   // 已歇業客戶不給選（比照表1，決策51）
                   options={customers.filter((c) => c.status !== '已歇業').map((c) => c.shortName)}
                   placeholder="輸入或搜尋客戶"
-                  emptyText="查無客戶主檔，PI 階段可先用輸入內容"
+                  emptyText="查無客戶主檔，送出後將自動建檔為潛客"
                 />
                 {errors.customerName && <p className="text-xs text-destructive">{errors.customerName.message}</p>}
                 {!matchedCustomer && (values.customerName ?? '').trim() !== '' && (
                   <p className="text-xs text-warning">
-                    查無此客戶主檔。PI 階段不建檔，待客戶回簽轉表1 時才自動建立主檔並給予編號（決策51）。
+                    查無此客戶主檔。送出後將自動建檔並分類為「潛客」、給予編號；待客戶回簽轉表1 時自動轉為 C level（決策51）。
                   </p>
                 )}
                 {matchedCustomer?.status === '已歇業' && (

@@ -52,7 +52,8 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   通過: 'success',
   退回: 'error',
 
-  // 客戶主檔狀態：A～C 為往來等級，已歇業為終止往來
+  // 客戶主檔狀態：潛客為尚未成交，A～C 為往來等級，已歇業為終止往來
+  潛客: 'neutral',
   'A level': 'success',
   'B level': 'info',
   'C level': 'warning',

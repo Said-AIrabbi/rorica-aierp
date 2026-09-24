@@ -162,8 +162,27 @@ function resolveCustomerByName(name: string): Customer {
   if (existing?.status === '已歇業') {
     throw new Error(`客戶「${existing.shortName}」主檔狀態為已歇業，不可開立新單據`)
   }
-  if (existing) return existing
+  if (existing) {
+    /**
+     * 潛客一有表1 就是成交了，當場升為 C level（決策51，2026/09/24）。
+     * 這條路徑同時涵蓋 PI 回簽轉表1 與直接建表1 兩種情形——判準是「有沒有表1」，
+     * 不是「從哪裡來」。等級待業務後續評定，先給最低的 C。
+     * 已經是 A／B 的客戶不動，避免把老客戶降級。
+     */
+    if (existing.status === '潛客') {
+      const idx = customers.findIndex((c) => c.id === existing.id)
+      customers[idx] = { ...existing, status: 'C level' }
+      return customers[idx]
+    }
+    return existing
+  }
 
+  // 由表1 建單當下自動建檔的新客戶：直接成交，不經潛客階段
+  return createCustomerFromName(trimmed, 'C level')
+}
+
+/** 只知道名稱時的建檔：其餘欄位待主檔補齊，編號一律由系統給 */
+function createCustomerFromName(trimmed: string, status: Customer['status']): Customer {
   const customer: Customer = {
     id: `CUST-${pad(customers.length + 1)}`,
     code: `C${pad(customers.length + 1)}`,
@@ -181,8 +200,7 @@ function resolveCustomerByName(name: string): Customer {
     taxRate: '',
     paymentTerms: '',
     leadTimeDays: 14,
-    // 由表1 建單當下自動建檔的新客戶：等級待業務後續評定，先給 C level
-    status: 'C level',
+    status,
   }
   customers.push(customer)
   return customer
@@ -3554,17 +3572,24 @@ function buildPiItems(id: string, items: ProformaInvoiceItemInput[]): ProformaIn
 }
 
 /**
- * PI 的客戶：能對上主檔就綁定 id，對不上則只留名稱。
- * 與表1 不同——表1 查無客戶會當場建檔，PI 階段對方還不是客戶，故不建（決策51）。
+ * PI 的客戶（決策51，2026/09/24 修訂）：查無主檔即當場建檔並分類為**潛客**，一樣給編號。
+ *
+ * 原設計是 PI 階段不建檔、只留名稱，等回簽轉表1 才建。問題是報價往往先發生、
+ * 且同一家可能報過好幾次價——不建檔就只剩一個字串，重複報價看不出是同一家，
+ * 聯絡窗口、收貨地址、稅務資料也無處可放。改為當場建檔、標為潛客，
+ * 與真正成交過的客戶區分開來；回簽轉表1 時再升為 C level（見 resolveCustomerByName）。
+ *
  * 已歇業客戶一律擋下（比照 Phase 1 決策88）。
  */
-function resolvePiCustomer(name: string): { customerId?: string; customerName: string } {
+function resolvePiCustomer(name: string): { customerId: string; customerName: string } {
   const trimmed = name.trim()
+  if (!trimmed) throw new Error('客戶名稱必填')
   const existing = customers.find((c) => c.shortName === trimmed || c.fullNameCN === trimmed)
   if (existing?.status === '已歇業') {
     throw new Error(`客戶「${existing.shortName}」主檔狀態為已歇業，不可開立新 PI`)
   }
-  return { customerId: existing?.id, customerName: trimmed }
+  if (existing) return { customerId: existing.id, customerName: trimmed }
+  return { customerId: createCustomerFromName(trimmed, '潛客').id, customerName: trimmed }
 }
 
 function piContactAddress(customerId: string | undefined, contactIndex: number | undefined): string | undefined {
