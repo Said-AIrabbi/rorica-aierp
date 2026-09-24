@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, LogOut, Menu, RotateCcw, UserCog } from 'lucide-react'
+import { Bell, Download, LogOut, Menu, UserCog } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,15 +11,27 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { api } from '@/mocks/api'
 import { buildNotifications } from '@/lib/notifications'
-import { clearSessionSnapshot, accounts } from '@/mocks/data'
+import { accounts, buildSessionSnapshot } from '@/mocks/data'
 import { useCurrentAccount } from '@/lib/current-account-context'
+import { isRemoteStorage, workspaceId } from '@/prototype-storage'
 
-function resetDemoData() {
-  if (!window.confirm('重置模擬資料將清除本次瀏覽分頁中測試建立/異動的所有單據，回到預設展示資料，確定要重置嗎？')) {
-    return
-  }
-  clearSessionSnapshot()
-  window.location.reload()
+/**
+ * 匯出目前資料（JSON）。
+ *
+ * 取代原本的「重置模擬資料」——資料改為共用且留存之後，那顆按鈕會一鍵毀掉所有人的進度。
+ * 要回到乾淨資料，改用沒被用過的工作區代碼（?ws=）或另一個純展示版本。
+ * 這裡留一條自己備份的路：展示環境不保證永久保存，想留住的東西請自己存一份。
+ */
+function exportSnapshot() {
+  const stamp = new Date().toISOString().slice(0, 19).replaceAll(':', '').replace('T', '-')
+  const name = isRemoteStorage() ? `rorica-erp-${workspaceId()}-${stamp}.json` : `rorica-erp-${stamp}.json`
+  const blob = new Blob([JSON.stringify(buildSessionSnapshot(), null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
@@ -54,11 +66,11 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
           type="button"
-          onClick={resetDemoData}
+          onClick={exportSnapshot}
           className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-ink sm:px-2.5"
-          title="清除本次測試建立/異動的單據，回到預設展示資料"
+          title="把目前所有單據與主檔存成一個 JSON 檔案留底"
         >
-          <RotateCcw className="h-3.5 w-3.5" /> <span className="hidden sm:inline">重置模擬資料</span>
+          <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">匯出目前資料</span>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

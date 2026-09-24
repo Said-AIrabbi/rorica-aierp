@@ -7,6 +7,7 @@ import { CurrentAccountProvider } from '@/lib/current-account'
 import { HashRouter } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import App from './App.tsx'
+import { initPrototypeStorage } from '@/prototype-storage/boot'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -17,6 +18,10 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// 遠端模式（Vercel 展示環境）要先把伺服器上的資料讀回來再開畫面，
+// 否則使用者會先看到一瞬間的種子資料再被覆蓋。本機模式（GitHub Pages）此呼叫立即返回。
+await initPrototypeStorage()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

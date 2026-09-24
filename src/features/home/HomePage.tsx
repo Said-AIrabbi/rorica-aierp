@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { effectivePurchaseOrderStatus } from '@/lib/workflow'
 import { PendingApprovals } from './PendingApprovals'
+import { isRemoteStorage, workspaceId } from '@/prototype-storage'
 
 interface DocCardConfig<T> {
   to: string
@@ -74,6 +75,39 @@ function DocCard<T>(config: DocCardConfig<T>) {
   )
 }
 
+/**
+ * 資料存在哪裡，兩個版本講的話不一樣——講錯會直接誤導使用者：
+ * 在會留存的版本說「關掉就沒了」，他們會放心亂試；
+ * 在不留存的版本說「會保存」，他們會以為自己的單不見了。
+ */
+function storageNotice() {
+  if (!isRemoteStorage()) {
+    return (
+      <>
+        <li>
+          沒有後端資料庫，您建立或修改的單據<strong>只存在您自己的瀏覽器分頁</strong>——
+          同事開同一個網址不會看到您建的單據，關閉分頁後也會回到預設展示資料。
+        </li>
+        <li>右上角「匯出目前資料」可把目前的單據與主檔存成一個檔案留底。</li>
+      </>
+    )
+  }
+  return (
+    <>
+      <li>
+        這個版本的資料<strong>會被保存，而且所有人共用</strong>——您建立的單據，同事開同一個網址就看得到，
+        關閉瀏覽器後也還在。目前使用的資料區為「{workspaceId()}」。
+      </li>
+      <li>
+        <strong>請勿輸入真實的客戶名稱、報價與單價</strong>：這是測試環境，沒有加密、沒有自動備份，
+        知道網址的人都能讀取與修改。
+      </li>
+      <li>右上角「匯出目前資料」可把目前的單據與主檔存成一個檔案留底，重要的內容請自行保存。</li>
+      <li>兩人同時修改時，後存的人會收到提示並需要重新載入——這是為了避免您的單無聲蓋掉別人剛完成的作業。</li>
+    </>
+  )
+}
+
 export function HomePage() {
   return (
     <div>
@@ -101,11 +135,7 @@ export function HomePage() {
               <li>
                 畫面上所有客戶、廠商、商品、單據皆為<strong>模擬資料</strong>，與實際營運資料無關。
               </li>
-              <li>
-                沒有後端資料庫，您建立或修改的單據<strong>只存在您自己的瀏覽器分頁</strong>——
-                同事開同一個網址不會看到您建的單據，關閉分頁後也會回到預設展示資料。
-              </li>
-              <li>右上角「重置模擬資料」可隨時清除測試內容，回到初始狀態，請放心操作。</li>
+{storageNotice()}
               <li>
                 登入與權限是<strong>流程示範</strong>——密碼不經驗證、權限只在瀏覽器內生效，不是真正的帳號安全機制。
               </li>

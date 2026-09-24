@@ -338,6 +338,34 @@ function persist(): void {
   saveJson(AUDIT_KEY, auditLog)
   settingsVersion += 1
   settingsListeners.forEach((listener) => listener())
+  // 遠端模式下權限設定也要跟著上傳，否則管理員調完角色權限，別人重新整理就被打回預設
+  onPersisted?.()
+}
+
+/**
+ * 原型展示環境用的鉤子（見 src/prototype-storage）：權限設定變更時通知外層存檔。
+ * 以回呼而非直接 import，是為了不讓權限模組相依於那層可拋棄的儲存程式。
+ */
+let onPersisted: (() => void) | undefined
+export function onPermissionSettingsPersisted(fn: () => void): void {
+  onPersisted = fn
+}
+
+/** 權限設定與稽核軌跡的整包匯出／匯入：共用環境要把這兩者一起帶著走 */
+export interface PermissionState {
+  settings: PermissionSettings
+  audit: PermissionAuditEntry[]
+}
+
+export function exportPermissionState(): PermissionState {
+  return { settings, audit: auditLog }
+}
+
+export function importPermissionState(state: PermissionState): void {
+  if (state.settings) settings = state.settings
+  if (state.audit) auditLog = state.audit
+  settingsVersion += 1
+  settingsListeners.forEach((listener) => listener())
 }
 
 function writeAudit(by: Account, description: string): void {

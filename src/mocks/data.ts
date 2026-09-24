@@ -1,4 +1,6 @@
 import { faker } from '@faker-js/faker'
+// 原型展示環境的遠端儲存：可拋棄的一層，真後端上線時連同整個資料夾刪除
+import { isRemoteStorage, scheduleRemoteSave } from '@/prototype-storage'
 import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
 import { reservationExpiresAt } from '@/lib/inventory'
@@ -1226,7 +1228,7 @@ batchDefectLabels.forEach((label) => {
 // 版號隨資料結構調整遞增：舊快照的欄位已不相容（如產品編號改制），沿用會讓畫面顯示舊資料
 const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v2'
 
-interface SessionSnapshot {
+export interface SessionSnapshot {
   proformaInvoices: ProformaInvoice[]
   packingNotices: PackingNotice[]
   purchaseOrders: PurchaseOrder[]
@@ -1245,27 +1247,66 @@ interface SessionSnapshot {
   vendors: Vendor[]
 }
 
-/** 每次 mutation 完成後呼叫，將目前異動快照寫入本分頁的 sessionStorage */
+/**
+ * 組出目前的資料快照。本機模式寫進 sessionStorage，遠端模式送到伺服器，
+ * 兩邊吃的是同一包東西——差別只在存到哪裡（見 src/prototype-storage）。
+ */
+export function buildSessionSnapshot(): SessionSnapshot {
+  return {
+    proformaInvoices,
+    packingNotices,
+    purchaseOrders,
+    dyeRequests,
+    dyeOrders,
+    goodsReceipts,
+    fabricLabels,
+    shippingOrders,
+    abnormalNotices,
+    secondaryProcessingOrders,
+    stockReservations,
+    splicingSuggestions,
+    products,
+    customers,
+    vendors,
+  }
+}
+
+/** 把一份快照套回記憶體中的資料陣列。還原本機暫存與載入遠端資料共用這一段 */
+export function applySessionSnapshot(snapshot: SessionSnapshot): void {
+  // PI 單為 Phase 2 新增的快照欄位，舊快照沒有時沿用種子資料
+  if (snapshot.proformaInvoices) proformaInvoices.splice(0, proformaInvoices.length, ...snapshot.proformaInvoices)
+  packingNotices.splice(0, packingNotices.length, ...snapshot.packingNotices)
+  purchaseOrders.splice(0, purchaseOrders.length, ...snapshot.purchaseOrders)
+  dyeRequests.splice(0, dyeRequests.length, ...snapshot.dyeRequests)
+  dyeOrders.splice(0, dyeOrders.length, ...snapshot.dyeOrders)
+  goodsReceipts.splice(0, goodsReceipts.length, ...snapshot.goodsReceipts)
+  fabricLabels.splice(0, fabricLabels.length, ...snapshot.fabricLabels)
+  shippingOrders.splice(0, shippingOrders.length, ...snapshot.shippingOrders)
+  // 表9為後續新增的快照欄位，舊快照沒有時沿用種子資料
+  if (snapshot.abnormalNotices) abnormalNotices.splice(0, abnormalNotices.length, ...snapshot.abnormalNotices)
+  if (snapshot.secondaryProcessingOrders)
+    secondaryProcessingOrders.splice(0, secondaryProcessingOrders.length, ...snapshot.secondaryProcessingOrders)
+  stockReservations.splice(0, stockReservations.length, ...snapshot.stockReservations)
+  if (snapshot.splicingSuggestions)
+    splicingSuggestions.splice(0, splicingSuggestions.length, ...snapshot.splicingSuggestions)
+  // 主檔為後續新增的快照欄位，舊快照可能沒有，缺少時沿用種子資料
+  if (snapshot.products) products.splice(0, products.length, ...snapshot.products)
+  if (snapshot.customers) customers.splice(0, customers.length, ...snapshot.customers)
+  if (snapshot.vendors) vendors.splice(0, vendors.length, ...snapshot.vendors)
+}
+
+/**
+ * 每次 mutation 完成後呼叫。
+ *   本機模式（GitHub Pages）：寫進本分頁的 sessionStorage，關掉分頁即回到種子資料
+ *   遠端模式（Vercel）：改由 prototype-storage 合併後送到伺服器，資料共用且留存
+ */
 export function persistSessionSnapshot(): void {
+  if (isRemoteStorage()) {
+    scheduleRemoteSave()
+    return
+  }
   try {
-    const snapshot: SessionSnapshot = {
-      proformaInvoices,
-      packingNotices,
-      purchaseOrders,
-      dyeRequests,
-      dyeOrders,
-      goodsReceipts,
-      fabricLabels,
-      shippingOrders,
-      abnormalNotices,
-      secondaryProcessingOrders,
-      stockReservations,
-      splicingSuggestions,
-      products,
-      customers,
-      vendors,
-    }
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(snapshot))
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(buildSessionSnapshot()))
   } catch {
     // sessionStorage 不可用（如隱私瀏覽模式）時靜默略過，不影響操作
   }
@@ -1276,42 +1317,14 @@ function restoreSessionSnapshot(): void {
   try {
     const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
     if (!raw) return
-    const snapshot = JSON.parse(raw) as SessionSnapshot
-    // PI 單為 Phase 2 新增的快照欄位，舊快照沒有時沿用種子資料
-    if (snapshot.proformaInvoices) proformaInvoices.splice(0, proformaInvoices.length, ...snapshot.proformaInvoices)
-    packingNotices.splice(0, packingNotices.length, ...snapshot.packingNotices)
-    purchaseOrders.splice(0, purchaseOrders.length, ...snapshot.purchaseOrders)
-    dyeRequests.splice(0, dyeRequests.length, ...snapshot.dyeRequests)
-    dyeOrders.splice(0, dyeOrders.length, ...snapshot.dyeOrders)
-    goodsReceipts.splice(0, goodsReceipts.length, ...snapshot.goodsReceipts)
-    fabricLabels.splice(0, fabricLabels.length, ...snapshot.fabricLabels)
-    shippingOrders.splice(0, shippingOrders.length, ...snapshot.shippingOrders)
-    // 表9為後續新增的快照欄位，舊快照沒有時沿用種子資料
-    if (snapshot.abnormalNotices) abnormalNotices.splice(0, abnormalNotices.length, ...snapshot.abnormalNotices)
-    if (snapshot.secondaryProcessingOrders)
-      secondaryProcessingOrders.splice(0, secondaryProcessingOrders.length, ...snapshot.secondaryProcessingOrders)
-    stockReservations.splice(0, stockReservations.length, ...snapshot.stockReservations)
-    if (snapshot.splicingSuggestions)
-      splicingSuggestions.splice(0, splicingSuggestions.length, ...snapshot.splicingSuggestions)
-    // 主檔為後續新增的快照欄位，舊快照可能沒有，缺少時沿用種子資料
-    if (snapshot.products) products.splice(0, products.length, ...snapshot.products)
-    if (snapshot.customers) customers.splice(0, customers.length, ...snapshot.customers)
-    if (snapshot.vendors) vendors.splice(0, vendors.length, ...snapshot.vendors)
+    applySessionSnapshot(JSON.parse(raw) as SessionSnapshot)
   } catch {
     // 快照損毀或無法解析時，保留預設種子資料，不中斷應用程式啟動
   }
 }
 
-/** 清除本分頁暫存快照，下次重新整理將回到預設模擬資料（供「重置模擬資料」按鈕使用） */
-export function clearSessionSnapshot(): void {
-  try {
-    sessionStorage.removeItem(SESSION_STORAGE_KEY)
-  } catch {
-    // 忽略
-  }
-}
-
-restoreSessionSnapshot()
+// 本機模式才在模組載入當下還原；遠端模式的資料要等網路回來，由 main.tsx 在開畫面前套用
+if (!isRemoteStorage()) restoreSessionSnapshot()
 
 /** 表1 反查來源 PI（Phase 2）：畫面上要顯示這張表1 是從哪張 PI 轉來的 */
 export function getProformaInvoice(id: string | undefined): ProformaInvoice | undefined {
