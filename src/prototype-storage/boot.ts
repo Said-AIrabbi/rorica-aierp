@@ -59,7 +59,6 @@ export async function initPrototypeStorage(): Promise<void> {
     const payload = (await loadRemoteSnapshot()) as RemotePayload | undefined
     if (payload?.data) applySessionSnapshot(payload.data)
     if (payload?.permissions) importPermissionState(payload.permissions)
-    resetDocumentEventBaseline()
   } catch (error) {
     console.error('[prototype-storage] 讀取伺服器資料失敗，改以預設展示資料起步', error)
   }

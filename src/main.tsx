@@ -8,6 +8,7 @@ import { HashRouter } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import App from './App.tsx'
 import { initPrototypeStorage, onRemoteSnapshotApplied } from '@/prototype-storage/boot'
+import { resetDocumentEventBaseline } from '@/mocks/document-events'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -22,6 +23,10 @@ const queryClient = new QueryClient({
 // 遠端模式（Vercel 展示環境）要先把伺服器上的資料讀回來再開畫面，
 // 否則使用者會先看到一瞬間的種子資料再被覆蓋。本機模式（GitHub Pages）此呼叫立即返回。
 await initPrototypeStorage()
+
+// 單據異動通知的比對基準，在資料全部就位、使用者還沒動手之前建立。
+// 少了這一行，基準會延到「第一次寫入完成時」才建，那一次操作就不會有人收到通知。
+resetDocumentEventBaseline()
 
 // 輪詢到同事的異動後，記憶體裡的資料陣列已被整包換掉，
 // React Query 手上那份快取卻還是舊的——一律作廢，畫面才會跟著更新（通知也是這樣送到的）。
