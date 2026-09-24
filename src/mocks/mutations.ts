@@ -3546,6 +3546,15 @@ export interface ProformaInvoiceInput {
   /** 客戶名稱：查得到主檔則沿用；查無者 PI 階段僅存名稱，不建主檔（決策51） */
   customerName: string
   contactIndex?: number
+  /**
+   * 新的收貨人：一併寫進客戶主檔的聯絡資訊，PI 再指向它（2026/09/24）。
+   *
+   * 潛客剛由 PI 建檔時聯絡資訊是空的，若收貨人只能從主檔既有的聯絡人挑，
+   * 新客戶的第一張 PI 就填不完——而報價單沒有收貨人是不能發出去的。
+   * 決策37 要求收貨人必須是該客戶底下的聯絡人，這裡不是繞過它，
+   * 是把「先去主檔建一組、再回來選」這兩步併成一步，結果完全相同。
+   */
+  newContact?: { name: string; shippingAddress?: string }
   currency: ProformaInvoice['currency']
   tradeTerm: string
   tradeTermNote?: string
@@ -3592,6 +3601,34 @@ function resolvePiCustomer(name: string): { customerId: string; customerName: st
   return { customerId: createCustomerFromName(trimmed, '潛客').id, customerName: trimmed }
 }
 
+/**
+ * 把 PI 上填的新收貨人寫進客戶主檔，回傳它在 contacts 裡的位置。
+ *
+ * 同名者視為同一個人並更新其收貨地址，而不是再加一筆——
+ * 同一個窗口報價兩次就多一筆同名聯絡人的話，主檔很快就沒法看了。
+ */
+function upsertCustomerContact(customerId: string, contact: { name: string; shippingAddress?: string }): number {
+  const name = contact.name.trim()
+  if (!name) throw new Error('收貨人姓名必填')
+  const address = contact.shippingAddress?.trim() || undefined
+  const idx = customers.findIndex((c) => c.id === customerId)
+  if (idx === -1) throw new Error(`客戶 ${customerId} 不存在`)
+  const customer = customers[idx]
+  const existing = customer.contacts.findIndex((c) => c.name.trim() === name)
+
+  if (existing >= 0) {
+    // 沒填地址就保留主檔原有的，不要用空值把既有資料洗掉
+    const contacts = customer.contacts.map((c, i) =>
+      i === existing ? { ...c, shippingAddress: address ?? c.shippingAddress } : c,
+    )
+    customers[idx] = { ...customer, contacts }
+    return existing
+  }
+
+  customers[idx] = { ...customer, contacts: [...customer.contacts, { name, shippingAddress: address }] }
+  return customers[idx].contacts.length - 1
+}
+
 function piContactAddress(customerId: string | undefined, contactIndex: number | undefined): string | undefined {
   if (!customerId) return undefined
   const customer = customers.find((c) => c.id === customerId)
@@ -3625,6 +3662,10 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
     }
   }
   const { customerId, customerName } = resolvePiCustomer(input.customerName)
+  // 填了新收貨人就先建進主檔，PI 指向它；沒填則沿用選定的既有聯絡人
+  const contactIndex = input.newContact?.name?.trim()
+    ? upsertCustomerContact(customerId, input.newContact)
+    : input.contactIndex
 
   const pi: ProformaInvoice = {
     id,
@@ -3634,8 +3675,8 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
     quoteValidUntil: piQuoteValidUntil(today).toISOString(),
     customerId,
     customerName,
-    contactIndex: input.contactIndex,
-    shippingAddress: piContactAddress(customerId, input.contactIndex),
+    contactIndex,
+    shippingAddress: piContactAddress(customerId, contactIndex),
     currency: input.currency,
     tradeTerm: input.tradeTerm,
     tradeTermNote: input.tradeTermNote?.trim() || undefined,
@@ -3723,12 +3764,15 @@ export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): 
   assertNotOnManualHold(current)
   if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
   const { customerId, customerName } = resolvePiCustomer(input.customerName)
+  const contactIndex = input.newContact?.name?.trim()
+    ? upsertCustomerContact(customerId, input.newContact)
+    : input.contactIndex
   const updated: ProformaInvoice = {
     ...current,
     customerId,
     customerName,
-    contactIndex: input.contactIndex,
-    shippingAddress: piContactAddress(customerId, input.contactIndex),
+    contactIndex,
+    shippingAddress: piContactAddress(customerId, contactIndex),
     currency: input.currency,
     tradeTerm: input.tradeTerm,
     tradeTermNote: input.tradeTermNote?.trim() || undefined,

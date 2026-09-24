@@ -39,6 +39,9 @@ import {
 } from '@/types'
 import { piFormSchema, type PiFormValues } from './schema'
 
+/** 收貨人下拉的「新增」選項值：用不可能的索引值，與既有聯絡人的 0、1、2… 區隔 */
+const NEW_CONTACT = -1
+
 const EMPTY_ITEM: PiFormValues['items'][number] = {
   poNo: '',
   roricaProductName: '',
@@ -167,6 +170,13 @@ export function PiFormPage() {
   const contacts = matchedCustomer?.contacts ?? []
   const contactIndex = Number(values.contactIndex ?? 0)
   const selectedContact = contacts[contactIndex]
+  /**
+   * 收貨人有兩種來源：從主檔既有的聯絡人挑，或當場新增一位（會一併建進主檔）。
+   * 新客戶與剛由 PI 建檔的潛客沒有任何聯絡人，此時只能新增——否則第一張 PI 就填不完，
+   * 而報價單沒有收貨人是不能發出去的。
+   */
+  const mustAddContact = contacts.length === 0
+  const addingContact = mustAddContact || values.contactIndex === NEW_CONTACT
 
   // 數量一律以 Yard 存放；基準為 Meter 時輸入框顯示米數，離開欄位即換算回碼
   const [qtyDraft, setQtyDraft] = useState<Record<number, string>>({})
@@ -194,6 +204,11 @@ export function PiFormPage() {
     mutationFn: (v: PiFormValues) => {
       const payload = {
         ...v,
+        // 挑既有聯絡人時不送 newContact，避免把選單上的舊值誤當成新增
+        newContact: addingContact && (v.newContactName ?? '').trim()
+          ? { name: v.newContactName!.trim(), shippingAddress: v.newContactAddress?.trim() || undefined }
+          : undefined,
+        contactIndex: addingContact ? undefined : v.contactIndex,
         // schema 只驗得出「是這四個數字之一」，型別上仍是 number，於此收斂
         leadTimeDays: v.leadTimeDays as (typeof PI_LEAD_TIME_DAYS)[number],
         items: v.items.map((item) => ({
@@ -261,30 +276,57 @@ export function PiFormPage() {
 
               <div className="space-y-1.5">
                 <Label>收貨人（限該客戶底下的聯絡人）</Label>
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={contactIndex}
-                  onChange={(e) => setValue('contactIndex', Number(e.target.value))}
-                  disabled={contacts.length === 0}
-                >
-                  {contacts.length === 0 ? (
-                    <option value={0}>（請先選定已建檔的客戶）</option>
-                  ) : (
-                    contacts.map((c, i) => (
+                {addingContact ? (
+                  <Input
+                    value={values.newContactName ?? ''}
+                    onChange={(e) => setValue('newContactName', e.target.value)}
+                    placeholder="輸入收貨人姓名"
+                  />
+                ) : (
+                  <select
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={contactIndex}
+                    onChange={(e) => setValue('contactIndex', Number(e.target.value))}
+                  >
+                    {contacts.map((c, i) => (
                       <option key={i} value={i}>
                         {i === 0 ? `${c.name}（主要聯絡人）` : c.name}
                       </option>
-                    ))
-                  )}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  送第三方收貨時，請先於客戶主檔新增一組聯絡資訊承載（決策37）。
-                </p>
+                    ))}
+                    <option value={NEW_CONTACT}>＋ 新增收貨人（一併建入客戶主檔）</option>
+                  </select>
+                )}
+                {addingContact ? (
+                  <p className="text-xs text-muted-foreground">
+                    這組收貨人與地址會一併寫進客戶主檔的聯絡資訊（決策37）；同名者視為同一人，只更新地址。
+                    {!mustAddContact && (
+                      <button
+                        type="button"
+                        className="ml-1 text-brand-dark underline"
+                        onClick={() => setValue('contactIndex', 0)}
+                      >
+                        改回選擇既有聯絡人
+                      </button>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    送第三方收貨時，可於此直接新增一組聯絡資訊承載（決策37）。
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <Label>收貨地址（依收貨人自動帶出，隨轉換帶入表1／表8）</Label>
-                <Input value={selectedContact?.shippingAddress ?? ''} disabled placeholder="請先選擇收貨人" />
+                {addingContact ? (
+                  <Input
+                    value={values.newContactAddress ?? ''}
+                    onChange={(e) => setValue('newContactAddress', e.target.value)}
+                    placeholder="輸入收貨地址"
+                  />
+                ) : (
+                  <Input value={selectedContact?.shippingAddress ?? ''} disabled placeholder="請先選擇收貨人" />
+                )}
               </div>
 
               <div className="space-y-1.5">

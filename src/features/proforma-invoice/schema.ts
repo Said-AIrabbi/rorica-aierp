@@ -46,7 +46,15 @@ export const piItemSchema = z
 export const piFormSchema = z.object({
   // 客戶：查無主檔時仍可送出（PI 階段對方尚未成為客戶，決策51）
   customerName: z.string().min(1, '請輸入或選擇客戶'),
-  contactIndex: z.coerce.number().min(0).optional(),
+  // -1 為「新增收貨人」的選項值（見 PiFormPage 的 NEW_CONTACT），故下限放到 -1；
+  // 真正的聯絡人索引仍是 0 起跳，送出時新增模式會改送 undefined
+  contactIndex: z.coerce.number().min(-1).optional(),
+  /**
+   * 新的收貨人：填了就一併建進客戶主檔（2026/09/24）。
+   * 潛客剛建檔時聯絡資訊是空的，若收貨人只能從既有聯絡人挑，第一張 PI 就填不完。
+   */
+  newContactName: z.string().optional(),
+  newContactAddress: z.string().optional(),
   currency: z.enum(PI_CURRENCIES),
   tradeTerm: z.string().min(1, '請選擇貿易條件'),
   tradeTermNote: z.string().optional(),
