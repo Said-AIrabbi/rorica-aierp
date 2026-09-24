@@ -3946,6 +3946,9 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
       markings: current.markings,
       sourcePiId: current.id,
       shippingAddress: current.shippingAddress,
+      // PI 轉來的表1 一樣從「未送簽」起步（決策118）：管理層批准的是報價，不是生產指示。
+      // 漏了這一欄，這張單會卡在「草稿但顯示已簽核」而永遠生效不了
+      approvalState: '未送簽',
       ...packingDefaultsFromPi(),
     }
     packingNotices.unshift(notice)

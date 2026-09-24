@@ -50,12 +50,19 @@ export interface DocumentLock {
 
 /**
  * 表1 的簽核旗標（決策118）。
- * 未記錄者（早於本機制的舊資料與種子）視為「已簽核」——既有的生效單不該因為新增欄位而倒退。
+ *
+ * 未記錄者的預設值**依狀態而定**：
+ *   已生效／已完成 → 已簽核。既有的生效單不該因為新增欄位而倒退回待簽。
+ *   仍是草稿 → 未送簽。**草稿不可能已經簽核過**——簽核的當下就會轉生效。
+ *
+ * 一律當成「已簽核」曾造成一個死胡同（2026/09/24）：PI 轉來的表1 沒帶這個欄位，
+ * 於是畫面顯示已簽核、狀態卻停在草稿，送簽與簽核兩顆按鈕都不出現，這張單再也生效不了。
  */
 export function packingNoticeApprovalState(
-  notice: Pick<PackingNotice, 'approvalState'>,
+  notice: Pick<PackingNotice, 'approvalState' | 'status'>,
 ): NonNullable<PackingNotice['approvalState']> {
-  return notice.approvalState ?? '已簽核'
+  if (notice.approvalState) return notice.approvalState
+  return notice.status === '草稿' ? '未送簽' : '已簽核'
 }
 
 export function packingNoticeLocks(
