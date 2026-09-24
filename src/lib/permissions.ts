@@ -4,7 +4,7 @@ import type { Account, AccountRole } from '@/types'
 export const ACCOUNT_ROLES: AccountRole[] = ['業務', '生管', '倉管', '財務', '管理層', '管理員']
 
 /**
- * 權限規格（docs/PRD-Phase1-權限規格-2026-09-21.md）的實作。
+ * 權限規格（docs/PRD-Phase1-權限規格-2026-09-24.md）的實作。
  *
  * 三層獨立控制（權限規格第二章）：
  *   ① 功能權限——看不看得到這張單據的入口（側欄與路由）
