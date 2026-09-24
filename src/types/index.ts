@@ -722,7 +722,11 @@ export interface GoodsReceiptRoll {
   reviewed?: boolean
 }
 
-export const GOODS_RECEIPT_PURPOSES = ['銷貨用', '鍋貨用', '樣品用', '其他'] as const
+/**
+ * 用途：表6 入庫單與表8 出貨單共用。
+ * 2026/09/24 移除「鍋貨用」——該值自 2026/08/10 簽署版即存在，經皇加確認並非實際使用的分類。
+ */
+export const GOODS_RECEIPT_PURPOSES = ['銷貨用', '樣品用', '其他'] as const
 
 export interface GoodsReceipt {
   id: string
