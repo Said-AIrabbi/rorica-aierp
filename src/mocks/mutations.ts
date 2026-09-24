@@ -1674,6 +1674,56 @@ export function updateDyeOrderSampleCodes(id: string, sampleCodeByItem: Record<s
 }
 
 /**
+ * 表4 草稿的明細欄位：加工單價與指染數量（2026/09/24）。
+ *
+ * 兩欄都是建單當下才知道的資訊——單價要跟染整廠談過、指染數量看胚布在不在廠，
+ * 系統帶不出來，故草稿階段留給人補。**僅草稿可改**：轉生效等於已對外發包，
+ * 單價變成雙方談定的價格，指染數量則改由胚布到貨（confirmGreigeArrival）
+ * 與結案歸零這兩個時點推動，不再手改。
+ *
+ * 未出現在 input 裡的明細一律原樣保留，只送有改到的那幾列。
+ */
+export interface DyeOrderItemDraftInput {
+  /** 留空（undefined）代表清除單價，回到「未談定」 */
+  unitPrice?: number
+  inDyeQty?: number
+}
+
+export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrderItemDraftInput>): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '編輯草稿')
+  const idx = dyeOrders.findIndex((o) => o.id === id)
+  if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
+  const current = dyeOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改加工單價與指染數量')
+
+  for (const [itemId, input] of Object.entries(itemsById)) {
+    if (!current.items.some((i) => i.id === itemId)) throw new Error(`染整單 ${id} 沒有明細 ${itemId}`)
+    if (input.unitPrice != null && (!Number.isFinite(input.unitPrice) || input.unitPrice < 0)) {
+      throw new Error('加工單價不可為負數')
+    }
+    if (input.inDyeQty != null && (!Number.isFinite(input.inDyeQty) || input.inDyeQty < 0)) {
+      throw new Error('指染數量不可為負數')
+    }
+  }
+
+  const updated: DyeOrder = {
+    ...current,
+    items: current.items.map((item) => {
+      const input = itemsById[item.id]
+      if (!input) return item
+      return {
+        ...item,
+        unitPrice: input.unitPrice,
+        // 指染數量沒有「未填」這個狀態（三段式庫存要拿它去加總），留空即 0
+        inDyeQty: input.inDyeQty ?? 0,
+      }
+    }),
+  }
+  dyeOrders[idx] = updated
+  return delay(updated)
+}
+
+/**
  * 生管確認後正式建單：狀態變為生效，此時才觸發委外加工。
  * 三段式庫存此時「不」變動——委外染整路徑的胚布直送染整廠、不經皇加倉庫，
  * 染單建立當下不需要胚布已到貨，要等胚布實際到廠確認才登記指染數量，

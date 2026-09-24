@@ -23,6 +23,7 @@ import {
   createDyeRequest,
   submitDyeOrderLargeSample,
   updateDyeOrderDraft,
+  updateDyeOrderItems,
   updateDyeOrderSampleCodes,
 } from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
@@ -41,6 +42,11 @@ export function DyeOrderDetailPage() {
   const [rejectReason, setRejectReason] = useState('')
   // 色樣編號在染單結案前皆可修改，不限於表3回填的時機
   const [sampleCodeDraft, setSampleCodeDraft] = useState<Record<string, string>>({})
+  /**
+   * 明細草稿：加工單價與指染數量（決策125）。以字串存，因為輸入到一半的「」與「0」
+   * 是兩件事——存成數字時清空會立刻變 0，使用者看到的是自己沒打的數字。
+   */
+  const [itemDraft, setItemDraft] = useState<Record<string, { unitPrice: string; inDyeQty: string }>>({})
   /** 單頭草稿：僅草稿階段可改，確認正式建單後回復唯讀 */
   const [headDraft, setHeadDraft] = useState({
     dueDate: '',
@@ -53,6 +59,14 @@ export function DyeOrderDetailPage() {
   useEffect(() => {
     if (order) {
       setSampleCodeDraft(Object.fromEntries(order.items.map((i) => [i.id, i.sampleCode ?? ''])))
+      setItemDraft(
+        Object.fromEntries(
+          order.items.map((i) => [
+            i.id,
+            { unitPrice: i.unitPrice != null ? String(i.unitPrice) : '', inDyeQty: i.inDyeQty ? String(i.inDyeQty) : '' },
+          ]),
+        ),
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, order?.items])
@@ -127,6 +141,27 @@ export function DyeOrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const saveItemsMutation = useMutation({
+    mutationFn: () =>
+      updateDyeOrderItems(
+        id!,
+        Object.fromEntries(
+          Object.entries(itemDraft).map(([itemId, d]) => [
+            itemId,
+            {
+              unitPrice: d.unitPrice.trim() === '' ? undefined : Number(d.unitPrice),
+              inDyeQty: d.inDyeQty.trim() === '' ? undefined : Number(d.inDyeQty),
+            },
+          ]),
+        ),
+      ),
+    onSuccess: async () => {
+      await invalidateAll()
+      toast.success(`${id} 加工單價與指染數量已儲存`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   // 重新覆色：色號超過12個月未使用時系統僅提醒，由使用者自行決定是否建立表3（非自動開單）
   const recolorMutation = useMutation({
     mutationFn: (input: { colors: string[] }) =>
@@ -174,6 +209,19 @@ export function DyeOrderDetailPage() {
   const canClose = permissions.can('表4', '結案')
   const sampleCodeEditable = order.status !== '已完成' && canEditDraft
   const sampleCodeDirty = order.items.some((i) => (sampleCodeDraft[i.id] ?? '') !== (i.sampleCode ?? ''))
+  /**
+   * 加工單價與指染數量僅草稿可改（決策125）：轉生效即已對外發包，
+   * 單價成為雙方談定的價格，指染數量改由胚布到貨與結案歸零推動。
+   */
+  const itemsEditable = order.status === '草稿' && canEditDraft
+  const itemsDirty = order.items.some((i) => {
+    const d = itemDraft[i.id]
+    if (!d) return false
+    return (
+      d.unitPrice !== (i.unitPrice != null ? String(i.unitPrice) : '') ||
+      d.inDyeQty !== (i.inDyeQty ? String(i.inDyeQty) : '')
+    )
+  })
   // 單卷碼數上限：依來源表1該筆明細的定碼長度與生產數量容許誤差動態計算
   const notice = packingNotices.find((n) => n.id === order.parentId)
   const rollLimits = order.items
@@ -423,9 +471,51 @@ export function DyeOrderDetailPage() {
                     <TableCell>{item.fabricMaterial || '-'}</TableCell>
                     <TableCell>{item.fabricSpec || '-'}</TableCell>
                     <TableCell>{item.finishedSpec || '-'}</TableCell>
-                    <TableCell className="text-right">{item.unitPrice != null ? formatNumber(item.unitPrice, 1) : '-'}</TableCell>
+                    {/* 加工單價：草稿階段可補（要跟染整廠談過才知道），生效後回復唯讀 */}
+                    <TableCell className="text-right">
+                      {itemsEditable ? (
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className="w-24 text-right"
+                          placeholder="未談定"
+                          value={itemDraft[item.id]?.unitPrice ?? ''}
+                          onChange={(e) =>
+                            setItemDraft((prev) => ({
+                              ...prev,
+                              [item.id]: { ...prev[item.id], unitPrice: e.target.value },
+                            }))
+                          }
+                        />
+                      ) : item.unitPrice != null ? (
+                        formatNumber(item.unitPrice, 1)
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">{formatNumber(item.finishedQty, 0)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.inDyeQty, 0)}</TableCell>
+                    {/* 指染數量：胚布已在廠即可於建單時填入，否則留空、等胚布到貨自動轉入 */}
+                    <TableCell className="text-right">
+                      {itemsEditable ? (
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          className="w-24 text-right"
+                          placeholder="胚布未到"
+                          value={itemDraft[item.id]?.inDyeQty ?? ''}
+                          onChange={(e) =>
+                            setItemDraft((prev) => ({
+                              ...prev,
+                              [item.id]: { ...prev[item.id], inDyeQty: e.target.value },
+                            }))
+                          }
+                        />
+                      ) : (
+                        formatNumber(item.inDyeQty, 0)
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -435,16 +525,30 @@ export function DyeOrderDetailPage() {
             <p className="text-xs text-muted-foreground">
               合計：成品 {formatNumber(totals.finishedQty, 0)} ／ 指染 {formatNumber(totals.inDyeQty, 0)} {order.unit}
             </p>
-            {sampleCodeEditable && (
-              <Button
-                size="sm"
-                className="bg-brand hover:bg-brand-dark"
-                disabled={!sampleCodeDirty || saveSampleCodesMutation.isPending}
-                onClick={() => saveSampleCodesMutation.mutate()}
-              >
-                {saveSampleCodesMutation.isPending ? '儲存中...' : '儲存色樣編號'}
-              </Button>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {/* 兩顆分開存：色樣編號到結案前都能改，單價與指染數量只在草稿可改，可編輯的期間不同 */}
+              {itemsEditable && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!itemsDirty || saveItemsMutation.isPending}
+                  onClick={() => saveItemsMutation.mutate()}
+                >
+                  <Save className="mr-1 h-4 w-4" />
+                  {saveItemsMutation.isPending ? '儲存中...' : '儲存加工單價與指染數量'}
+                </Button>
+              )}
+              {sampleCodeEditable && (
+                <Button
+                  size="sm"
+                  className="bg-brand hover:bg-brand-dark"
+                  disabled={!sampleCodeDirty || saveSampleCodesMutation.isPending}
+                  onClick={() => saveSampleCodesMutation.mutate()}
+                >
+                  {saveSampleCodesMutation.isPending ? '儲存中...' : '儲存色樣編號'}
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
