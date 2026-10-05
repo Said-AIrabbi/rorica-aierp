@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -24,6 +25,7 @@ import {
   updateSecondaryProcessingItems,
   updateSecondaryProcessingVendor,
   type SecondaryProcessingVendorInput,
+  withdrawSecondaryProcessingOrder,
 } from '@/mocks/mutations'
 import dayjs from 'dayjs'
 import { formatDate } from '@/lib/dates'
@@ -44,6 +46,16 @@ export function SecondaryProcessingDetailPage() {
   const itemUnit = getPackingNotice(order?.parentId ?? '')?.itemUnit ?? 'Yard'
 
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
+
+  /**
+   * 來源染單的胚布是否已到貨（決策132）：已到貨即不可撤回生效。
+   * 表5 自己沒有胚布欄位——它是染單的下游，布的狀態要回頭問那張染單。
+   * 生管人工建立的表5 沒有來源染單，就沒有這道限制。
+   */
+  const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
+  const sourceGreigeArrived = Boolean(
+    order?.dyeOrderId && dyeOrders.find((d) => d.id === order.dyeOrderId)?.greigeArrivedAt,
+  )
 
   // 加工單價與備註為草稿階段可調整欄位，先落在本地草稿再一次寫回
   const [itemDraft, setItemDraft] = useState<SecondaryProcessingItem[]>([])
@@ -82,6 +94,16 @@ export function SecondaryProcessingDetailPage() {
   }
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['secondaryProcessingOrders'] })
+
+  /** 撤回生效（決策132）：生效→草稿；來源染單的胚布已到貨者由資料層擋下 */
+  const withdrawMutation = useMutation({
+    mutationFn: (reason: string) => withdrawSecondaryProcessingOrder(id!, reason),
+    onSuccess: async (updated) => {
+      await invalidate()
+      toast.success(`${updated.id} 已撤回為草稿，可重新指定加工廠後再發包`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   const statusMutation = useMutation({
     mutationFn: (status: '生效' | '已完成') => setSecondaryProcessingStatus(id!, status),
@@ -168,6 +190,13 @@ export function SecondaryProcessingDetailPage() {
                 確認發包（轉生效）
               </Button>
             )}
+            {order.status === '生效' && !sourceGreigeArrived && permissions.can('表5', '撤回草稿') && (
+              <WithdrawDraftButton
+                pending={withdrawMutation.isPending}
+                description="單據會回到草稿，可重新指定加工廠與加工明細後再發包。來源染單的胚布一到貨即不可撤回——加工對象已經投入。"
+                onConfirm={(reason) => withdrawMutation.mutate(reason)}
+              />
+            )}
             {order.status === '生效' && permissions.can('表5', '結案') && (
               <Button
                 className="bg-brand hover:bg-brand-dark"
@@ -182,6 +211,8 @@ export function SecondaryProcessingDetailPage() {
       />
 
       <ReadOnlyNotice doc="表5" />
+
+      <WithdrawalNotes entries={order.withdrawals} />
 
       <div className="space-y-4">
         <Card>

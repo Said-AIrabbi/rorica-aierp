@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -25,6 +26,7 @@ import {
   updateDyeOrderDraft,
   updateDyeOrderItems,
   updateDyeOrderSampleCodes,
+  withdrawDyeOrder,
 } from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
@@ -109,6 +111,16 @@ export function DyeOrderDetailPage() {
     ])
   }
 
+  /** 撤回生效（決策132）：生效→草稿；胚布已到貨者由資料層擋下 */
+  const withdrawMutation = useMutation({
+    mutationFn: (reason: string) => withdrawDyeOrder(id!, reason),
+    onSuccess: async (updated) => {
+      await invalidateAll()
+      toast.success(`${updated.id} 已撤回為草稿，可修改後重新確認建單`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const confirmOrderMutation = useMutation({
     mutationFn: () => confirmDyeOrder(id!),
     onSuccess: async () => {
@@ -119,14 +131,14 @@ export function DyeOrderDetailPage() {
 
   // 大貨樣「通過」即為結案動作：狀態轉已完成、指染轉成品、並依明細去向建立下一張單據，無需另一道人工結案
   const submitSampleMutation = useMutation({
-    mutationFn: (input: { result: '通過' | '退回'; reason?: string }) => submitDyeOrderLargeSample(id!, input.result, input.reason),
+    mutationFn: (input: { result: '通過' | '不通過'; reason?: string }) => submitDyeOrderLargeSample(id!, input.result, input.reason),
     onSuccess: async (_updated, input) => {
       await invalidateAll()
       setRejectReason('')
       toast.success(
         input.result === '通過'
           ? `${id} 大貨樣已通過，染整單已完成；需二次加工的品項已建立表5加工單草稿，其餘已建立表6入庫單草稿`
-          : `${id} 大貨樣已退回，已自動新增下一筆送樣紀錄`,
+          : `${id} 大貨樣登記為不通過，已自動新增下一筆送樣紀錄`,
       )
     },
     onError: (error: Error) => toast.error(error.message),
@@ -207,6 +219,7 @@ export function DyeOrderDetailPage() {
   const canEditDraft = permissions.can('表4', '編輯草稿')
   const canConfirm = permissions.can('表4', '轉生效')
   const canClose = permissions.can('表4', '結案')
+  const canWithdraw = permissions.can('表4', '撤回草稿')
   const sampleCodeEditable = order.status !== '已完成' && canEditDraft
   const sampleCodeDirty = order.items.some((i) => (sampleCodeDraft[i.id] ?? '') !== (i.sampleCode ?? ''))
   /**
@@ -253,6 +266,13 @@ export function DyeOrderDetailPage() {
           <>
             <StatusBadge status={order.status} className="text-sm" />
             <PrintActions outboundDoc="表4 染整單" sheets={[{ key: 'doc', label: '列印染單', sheet: <DyeOrderPrint order={order} /> }]} />
+            {order.status === '生效' && !order.greigeArrivedAt && canWithdraw && (
+              <WithdrawDraftButton
+                pending={withdrawMutation.isPending}
+                description="單據會回到草稿，可修改交期、委外加工廠與明細後重新確認建單。胚布一到貨（已登記指染）即不可撤回——布已可投入染整，收回單子救不了已經下鍋的布。"
+                onConfirm={(reason) => withdrawMutation.mutate(reason)}
+              />
+            )}
             {order.status === '草稿' && canConfirm && (
               <Button
                 size="sm"
@@ -269,6 +289,8 @@ export function DyeOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表4" />
+
+      <WithdrawalNotes entries={order.withdrawals} />
 
       <Card>
         <CardHeader>
@@ -604,7 +626,7 @@ export function DyeOrderDetailPage() {
         <Card className="mt-4">
           <CardHeader>
             <CardTitle className="text-base">
-              大貨樣確認送樣（退回不設次數上限，可反覆送樣；通過即結案，明細有加工方法者建立表5二次加工單，其餘建立表6入庫單）
+              大貨樣確認送樣（不通過不設次數上限，可反覆送樣；通過即結案，明細有加工方法者建立表5二次加工單，其餘建立表6入庫單）
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -622,7 +644,7 @@ export function DyeOrderDetailPage() {
             {!order.largeSampleConfirmedAt && canClose && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">退回原因（選填，僅登記退回時使用）</label>
+                  <label className="text-xs text-muted-foreground">不通過原因（選填，僅登記不通過時使用）</label>
                   <Input
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
@@ -634,9 +656,9 @@ export function DyeOrderDetailPage() {
                   variant="outline"
                   className="border-destructive text-destructive hover:bg-destructive/10"
                   disabled={submitSampleMutation.isPending}
-                  onClick={() => submitSampleMutation.mutate({ result: '退回', reason: rejectReason || undefined })}
+                  onClick={() => submitSampleMutation.mutate({ result: '不通過', reason: rejectReason || undefined })}
                 >
-                  登記退回
+                  登記不通過
                 </Button>
                 <Button
                   className="bg-brand hover:bg-brand-dark"

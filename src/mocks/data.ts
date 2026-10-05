@@ -455,8 +455,16 @@ const PO_STATUSES: PurchaseOrder['status'][] = ['草稿', '待簽回', '已簽�
 export const purchaseOrders: PurchaseOrder[] = packingNotices
   .filter((_, i) => i % 2 === 0)
   .map((pn, i) => {
-    const createdAt = dayjs(pn.createdAt).add(1, 'day')
     const status = PO_STATUSES[i % PO_STATUSES.length]
+    /**
+     * 建單日取自來源表1 的隔日——但「待簽回」那一張刻意改成昨天。
+     *
+     * 理由是展示可達性：訂購單建立超過 2 天未簽回即自動視為已逾期（決策21），
+     * 而表1 的種子建單日是 0～60 天前的隨機值，照抄過來的話那張待簽回幾乎必然已經逾期，
+     * **撤回草稿與「確認已簽回」兩顆按鈕就都按不到**（決策132 的撤回只開放給實際仍在待簽回的單）。
+     * 唯一的待簽回因此固定給昨天，讓這條路在畫面上走得完。
+     */
+    const createdAt = status === '待簽回' ? dayjs().subtract(1, 'day') : dayjs(pn.createdAt).add(1, 'day')
     const id = `${pn.id}-P1`
     // 明細與表1包裝通知單完全一致，逐列（1:1）帶入，僅新增訂購單專屬的單價欄位
     const items = pn.items.map((item) => ({
@@ -1293,8 +1301,27 @@ export function buildSessionSnapshot(): SessionSnapshot {
   }
 }
 
+/**
+ * 送樣回覆的舊值正規化（決策132 之四：「退回」改名「不通過」）。
+ *
+ * 伺服器與分頁暫存裡已經存著一批 result: '退回' 的送樣紀錄。
+ * 型別改了不會自動改資料，畫面上那些舊紀錄會變成既非通過也非不通過的第三種值——
+ * 判斷式一律落到 else，看起來像通過。故在套用快照的入口就地改掉。
+ */
+function normalizeSampleResults(snapshot: SessionSnapshot): void {
+  const fix = (list?: { result: string }[]) => {
+    list?.forEach((row) => {
+      if ((row.result as string) === '退回') row.result = '不通過'
+    })
+  }
+  snapshot.purchaseOrders?.forEach((o) => fix(o.largeSampleSubmissions))
+  snapshot.dyeRequests?.forEach((d) => fix(d.colorSampleSubmissions))
+  snapshot.dyeOrders?.forEach((d) => fix(d.largeSampleSubmissions))
+}
+
 /** 把一份快照套回記憶體中的資料陣列。還原本機暫存與載入遠端資料共用這一段 */
 export function applySessionSnapshot(snapshot: SessionSnapshot): void {
+  normalizeSampleResults(snapshot)
   // PI 單為 Phase 2 新增的快照欄位，舊快照沒有時沿用種子資料
   if (snapshot.proformaInvoices) proformaInvoices.splice(0, proformaInvoices.length, ...snapshot.proformaInvoices)
   packingNotices.splice(0, packingNotices.length, ...snapshot.packingNotices)

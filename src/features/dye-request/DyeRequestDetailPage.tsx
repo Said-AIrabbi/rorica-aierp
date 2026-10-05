@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -24,6 +25,7 @@ import {
   updateDyeRequestDraft,
   updateDyeRequestFinishedSpec,
   type DyeRequestColorInput,
+  withdrawDyeRequest,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { useCurrentAccount } from '@/lib/current-account-context'
@@ -71,6 +73,16 @@ export function DyeRequestDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['dyeOrders'] }),
     ])
 
+  /** 撤回草稿（決策132）：已送出→草稿；色卡已開始送樣確認者由資料層擋下 */
+  const withdrawMutation = useMutation({
+    mutationFn: (reason: string) => withdrawDyeRequest(id!, reason),
+    onSuccess: async (updated) => {
+      await invalidate()
+      toast.success(`${updated.id} 已撤回為草稿，可修改後重新送出染整廠`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const sendMutation = useMutation({
     mutationFn: () => sendDyeRequest(id!),
     onSuccess: async () => {
@@ -79,12 +91,12 @@ export function DyeRequestDetailPage() {
     },
   })
   const submitSampleMutation = useMutation({
-    mutationFn: (input: { result: '通過' | '退回'; reason?: string }) =>
+    mutationFn: (input: { result: '通過' | '不通過'; reason?: string }) =>
       submitDyeRequestColorSample(id!, input.result, input.reason),
     onSuccess: async (_updated, input) => {
       await invalidate()
       setRejectReason('')
-      toast.success(input.result === '通過' ? `${id} 色卡已確認通過，已回填至對應染單` : `${id} 色卡已退回，已自動新增下一筆送樣紀錄`)
+      toast.success(input.result === '通過' ? `${id} 色卡已確認通過，已回填至對應染單` : `${id} 色卡登記為不通過，已自動新增下一筆送樣紀錄`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -158,6 +170,7 @@ export function DyeRequestDetailPage() {
   const canCreate = permissions.can('表3', '建立')
   const canSend = permissions.can('表3', '送出')
   const canConfirm = permissions.can('表3', '確認色卡')
+  const canWithdraw = permissions.can('表3', '撤回草稿')
   const colorsEditable = request.status !== '已完成' && canCreate
   // 成品規格同樣在結案前可修改；結案後改為唯讀，並開放「納入商品主檔」
   const specEditable = request.status !== '已完成' && canCreate
@@ -189,6 +202,13 @@ export function DyeRequestDetailPage() {
             <StatusBadge status={request.status} className="text-sm print:hidden" />
             {/* 列印格式保留貼色樣布留白區塊（PRD 決策64），畫面不顯示 */}
             <PrintActions sheets={[{ key: 'doc', label: '列印打色通知單', sheet: <DyeRequestPrint request={request} /> }]} />
+            {request.status === '已送出' && canWithdraw && (
+              <WithdrawDraftButton
+                pending={withdrawMutation.isPending}
+                description="單據會回到草稿，可修改染整廠與待打色的顏色後重新送出。一旦進入色卡送樣確認即不可撤回——染廠已經打色，收回單子不會讓那次打色消失。"
+                onConfirm={(reason) => withdrawMutation.mutate(reason)}
+              />
+            )}
             {request.status === '草稿' && canSend && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark print:hidden" disabled={pending} onClick={() => sendMutation.mutate()}>
                 送出染整廠
@@ -199,6 +219,8 @@ export function DyeRequestDetailPage() {
       />
 
       <ReadOnlyNotice doc="表3" />
+
+      <WithdrawalNotes entries={request.withdrawals} />
 
       <Card>
         <CardHeader>
@@ -423,7 +445,7 @@ export function DyeRequestDetailPage() {
       {request.status !== '草稿' && (
         <Card className="mt-4 print:hidden">
           <CardHeader>
-            <CardTitle className="text-base">色卡送樣確認（退回不設次數上限，可反覆送樣；通過後狀態變更為已完成並回填染單）</CardTitle>
+            <CardTitle className="text-base">色卡送樣確認（不通過不設次數上限，可反覆送樣；通過後狀態變更為已完成並回填染單）</CardTitle>
           </CardHeader>
           <CardContent>
             {request.colorSampleSubmissions && request.colorSampleSubmissions.length > 0 && (
@@ -440,7 +462,7 @@ export function DyeRequestDetailPage() {
             {!request.colorSampleConfirmedAt && canConfirm && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">退回原因（選填，僅登記退回時使用）</label>
+                  <label className="text-xs text-muted-foreground">不通過原因（選填，僅登記不通過時使用）</label>
                   <Input
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
@@ -452,9 +474,9 @@ export function DyeRequestDetailPage() {
                   variant="outline"
                   className="border-destructive text-destructive hover:bg-destructive/10"
                   disabled={pending}
-                  onClick={() => submitSampleMutation.mutate({ result: '退回', reason: rejectReason || undefined })}
+                  onClick={() => submitSampleMutation.mutate({ result: '不通過', reason: rejectReason || undefined })}
                 >
-                  登記退回
+                  登記不通過
                 </Button>
                 <Button
                   className="bg-brand hover:bg-brand-dark"

@@ -290,6 +290,15 @@ export interface DocumentRejection {
   reason: string
 }
 
+/**
+ * 撤回草稿的紀錄（2026/10/05，主文件決策132）。
+ *
+ * 與退回同形，但**刻意分成兩個欄位**：退回是「別人把單打回給你」，
+ * 撤回是「自己把送出去的單收回來改」。兩者混在同一個清單裡，
+ * 畫面上就說不清這張單到底被誰質疑過——而那正是看退回紀錄的人想知道的事。
+ */
+export type DocumentWithdrawal = DocumentRejection
+
 /** 包裝方式：選擇「定碼ROLL可接疋／不可接疋」時展開「定碼長度」欄位，輸入米數自動換算為碼數 */
 export const PACKING_METHODS = ['捲支', '板捲', '定碼ROLL可接疋', '定碼ROLL不可接疋', '原疋捲', '其他'] as const
 export const FIXED_ROLL_PACKING_METHODS: (typeof PACKING_METHODS)[number][] = ['定碼ROLL可接疋', '定碼ROLL不可接疋']
@@ -537,6 +546,8 @@ export interface PurchaseOrderItem {
 
 export interface PurchaseOrder {
   id: string
+  /** 撤回草稿的歷次紀錄（決策132）：原因必填、歷次不覆蓋、不設次數上限 */
+  withdrawals?: DocumentWithdrawal[]
   parentId: string
   type: PurchaseOrderType
   /** 是否委外染整：僅「胚布」類型適用；勾選後完成訂購單將觸發表3打色通知單，走委外加工路徑而非直接入庫 */
@@ -586,6 +597,8 @@ export interface DyeRequestColorEntry {
 
 export interface DyeRequest {
   id: string
+  /** 撤回草稿的歷次紀錄（決策132） */
+  withdrawals?: DocumentWithdrawal[]
   parentId: string
   /** 買方：唯讀，固定顯示「皇加」（染整廠視角，皇加為委託打色的買方） */
   buyer: '皇加'
@@ -611,11 +624,19 @@ export interface DyeRequest {
 
 export type DyeOrderStatus = '草稿' | '生效' | '已完成'
 
-/** 大貨樣確認送樣：完整送樣子流程（送樣→待回覆→確認），退回不設次數上限，選「退回」後該筆鎖定不可修改，自動新增下一筆 */
+/**
+ * 大貨樣／色卡確認送樣：完整送樣子流程（送樣→待回覆→確認），不設次數上限，
+ * 選「不通過」後該筆鎖定不可修改，自動新增下一筆。
+ *
+ * **回覆選項為「通過／不通過」**（2026/10/05，決策132 之四；原為「通過／退回」）。
+ * 改名的理由：系統另有「退回」與「撤回草稿」兩個單據動作，
+ * 同一張表4 詳情頁上原本會出現兩顆意思完全不同的「退回」——
+ * 一個是把單子打回上一個人手上，一個是這次送樣沒過、要重做再送。
+ */
 export interface LargeSampleSubmission {
   id: string
   submittedAt: string
-  result: '通過' | '退回'
+  result: '通過' | '不通過'
   reason?: string
 }
 
@@ -668,6 +689,8 @@ export interface DyeOrderItem {
 
 export interface DyeOrder {
   id: string
+  /** 撤回生效的歷次紀錄（決策132）；胚布到貨後即不可撤回 */
+  withdrawals?: DocumentWithdrawal[]
   parentId: string
   status: DyeOrderStatus
   /** 交期：可手動修改；有訂購單時預設帶入其交貨日期，「有胚」無訂購單則人工選擇，預設規則同樣14天 */
@@ -739,6 +762,8 @@ export const GOODS_RECEIPT_PURPOSES = ['銷貨用', '樣品用', '其他'] as co
 
 export interface GoodsReceipt {
   id: string
+  /** 退回複核的歷次紀錄（決策132）；確認入庫後即不可退回 */
+  withdrawals?: DocumentWithdrawal[]
   parentId: string
   source: GoodsReceiptSource
   /**
@@ -916,6 +941,8 @@ export interface SecondaryProcessingPackaging {
 
 export interface SecondaryProcessingOrder {
   id: string
+  /** 撤回生效的歷次紀錄（決策132）；來源染單的胚布到貨後即不可撤回 */
+  withdrawals?: DocumentWithdrawal[]
   /** 主號貫穿：`${表1單號}-X{n}` */
   parentId: string
   /**

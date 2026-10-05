@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -24,6 +25,7 @@ import {
   updateGoodsReceiptPurpose,
   updateGoodsReceiptRolls,
   updateGoodsReceiptVendorInfo,
+  withdrawGoodsReceiptReview,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, formatPercent, yardToMeter } from '@/lib/units'
@@ -88,7 +90,19 @@ export function GoodsReceiptDetailPage() {
   // 草稿內容的修改（捲號明細、投胚量、用途、廠商資訊）在寫入端都檢查「複核」，畫面同一把尺
   const canReview = permissions.can('表6', '複核')
   const canConfirm = permissions.can('表6', '確認入庫')
+  // 動作本身是「撤回草稿」，畫面文字依皇加指定寫「退回複核」（決策132）
+  const canWithdraw = permissions.can('表6', '撤回草稿')
   const editable = receipt?.status === '草稿' && canReview
+
+  /** 退回複核（決策132，動作為撤回草稿）：已複核→草稿；已完成入庫者由資料層擋下 */
+  const withdrawMutation = useMutation({
+    mutationFn: (reason: string) => withdrawGoodsReceiptReview(id!, reason),
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({ queryKey: ['goodsReceipts'] })
+      toast.success(`${updated.id} 已退回複核，可修改布卷明細後重新複核`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   const saveRollsMutation = useMutation({
     mutationFn: () => updateGoodsReceiptRolls(id!, rolls),
@@ -261,6 +275,14 @@ export function GoodsReceiptDetailPage() {
                 確認複核
               </Button>
             )}
+            {receipt.status === '已複核' && canWithdraw && (
+              <WithdrawDraftButton
+                label="退回複核"
+                pending={withdrawMutation.isPending}
+                description="單據會回到草稿，可重新修改布卷明細、投胚量與廠商資訊後再複核。標記完成入庫之後即不可退回——入庫會產生布卷與條碼標籤並併入表8 出貨單，退回不會讓那些一併消失。"
+                onConfirm={(reason) => withdrawMutation.mutate(reason)}
+              />
+            )}
             {receipt.status === '已複核' && canConfirm && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate('已完成')}>
                 標記完成入庫
@@ -271,6 +293,8 @@ export function GoodsReceiptDetailPage() {
       />
 
       <ReadOnlyNotice doc="表6" />
+
+      <WithdrawalNotes entries={receipt.withdrawals} label="退回複核紀錄" />
 
       <Card>
         <CardHeader>

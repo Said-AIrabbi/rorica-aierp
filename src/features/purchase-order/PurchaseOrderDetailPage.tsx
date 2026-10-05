@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, Lock, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -17,7 +18,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
-import { savePurchaseOrderDraft, completePurchaseOrderDraft, signPurchaseOrder, submitPurchaseOrderLargeSample, triggerPurchaseOrderFulfillment } from '@/mocks/mutations'
+import {
+  savePurchaseOrderDraft,
+  completePurchaseOrderDraft,
+  signPurchaseOrder,
+  submitPurchaseOrderLargeSample,
+  triggerPurchaseOrderFulfillment,
+  withdrawPurchaseOrder,
+} from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
@@ -100,13 +108,23 @@ export function PurchaseOrderDetailPage() {
     },
   })
 
+  /** 撤回草稿（決策132）：待簽回→草稿。已逾期與已簽回由資料層擋下 */
+  const withdrawMutation = useMutation({
+    mutationFn: (reason: string) => withdrawPurchaseOrder(id!, reason),
+    onSuccess: async (updated) => {
+      await invalidateAll()
+      toast.success(`${updated.id} 已撤回為草稿，可重新補齊後再送出`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const submitSampleMutation = useMutation({
-    mutationFn: (input: { result: '通過' | '退回'; reason?: string }) =>
+    mutationFn: (input: { result: '通過' | '不通過'; reason?: string }) =>
       submitPurchaseOrderLargeSample(id!, input.result, input.reason),
     onSuccess: async (_updated, input) => {
       await invalidateAll()
       setRejectReason('')
-      toast.success(input.result === '通過' ? `${id} 大貨樣已確認通過` : `${id} 大貨樣已退回，已自動新增下一筆送樣紀錄`)
+      toast.success(input.result === '通過' ? `${id} 大貨樣已確認通過` : `${id} 大貨樣登記為不通過，已自動新增下一筆送樣紀錄`)
     },
   })
 
@@ -177,6 +195,7 @@ export function PurchaseOrderDetailPage() {
   const canSend = permissions.can('表2', '送出')
   const canEditDraft = permissions.can('表2', '編輯草稿')
   const canClose = permissions.can('表2', '結案')
+  const canWithdraw = permissions.can('表2', '撤回草稿')
   const displayStatus = effectivePurchaseOrderStatus(order)
   const readyToTrigger = isPurchaseOrderReadyToTriggerFulfillment(order, goodsReceipts, dyeOrders)
   const linkedDyeOrders = order.hasDyeVendor ? dyeOrders.filter((d) => d.parentId === order.parentId) : []
@@ -215,6 +234,13 @@ export function PurchaseOrderDetailPage() {
                 確認已簽回
               </Button>
             )}
+            {displayStatus === '待簽回' && !order.signedAt && canWithdraw && (
+              <WithdrawDraftButton
+                pending={withdrawMutation.isPending}
+                description="單據會回到草稿，可重新修改廠商、交期與單價後再送出。凍結時鐘不重算（仍自第一次送出日起算）；廠商已簽回或已逾期的單不可撤回。"
+                onConfirm={(reason) => withdrawMutation.mutate(reason)}
+              />
+            )}
             {readyToTrigger && canSend && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={triggerMutation.isPending} onClick={() => triggerMutation.mutate()}>
                 {order.type === '胚布' && order.hasDyeVendor ? '建立染整單' : '建立入庫單'}
@@ -225,6 +251,8 @@ export function PurchaseOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表2" />
+
+      <WithdrawalNotes entries={order.withdrawals} />
 
       {overdue && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
@@ -512,7 +540,7 @@ export function PurchaseOrderDetailPage() {
       {order.type === '成品' && (displayStatus === '已簽回' || displayStatus === '已逾期') && (
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle className="text-base">大貨樣確認送樣（退回不設次數上限，可反覆送樣；通過後才可觸發表6入庫流程，入庫完成才算已完成）</CardTitle>
+            <CardTitle className="text-base">大貨樣確認送樣（不通過不設次數上限，可反覆送樣；通過後才可觸發表6入庫流程，入庫完成才算已完成）</CardTitle>
           </CardHeader>
           <CardContent>
             {order.largeSampleSubmissions && order.largeSampleSubmissions.length > 0 && (
@@ -529,7 +557,7 @@ export function PurchaseOrderDetailPage() {
             {!order.largeSampleConfirmedAt && canClose && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">退回原因（選填，僅登記退回時使用）</label>
+                  <label className="text-xs text-muted-foreground">不通過原因（選填，僅登記不通過時使用）</label>
                   <Input
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
@@ -541,9 +569,9 @@ export function PurchaseOrderDetailPage() {
                   variant="outline"
                   className="border-destructive text-destructive hover:bg-destructive/10"
                   disabled={submitSampleMutation.isPending}
-                  onClick={() => submitSampleMutation.mutate({ result: '退回', reason: rejectReason || undefined })}
+                  onClick={() => submitSampleMutation.mutate({ result: '不通過', reason: rejectReason || undefined })}
                 >
-                  登記退回
+                  登記不通過
                 </Button>
                 <Button
                   className="bg-brand hover:bg-brand-dark"

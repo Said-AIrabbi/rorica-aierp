@@ -36,6 +36,7 @@ import { getCurrentAccount, requireCurrentAccount } from './session'
 import { markDocumentEventsRead, recordDocumentChanges } from './document-events'
 import type {
   DigitalColor,
+  DocumentWithdrawal,
   AbnormalHandling,
   AbnormalNotice,
   Account,
@@ -106,6 +107,22 @@ export function markNotificationsRead(): Promise<void> {
   const account = requireCurrentAccount()
   markDocumentEventsRead(account.id)
   return delay(undefined, 0)
+}
+
+/**
+ * 撤回草稿的共同前置（主文件決策132）：權限、原因、紀錄。
+ *
+ * 三件事都比照現有的退回（決策二：比照現有退回）——原因必填、歷次不覆蓋、不設次數上限。
+ * 原因必填的理由在撤回上和退回一樣重要，只是讀的人不同：
+ * 退回是給對方看「你哪裡要改」，撤回是給**日後的自己與稽核**看「這張單為什麼送出去又收回來」。
+ * 單據已經對外送出過，少了這一行就只剩一個無法解釋的狀態跳躍。
+ */
+function buildWithdrawal(doc: DocKey, reason: string): DocumentWithdrawal {
+  const account = requireCurrentAccount()
+  assertCanAct(account, doc, '撤回草稿')
+  const trimmed = reason.trim()
+  if (!trimmed) throw new Error('撤回原因必填——單據已經送出過，沒有原因就只剩一個無法解釋的狀態跳躍')
+  return { at: new Date().toISOString(), byAccountId: account.id, reason: trimmed }
 }
 
 function pad(n: number, len = 3) {
@@ -980,6 +997,35 @@ export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraft
  * 表2 草稿的手動儲存：欄位與送出時相同，但不改狀態、不寫生效日。
  * 使用者可分多次補齊資料，沒按儲存就維持原狀（送出另走 completePurchaseOrderDraft）。
  */
+/**
+ * 表2 撤回草稿（決策132）：待簽回 → 草稿。
+ *
+ * 兩個刻意的限制：
+ *   ①**已簽回／已逾期不可撤回**。已簽回是廠商真的回了，已逾期依決策21 效果等同已確認——
+ *     兩者都代表這張單對外已經成立，打回草稿等於當作沒下過單。表2 不設作廢（決策三），
+ *     故這種情形只能走完流程或另開異常處理，不在本動作範圍。
+ *   ②**凍結時鐘不重算**。effectiveAt 保留原值（送出當下寫入，7 個工作天自此起算），
+ *     否則撤回一次就多七天可改的空窗，凍結旗標形同虛設。比照 PI 退回不重算報價效期。
+ */
+export function withdrawPurchaseOrder(id: string, reason: string): Promise<PurchaseOrder> {
+  const withdrawal = buildWithdrawal('表2', reason)
+  const idx = purchaseOrders.findIndex((p) => p.id === id)
+  if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
+  const current = purchaseOrders[idx]
+  if (current.status !== '待簽回') throw new Error('僅「待簽回」的訂購單可撤回草稿')
+  // 狀態欄位可能還是待簽回，但 2 日未簽回即視為已逾期（決策21），以實際狀態為準
+  if (effectivePurchaseOrderStatus(current) !== '待簽回') {
+    throw new Error('本單已逾期（效果等同已確認），不可撤回——對外已成立的單請走正常流程')
+  }
+  const updated: PurchaseOrder = {
+    ...current,
+    status: '草稿',
+    withdrawals: [...(current.withdrawals ?? []), withdrawal],
+  }
+  purchaseOrders[idx] = updated
+  return delay(updated)
+}
+
 export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftCompletionInput): Promise<PurchaseOrder> {
   assertCanAct(getCurrentAccount(), '表2', '編輯草稿')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
@@ -1002,10 +1048,10 @@ export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftComp
 }
 
 /**
- * 大貨樣確認送樣（成品類型專用）：比照表4，退回不設次數上限，
+ * 大貨樣確認送樣（成品類型專用）：比照表4，不通過不設次數上限，
  * 通過後記錄大貨樣確認日，作為訂購單進入「已完成」狀態的判定條件。
  */
-export function submitPurchaseOrderLargeSample(id: string, result: '通過' | '退回', reason?: string): Promise<PurchaseOrder> {
+export function submitPurchaseOrderLargeSample(id: string, result: '通過' | '不通過', reason?: string): Promise<PurchaseOrder> {
   assertCanAct(getCurrentAccount(), '表2', '結案')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
@@ -1014,7 +1060,7 @@ export function submitPurchaseOrderLargeSample(id: string, result: '通過' | '�
     id: `${current.id}-SAMPLE${(current.largeSampleSubmissions?.length ?? 0) + 1}`,
     submittedAt: dayjs().toISOString(),
     result,
-    reason: result === '退回' ? reason : undefined,
+    reason: result === '不通過' ? reason : undefined,
   }
   const updated: PurchaseOrder = {
     ...current,
@@ -1296,6 +1342,32 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
 
 // ---------- 表3 打色通知單 ----------
 
+/**
+ * 表3 撤回草稿（決策132）：已送出 → 草稿。
+ *
+ * 色卡一旦開始送樣確認就不可撤回——那代表染廠已經打完色、樣品已經在桌上，
+ * 收回單子不會讓那次打色消失，只會讓紀錄對不上。
+ * 反之「已送出但染廠還沒回」是真正需要撤回的時機（送錯廠、顏色填錯）。
+ * 系統無從得知染廠是否已經開工，故原因必填，由生管自己說明。
+ */
+export function withdrawDyeRequest(id: string, reason: string): Promise<DyeRequest> {
+  const withdrawal = buildWithdrawal('表3', reason)
+  const idx = dyeRequests.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
+  const current = dyeRequests[idx]
+  if (current.status !== '已送出') throw new Error('僅「已送出」的打色通知單可撤回草稿')
+  if (current.colorSampleSubmissions?.length || current.colorSampleConfirmedAt) {
+    throw new Error('已進入色卡送樣確認，不可撤回——染廠已打色，收回單子不會讓那次打色消失')
+  }
+  const updated: DyeRequest = {
+    ...current,
+    status: '草稿',
+    withdrawals: [...(current.withdrawals ?? []), withdrawal],
+  }
+  dyeRequests[idx] = updated
+  return delay(updated)
+}
+
 export function sendDyeRequest(id: string): Promise<void> {
   assertCanAct(getCurrentAccount(), '表3', '送出')
   const idx = dyeRequests.findIndex((d) => d.id === id)
@@ -1521,10 +1593,10 @@ export function createDyeRequest(input: DyeRequestInput): Promise<DyeRequest> {
 }
 
 /**
- * 色卡送樣確認：完整送樣子流程，退回不設次數上限，選「退回」後該筆鎖定、自動新增下一筆。
+ * 色卡送樣確認：完整送樣子流程，不通過不設次數上限，選「不通過」後該筆鎖定、自動新增下一筆。
  * 通過後打色通知單狀態變更為「已完成」，並將色樣編號回填至對應染單（若染單已先行開立且色號欄位仍空白）。
  */
-export function submitDyeRequestColorSample(id: string, result: '通過' | '退回', reason?: string): Promise<DyeRequest> {
+export function submitDyeRequestColorSample(id: string, result: '通過' | '不通過', reason?: string): Promise<DyeRequest> {
   assertCanAct(getCurrentAccount(), '表3', '確認色卡')
   const idx = dyeRequests.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`打色通知單 ${id} 不存在`)
@@ -1533,7 +1605,7 @@ export function submitDyeRequestColorSample(id: string, result: '通過' | '退�
     id: `${current.id}-SAMPLE${(current.colorSampleSubmissions?.length ?? 0) + 1}`,
     submittedAt: dayjs().toISOString(),
     result,
-    reason: result === '退回' ? reason : undefined,
+    reason: result === '不通過' ? reason : undefined,
   }
   const updated: DyeRequest = {
     ...current,
@@ -1787,6 +1859,32 @@ export function updateDyeOrderDraft(id: string, input: DyeOrderDraftInput): Prom
   return delay(updated)
 }
 
+/**
+ * 表4 撤回生效（決策132）：生效 → 草稿。
+ *
+ * **胚布到貨後不可撤回**（皇加指定）：greigeArrivedAt 一有值就代表布已經可以下鍋，
+ * 轉生效當下登記的指染數量也已經成立。此時收回單子救不了已經投入的布，
+ * 只會讓庫存的兩段（成品數量／指染數量）與單據狀態互相矛盾。
+ * 真的要處理，該走的是異常而不是撤回。
+ */
+export function withdrawDyeOrder(id: string, reason: string): Promise<DyeOrder> {
+  const withdrawal = buildWithdrawal('表4', reason)
+  const idx = dyeOrders.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
+  const current = dyeOrders[idx]
+  if (current.status !== '生效') throw new Error('僅「生效」的染整單可撤回草稿')
+  if (current.greigeArrivedAt) {
+    throw new Error('胚布已到貨（已登記指染），不可撤回——布已可投入染整，收回單子救不了已經下鍋的布')
+  }
+  const updated: DyeOrder = {
+    ...current,
+    status: '草稿',
+    withdrawals: [...(current.withdrawals ?? []), withdrawal],
+  }
+  dyeOrders[idx] = updated
+  return delay(updated)
+}
+
 export function confirmDyeOrder(id: string): Promise<DyeOrder> {
   assertCanAct(getCurrentAccount(), '表4', '轉生效')
   const idx = dyeOrders.findIndex((d) => d.id === id)
@@ -1836,13 +1934,13 @@ function applyGreigeArrivalToParent(parentId: string, arrivedAt: string): void {
 }
 
 /**
- * 大貨樣確認送樣：完整送樣子流程，退回不設次數上限，選「退回」後該筆鎖定不可修改、自動新增下一筆送樣紀錄。
+ * 大貨樣確認送樣：完整送樣子流程，不通過不設次數上限，選「不通過」後該筆鎖定不可修改、自動新增下一筆送樣紀錄。
  * 「通過」為染單結案的唯一判定條件，通過的當下同時發生兩件事（無需另一道人工結案動作）：
  * 1) 染單狀態變更為「已完成」，各列指染數量歸零（貨已染完，不再在染整中）；
  * 2) 建立表6入庫單草稿（來源：委外加工）。
  * 另回頭結案關聯的表2胚布送染整訂購單。實際交付數量的對照另由表6入庫確認時記錄，不在此登記。
  */
-export function submitDyeOrderLargeSample(id: string, result: '通過' | '退回', reason?: string): Promise<DyeOrder> {
+export function submitDyeOrderLargeSample(id: string, result: '通過' | '不通過', reason?: string): Promise<DyeOrder> {
   assertCanAct(getCurrentAccount(), '表4', '結案')
   const idx = dyeOrders.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
@@ -1851,7 +1949,7 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '退回
     id: `${current.id}-SAMPLE${(current.largeSampleSubmissions?.length ?? 0) + 1}`,
     submittedAt: dayjs().toISOString(),
     result,
-    reason: result === '退回' ? reason : undefined,
+    reason: result === '不通過' ? reason : undefined,
   }
   const submissions = [...(current.largeSampleSubmissions ?? []), submission]
 
@@ -2082,6 +2180,30 @@ function resolveDyeOrderIndexForReceipt(receipt: GoodsReceipt): number {
  * 3) 純採購路徑（直採大貨-成品／胚布）：回頭結案對應的表2訂購單，
  *    委外加工路徑則不需再結案（表4染單於大貨樣通過當下已完成）。
  */
+/**
+ * 表6 退回複核（決策132；動作本身是「撤回草稿」，皇加指定畫面文字為「退回複核」）：
+ * 已複核 → 草稿。
+ *
+ * **確認入庫之後不可退回。** 入庫會產生布卷與條碼標籤，並把明細併進表8 出貨單；
+ * 退回只改這張單的狀態，不會讓那些布卷與標籤一併消失。
+ * 而布卷狀態「一律只能經由單據觸發改變」是稽核軌跡的底線（主文件決策61-3），
+ * 由這裡去刪布卷等於自己把那條底線鑽掉。入庫錯了要沖正，該是另一張單的事。
+ */
+export function withdrawGoodsReceiptReview(id: string, reason: string): Promise<GoodsReceipt> {
+  const withdrawal = buildWithdrawal('表6', reason)
+  const idx = goodsReceipts.findIndex((r) => r.id === id)
+  if (idx === -1) throw new Error(`入庫單 ${id} 不存在`)
+  const current = goodsReceipts[idx]
+  if (current.status !== '已複核') throw new Error('僅「已複核」的入庫單可退回複核')
+  const updated: GoodsReceipt = {
+    ...current,
+    status: '草稿',
+    withdrawals: [...(current.withdrawals ?? []), withdrawal],
+  }
+  goodsReceipts[idx] = updated
+  return delay(updated)
+}
+
 export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']): Promise<GoodsReceipt> {
   // 複核與確認入庫是矩陣上兩個獨立動作，分開檢查——個別排除其一時才擋得住
   assertCanAct(getCurrentAccount(), '表6', status === '已複核' ? '複核' : '確認入庫')
@@ -2644,6 +2766,32 @@ export function setSecondaryProcessingStatus(
     createGoodsReceiptDraft(updated.parentId, '委外加工', { type: '二次加工單', id: updated.id }, pledgedQty)
   }
 
+  return delay(updated)
+}
+
+/**
+ * 表5 撤回生效（決策132）：生效 → 草稿。
+ *
+ * 與表4 同一條線：來源染單的胚布一到貨就不可撤回。
+ * 表5 自己沒有胚布欄位——它是染單的下游，布的狀態要回頭問那張染單（dyeOrderId）。
+ * 生管人工建立的表5 沒有來源染單，就沒有這道限制。
+ */
+export function withdrawSecondaryProcessingOrder(id: string, reason: string): Promise<SecondaryProcessingOrder> {
+  const withdrawal = buildWithdrawal('表5', reason)
+  const idx = secondaryProcessingOrders.findIndex((o) => o.id === id)
+  if (idx === -1) throw new Error(`二次加工單 ${id} 不存在`)
+  const current = secondaryProcessingOrders[idx]
+  if (current.status !== '生效') throw new Error('僅「生效」的二次加工單可撤回草稿')
+  const sourceDyeOrder = current.dyeOrderId ? dyeOrders.find((d) => d.id === current.dyeOrderId) : undefined
+  if (sourceDyeOrder?.greigeArrivedAt) {
+    throw new Error('來源染單的胚布已到貨，不可撤回——加工對象已經投入，收回單子只會讓紀錄對不上')
+  }
+  const updated: SecondaryProcessingOrder = {
+    ...current,
+    status: '草稿',
+    withdrawals: [...(current.withdrawals ?? []), withdrawal],
+  }
+  secondaryProcessingOrders[idx] = updated
   return delay(updated)
 }
 
