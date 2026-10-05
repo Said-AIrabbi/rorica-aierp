@@ -148,7 +148,10 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
                 <th>成分</th>
                 <td>{marking.composition ?? ' '}</td>
                 <th>產地</th>
-                <td>{marking.origin ?? ' '}</td>
+                <td>
+                  {marking.origin ?? ' '}
+                  {marking.hasRoc ? '　R.O.C.' : ''}
+                </td>
               </tr>
             </tbody>
           </table>

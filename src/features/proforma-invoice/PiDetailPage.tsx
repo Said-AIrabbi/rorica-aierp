@@ -29,7 +29,7 @@ import {
   voidProformaInvoice,
 } from '@/mocks/mutations'
 import { formatDate, formatDateTime } from '@/lib/dates'
-import { formatNumber } from '@/lib/units'
+import { formatNumber, yardPriceToMeterPrice } from '@/lib/units'
 import { BasisQty } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
 import {
@@ -431,7 +431,8 @@ export function PiDetailPage() {
                     <TableHead>成分／幅寬／碼重</TableHead>
                     <TableHead>顏色</TableHead>
                     <TableHead className="text-right">數量</TableHead>
-                    <TableHead className="text-right">單價（/碼）</TableHead>
+                    {/* 單價一律以每碼存放，顯示時跟著本單的報價單位換算（決策134） */}
+                    <TableHead className="text-right">單價（/{pi.itemUnit === 'Yard' ? '碼' : '米'}）</TableHead>
                     <TableHead className="text-right">金額</TableHead>
                     <TableHead>包裝方式</TableHead>
                     <TableHead>彩條</TableHead>
@@ -458,7 +459,13 @@ export function PiDetailPage() {
                         <TableCell className="text-right">
                           <BasisQty yard={item.yard} meter={item.meter} unit={pi.itemUnit} />
                         </TableCell>
-                        <TableCell className="text-right">{formatNumber(item.unitPrice, 2)}</TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(
+                            pi.itemUnit === 'Yard' ? item.unitPrice : yardPriceToMeterPrice(item.unitPrice),
+                            2,
+                          )}
+                        </TableCell>
+                        {/* 金額＝每碼單價 × 碼數，與顯示單位無關 */}
                         <TableCell className="text-right">{formatNumber(item.unitPrice * item.yard, 2)}</TableCell>
                         <TableCell>
                           {item.packingMethod}

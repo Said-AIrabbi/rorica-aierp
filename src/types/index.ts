@@ -366,6 +366,17 @@ export interface PackingNoticeMarking {
   netWeightKg?: number
   composition?: string
   origin?: string
+  /**
+   * R.O.C. 字樣（2026/10/05，決策134）：勾選後於產地那一行下方置中加印「R.O.C.」。
+   * 不併進 origin 欄位，因為 origin 是照字面列印的自由文字——
+   * 併進去就無法分辨客戶要的是「MADE IN TAIWAN R.O.C.」一整行，還是兩行分開印。
+   */
+  hasRoc?: boolean
+  /**
+   * 箱/袋號（2026/10/05，決策134）：PI 階段非必填；填了即隨 PI → 表1 → 表8 帶下去，
+   * 成為表8 該組嘜頭的箱/袋號預設值。出貨當下仍可在表8 改寫（出貨才知道實際編到幾號）。
+   */
+  boxNo?: string
   hasSmallMarking: boolean
   smallMarkingText?: string
 }
@@ -1113,7 +1124,8 @@ export const PI_STATUSES = ['草稿', '待批准', '待簽回', '已簽回', '�
 export type ProformaInvoiceStatus = (typeof PI_STATUSES)[number]
 
 /** 幣別：一張 PI 只能有一種（決策14）；商品主檔價格以 NTD 為主，其餘僅作簡易匯率參照（決策41） */
-export const PI_CURRENCIES = ['USD', 'RMB', 'NTD'] as const
+/** PI 報價幣別（2026/10/05 新增 EUR 歐元、HKD 港幣） */
+export const PI_CURRENCIES = ['USD', 'RMB', 'NTD', 'EUR', 'HKD'] as const
 export type PiCurrency = (typeof PI_CURRENCIES)[number]
 
 /** 貿易條件常用選項（2026/09/17 皇加提供，共 7 項）；選用後可自行修改，另有備註一行 */

@@ -71,6 +71,8 @@ function previewMarking(value: PackingNoticeFormValues['markings'][number] | und
     destination: value?.destination,
     composition: value?.composition,
     origin: value?.origin,
+    hasRoc: Boolean(value?.hasRoc),
+    boxNo: value?.boxNo,
     grossWeightKg: num(value?.grossWeightKg),
     netWeightKg: num(value?.netWeightKg),
     hasSmallMarking: Boolean(value?.hasSmallMarking),
@@ -84,6 +86,8 @@ const EMPTY_MARKING: PackingNoticeFormValues['markings'][number] = {
   destination: '',
   composition: '',
   origin: '',
+  hasRoc: false,
+  boxNo: '',
   grossWeightKg: undefined,
   netWeightKg: undefined,
   hasSmallMarking: false,
@@ -871,6 +875,18 @@ export function PackingNoticeFormPage() {
                   <div className="space-y-1.5">
                     <Label>產地</Label>
                     <Input {...register(`markings.${index}.origin`)} placeholder="非必填" />
+                  </div>
+                  <div className="space-y-1.5">
+                    {/* PI 帶入或在此勾選；沒有經過 PI 的表1 否則永遠勾不到（決策134） */}
+                    <Label>R.O.C. 字樣</Label>
+                    <label className="flex h-9 items-center gap-1.5 text-sm font-normal">
+                      <input type="checkbox" className="h-4 w-4" {...register(`markings.${index}.hasRoc`)} />
+                      產地下方加印 R.O.C.
+                    </label>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>箱/袋號</Label>
+                    <Input {...register(`markings.${index}.boxNo`)} placeholder="非必填，自 PI 帶入；表8 可改" />
                   </div>
                   <div className="space-y-1.5">
                     <Label>毛重 (Kg)</Label>

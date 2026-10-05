@@ -21,6 +21,10 @@ export const packingNoticeMarkingSchema = z.object({
   netWeightKg: z.coerce.number().min(0).optional(),
   composition: z.string().optional(),
   origin: z.string().optional(),
+  /** R.O.C. 字樣（決策134）：PI 帶入或在此勾選，於產地下方置中加印一行 */
+  hasRoc: z.boolean().optional(),
+  /** 箱/袋號（決策134）：PI 帶入，表8 建單時作為該組嘜頭的預設值；此處可更正 */
+  boxNo: z.string().optional(),
   hasSmallMarking: z.boolean(),
   smallMarkingText: z.string().optional(),
 })

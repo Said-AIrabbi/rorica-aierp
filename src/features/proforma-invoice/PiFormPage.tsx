@@ -17,7 +17,13 @@ import { api } from '@/mocks/api'
 import { productBranchLabel, resolveProduct } from '@/mocks/data'
 import { createProformaInvoice, updateProformaInvoice } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
-import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
+import {
+  formatNumber,
+  meterPriceToYardPrice,
+  meterToYard,
+  yardPriceToMeterPrice,
+  yardToMeter,
+} from '@/lib/units'
 import {
   PI_CURRENCY_SYMBOL,
   PI_PAYMENT_TERM_TEMPLATES,
@@ -62,6 +68,8 @@ const EMPTY_MARKING: PiFormValues['markings'][number] = {
   destination: '',
   composition: '',
   origin: 'MADE IN TAIWAN',
+  hasRoc: false,
+  boxNo: '',
   grossWeightKg: undefined,
   netWeightKg: undefined,
   hasSmallMarking: false,
@@ -77,6 +85,8 @@ function previewMarking(value: PiFormValues['markings'][number] | undefined): Pa
     destination: value?.destination,
     composition: value?.composition,
     origin: value?.origin,
+    hasRoc: value?.hasRoc ?? false,
+    boxNo: value?.boxNo,
     grossWeightKg: num(value?.grossWeightKg),
     netWeightKg: num(value?.netWeightKg),
     hasSmallMarking: value?.hasSmallMarking ?? false,
@@ -180,7 +190,31 @@ export function PiFormPage() {
 
   // 數量一律以 Yard 存放；基準為 Meter 時輸入框顯示米數，離開欄位即換算回碼
   const [qtyDraft, setQtyDraft] = useState<Record<number, string>>({})
-  const resetDrafts = () => setQtyDraft({})
+  /**
+   * 單價輸入草稿：與數量同一套做法（存的是字串，使用者打到一半不會被格式化干擾）。
+   *
+   * 資料一律以**每碼**存放；以米報價時畫面顯示每米單價，存回去前換成每碼。
+   * 切換單位時連同數量草稿一起清掉——留著的話輸入框會顯示上一個單位的數字。
+   */
+  const [priceDraft, setPriceDraft] = useState<Record<number, string>>({})
+  const resetDrafts = () => {
+    setQtyDraft({})
+    setPriceDraft({})
+  }
+  const priceValue = (index: number) => {
+    const draft = priceDraft[index]
+    if (draft !== undefined) return draft
+    const perYard = Number(values.items?.[index]?.unitPrice ?? 0)
+    if (!perYard) return ''
+    return itemUnit === 'Yard' ? String(perYard) : String(Number(yardPriceToMeterPrice(perYard).toFixed(2)))
+  }
+  const onPriceChange = (index: number, raw: string) => {
+    setPriceDraft((prev) => ({ ...prev, [index]: raw }))
+    const parsed = Number(raw)
+    const perYard = !raw || !Number.isFinite(parsed) ? 0 : itemUnit === 'Yard' ? parsed : meterPriceToYardPrice(parsed)
+    // 小數留到第 4 位：每米單價換回每碼會除不盡，截到 2 位會讓金額對不上客戶算的數字
+    setValue(`items.${index}.unitPrice`, Number(perYard.toFixed(4)), { shouldValidate: true })
+  }
   const qtyValue = (index: number) => {
     const draft = qtyDraft[index]
     if (draft !== undefined) return draft
@@ -566,10 +600,22 @@ export function PiFormPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs">單價（{PI_CURRENCY_SYMBOL[values.currency]}／碼）</Label>
-                      <Input type="number" step="0.01" {...register(`items.${index}.unitPrice`)} />
+                      <Label className="text-xs">
+                        單價（{PI_CURRENCY_SYMBOL[values.currency]}／{itemUnit === 'Yard' ? '碼' : '米'}）
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={priceValue(index)}
+                        onChange={(e) => onPriceChange(index, e.target.value)}
+                      />
                       <p className="text-[11px] text-muted-foreground">
+                        {/* 金額一律＝每碼單價 × 碼數，與輸入單位無關；另附另一個單位的單價供核對 */}
                         金額 {formatNumber(Number(item?.unitPrice ?? 0) * Number(item?.yard ?? 0), 2)}
+                        {Number(item?.unitPrice ?? 0) > 0 &&
+                          (itemUnit === 'Yard'
+                            ? `　≈ ${formatNumber(yardPriceToMeterPrice(Number(item?.unitPrice ?? 0)), 2)} / 米`
+                            : `　≈ ${formatNumber(Number(item?.unitPrice ?? 0), 2)} / 碼`)}
                       </p>
                     </div>
 
@@ -716,6 +762,21 @@ export function PiFormPage() {
                     <div className="space-y-1">
                       <Label className="text-xs">產地</Label>
                       <Input {...register(`markings.${index}.origin`)} />
+                    </div>
+                    <div className="space-y-1">
+                      {/* R.O.C. 不併進產地欄位：併了就分不出客戶要的是一整行還是兩行分開印（決策134） */}
+                      <Label className="text-xs">R.O.C. 字樣</Label>
+                      <label className="flex h-9 items-center gap-1.5 text-sm font-normal">
+                        <input type="checkbox" className="h-4 w-4" {...register(`markings.${index}.hasRoc`)} />
+                        產地下方加印 R.O.C.
+                      </label>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">箱/袋號（非必填）</Label>
+                      <Input
+                        placeholder="如 C/NO 1-20；填了會帶到表8"
+                        {...register(`markings.${index}.boxNo`)}
+                      />
                     </div>
                     <div className="space-y-1 sm:col-span-2">
                       <label className="flex items-center gap-1.5 text-sm font-normal">

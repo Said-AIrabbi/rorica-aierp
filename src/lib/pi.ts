@@ -58,12 +58,18 @@ export const PI_FX_REFERENCE: Record<PiCurrency, number> = {
   NTD: 1,
   USD: 32,
   RMB: 4.5,
+  // 2026/10/05 新增：歐元與港幣。同樣是固定參照值，不是即時匯率
+  EUR: 34.5,
+  HKD: 4.1,
 }
 
 export const PI_CURRENCY_SYMBOL: Record<PiCurrency, string> = {
   NTD: 'NT$',
   USD: 'US$',
   RMB: '¥',
+  EUR: '€',
+  // 港幣寫 HK$ 而非單一 $：與美金共用一個符號，客戶看不出是哪一種
+  HKD: 'HK$',
 }
 
 /** 主檔牌價（NTD）換算為該幣別的參照金額 */

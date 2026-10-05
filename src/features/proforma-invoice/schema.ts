@@ -18,6 +18,10 @@ export const piMarkingSchema = z.object({
   netWeightKg: z.coerce.number().min(0).optional(),
   composition: z.string().optional(),
   origin: z.string().optional(),
+  /** R.O.C. 字樣：勾選後於產地下方置中加印一行（決策134） */
+  hasRoc: z.boolean().optional(),
+  /** 箱/袋號：PI 階段非必填，填了即帶往表1 與表8（決策134） */
+  boxNo: z.string().optional(),
   hasSmallMarking: z.boolean(),
   smallMarkingText: z.string().optional(),
 })

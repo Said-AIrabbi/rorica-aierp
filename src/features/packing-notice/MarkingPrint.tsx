@@ -63,8 +63,14 @@ function MarkCell({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: s
     marking.netWeightKg ? `N.W ${formatNumber(marking.netWeightKg, 1)} KGS` : undefined,
     // 產地照欄位字面列印：填 Taiwan 就印 Taiwan，填 MADE IN TAIWAN 就印 MADE IN TAIWAN
     marking.origin,
-    // 箱/袋號來自表8（出貨當下才知道箱袋編到幾號），同樣照填寫內容原樣列印；未填則整行不印
-    boxNo,
+    // R.O.C.：緊接產地之後獨立一行（決策134）。嘜頭各行本來就是置中的，故不需另外排版
+    marking.hasRoc ? 'R.O.C.' : undefined,
+    /**
+     * 箱/袋號：以表8 填的為準（出貨當下才知道箱袋編到幾號），
+     * 表8 沒填則退回用嘜頭本身帶下來的值（PI 階段填的，決策134）。
+     * 兩者都照填寫內容原樣列印，未填則整行不印。
+     */
+    boxNo ?? marking.boxNo,
   ].filter((l): l is string => Boolean(l && String(l).trim()))
 
   return (

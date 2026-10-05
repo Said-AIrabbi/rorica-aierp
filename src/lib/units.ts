@@ -34,6 +34,15 @@ export function yardPriceToMeterPrice(pricePerYard: number): number {
 }
 
 /**
+ * 每米單價 → 每碼單價（上面那個函式的反向）。
+ * 以米報價時畫面讓使用者輸入每米單價，但**資料一律以每碼存放**——
+ * 金額、列印與下游表8 的售價全都以碼為基準，若存成每米，同一個欄位會有兩種意義。
+ */
+export function meterPriceToYardPrice(pricePerMeter: number): number {
+  return pricePerMeter * YARD_TO_METER
+}
+
+/**
  * 數值格式化。**接受 undefined 並回傳「-」**，這不是防禦性寫法，是權限設計的必要配套：
  * 欄位可見性（mocks/field-visibility.ts）刻意把看不到的欄位從物件上**刪掉**，
  * 所以生管拿到的 PI 明細根本沒有 unitPrice 這個欄位。畫面若假設它一定是數字，

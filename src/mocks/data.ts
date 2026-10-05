@@ -425,7 +425,14 @@ export const packingNotices: PackingNotice[] = Array.from({ length: 10 }).map((_
         grossWeightKg: faker.number.float({ min: 20, max: 120, fractionDigits: 1 }),
         netWeightKg: faker.number.float({ min: 18, max: 110, fractionDigits: 1 }),
         composition: faker.helpers.arrayElement(['', '100% POLY', '']),
-        origin: faker.helpers.arrayElement(['', 'Taiwan', '']),
+        /**
+         * 第一組嘜頭固定給產地 + R.O.C. + 箱/袋號（決策134）。
+         * 產地不留空是刻意的——R.O.C. 是印在產地那一行「下面」的，
+         * 上面沒有字的話，看畫面的人看不出這兩行的關係。
+         */
+        origin: 'MADE IN TAIWAN',
+        hasRoc: true,
+        boxNo: 'C/NO 1-20',
         hasSmallMarking: faker.datatype.boolean(),
         // 小嘜頭只寫產地與成份規格；產地（MADE IN TAIWAN）為列印時自動帶入的固定文字，此處只填成份
         smallMarkingText: faker.helpers.arrayElement(['100% NYLON', '100% POLYESTER', '95% POLY\n5% SPANDEX']),

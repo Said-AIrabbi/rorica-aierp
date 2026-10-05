@@ -148,6 +148,8 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
                     marking.grossWeightKg ? `G.W ${formatNumber(marking.grossWeightKg, 1)}KG` : '',
                     marking.netWeightKg ? `N.W ${formatNumber(marking.netWeightKg, 1)}KG` : '',
                     marking.origin,
+                    marking.hasRoc ? 'R.O.C.' : '',
+                    marking.boxNo ? `箱/袋號 ${marking.boxNo}` : '',
                     marking.hasSmallMarking ? '加印小嘜頭' : '',
                   ]
                     .filter(Boolean)

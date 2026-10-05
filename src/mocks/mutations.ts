@@ -2417,6 +2417,7 @@ function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, n
     parentId,
     customerId,
     shippingAddress: sourceNotice?.shippingAddress,
+    markingBoxNos: markingBoxNosFromNotice(sourceNotice),
     status: '草稿',
     shipDate: dayjs().toISOString(),
     isSampleOrder: false,
@@ -2430,6 +2431,18 @@ function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, n
  * 對位鏈為 表8 明細.sourceItemId → 表1 明細.sourcePiItemId → PI 明細.unitPrice；
  * 未經 PI 的表1（或查無對應列）回傳 undefined，售價仍由倉管於草稿階段自行填寫。
  */
+/**
+ * 表8 的箱/袋號預設值（決策134）：取自表1 各組嘜頭帶下來的箱/袋號（源頭是 PI）。
+ *
+ * 索引必須對齊表1 的嘜頭組別——表8 的 markingBoxNos 是以位置對應嘜頭的，
+ * 若只收集有填的那幾個，第二組的號碼就會跑到第一組的嘜頭上。
+ * 全部沒填時回 undefined，不留下一個空陣列。
+ */
+function markingBoxNosFromNotice(notice: PackingNotice | undefined): string[] | undefined {
+  const boxNos = (notice?.markings ?? []).map((m) => m.boxNo?.trim() ?? '')
+  return boxNos.some(Boolean) ? boxNos : undefined
+}
+
 function piUnitPriceForNoticeItem(notice: PackingNotice | undefined, sourceItemId: string | undefined): number | undefined {
   if (!notice?.sourcePiId || !sourceItemId) return undefined
   const noticeItem = notice.items.find((i) => i.id === sourceItemId)
@@ -2449,6 +2462,7 @@ export function createShippingOrder(input: ShippingOrderInput): Promise<Shipping
     parentId: input.parentId,
     customerId: input.customerId,
     shippingAddress: sourceNotice?.shippingAddress,
+    markingBoxNos: markingBoxNosFromNotice(sourceNotice),
     status: '草稿',
     shipDate: dayjs().toISOString(),
     isSampleOrder: input.isSampleOrder,
