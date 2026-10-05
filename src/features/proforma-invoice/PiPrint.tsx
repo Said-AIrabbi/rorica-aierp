@@ -1,7 +1,7 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn } from '@/components/print/PrintSheet'
 import { PI_SIGNATURE_LABELS, PRINT_BANK_ACCOUNT, PRINT_TITLES, printValue } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/units'
+import { formatNumber, yardPriceToMeterPrice } from '@/lib/units'
 import { PI_CURRENCY_SYMBOL, piTotalAmount } from '@/lib/pi'
 import { basisQtyText } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
@@ -17,8 +17,20 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
   const symbol = PI_CURRENCY_SYMBOL[pi.currency]
   const total = piTotalAmount(pi)
   const totalQty = pi.items.reduce((sum, item) => sum + (pi.itemUnit === 'Yard' ? item.yard : item.meter), 0)
-  // 金額一律以碼數計算（單價為每碼），故合計列另附碼數總量供客戶核對
+  /**
+   * 碼數總量：金額的計算基準一律是碼（單價以每碼存放）。
+   * 以米報價時單價與數量都印米制（決策134 之一），這一欄仍附上碼數——
+   * 皇加內部的布卷、標籤與出貨單都以碼計，客戶日後對帳或追單時用得到。
+   */
   const totalYard = pi.items.reduce((sum, item) => sum + item.yard, 0)
+  /**
+   * 單價的列印單位跟著報價基準走（2026/10/05，決策134 之一）。
+   * 原本固定印每碼：以米報價的客戶拿「米數 × 每碼單價」會算出一個不等於金額的數字，
+   * 得自己發現要換算成碼才對得上。改為單位一致後，紙上的數量 × 單價 ≈ 金額。
+   */
+  const pricePerDisplayUnit = (row: ProformaInvoiceItem) =>
+    pi.itemUnit === 'Yard' ? row.unitPrice : yardPriceToMeterPrice(row.unitPrice)
+  const priceUnitLabel = pi.itemUnit === 'Yard' ? 'Y' : 'M'
 
   const columns: PrintColumn<ProformaInvoiceItem>[] = [
     { header: 'PO NO.', cell: (row) => row.poNo, width: '20mm' },
@@ -26,7 +38,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
     { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '24mm' },
     { header: 'COLOR', cell: (row) => row.color, width: '20mm' },
     {
-      // 報價基準為 Meter 時，另附碼數——單價是「每碼」，只印米數的話客戶拿數量乘單價會對不上金額
+      // 報價基準為 Meter 時另附碼數：皇加內部與下游單據一律以碼計，客戶對帳時用得到
       header: `QTY (${pi.itemUnit})`,
       cell: (row) =>
         pi.itemUnit === 'Yard'
@@ -36,8 +48,8 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
       width: '26mm',
     },
     {
-      header: `UNIT PRICE (${symbol}/Y)`,
-      cell: (row) => formatNumber(row.unitPrice, 2),
+      header: `UNIT PRICE (${symbol}/${priceUnitLabel})`,
+      cell: (row) => formatNumber(pricePerDisplayUnit(row), 2),
       align: 'right',
       width: '22mm',
     },
@@ -74,7 +86,12 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
         },
       ]}
       signatures={PI_SIGNATURE_LABELS}
-      footNote={`本報價有效期至 ${formatDate(pi.quoteValidUntil)}`}
+      footNote={
+        pi.itemUnit === 'Yard'
+          ? `本報價有效期至 ${formatDate(pi.quoteValidUntil)}`
+          : // 每米單價為每碼單價 ÷ 0.9144 的換算值，印到小數 2 位；數量乘單價與金額可能有尾差，先講明免得客戶來問
+            `本報價有效期至 ${formatDate(pi.quoteValidUntil)}。單價以米計（1 碼 ＝ 0.9144 米），金額依碼數結算，數量乘單價可能有小數尾差。`
+      }
     >
       <PrintSection title="明細 DESCRIPTION">
         <PrintTable
