@@ -866,7 +866,14 @@ export interface ShippingOrderSignatures {
 }
 
 export interface ShippingOrder {
-  /** 收貨地址（決策40）：自表1 帶入（表1 再自 PI 帶入），三張單據共用同一筆、只填一次 */
+  /**
+   * 收貨地址：建單時自表1 帶入（表1 再自 PI 帶入，決策40）。
+   *
+   * **草稿階段可修改**（2026/10/05，決策133）：客戶臨時改送別處時，改的是這一張出貨單，
+   * **不回寫 PI、表1 或客戶主檔**——那些是已經對外送出的文件與長期資料，
+   * 讓一次出貨的臨時變更去改寫它們，日後就查不出當初報價與接單時說的是哪個地址。
+   * 故三張單據自此允許不一致，列印時各自印自己的值。
+   */
   shippingAddress?: string
   id: string
   parentId: string

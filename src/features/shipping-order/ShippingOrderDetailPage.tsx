@@ -55,7 +55,7 @@ export function ShippingOrderDetailPage() {
   // 箱/袋號輸入草稿：鍵為嘜頭組別索引；與單頭一起按「儲存單頭資訊」寫入，未儲存則維持原狀
   const [boxNoDraft, setBoxNoDraft] = useState<Record<number, string>>({})
   /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
-  const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '' })
+  const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '', shippingAddress: '' })
   const [rejectOpen, setRejectOpen] = useState(false)
   useEffect(() => {
     if (order) setItemDraft(order.items)
@@ -68,6 +68,7 @@ export function ShippingOrderDetailPage() {
         shipDate: order.shipDate.slice(0, 10),
         isSampleOrder: order.isSampleOrder,
         purpose: order.purpose ?? '',
+        shippingAddress: order.shippingAddress ?? '',
       })
       setBoxNoDraft(Object.fromEntries((order.markingBoxNos ?? []).map((v, i) => [i, v])))
     }
@@ -82,6 +83,7 @@ export function ShippingOrderDetailPage() {
         shipDate: headDraft.shipDate,
         isSampleOrder: headDraft.isSampleOrder,
         purpose: (headDraft.purpose || undefined) as ShippingOrder['purpose'],
+        shippingAddress: headDraft.shippingAddress,
         markingBoxNos: markingBoxNoPayload(),
       }),
     onSuccess: async () => {
@@ -332,8 +334,23 @@ export function ShippingOrderDetailPage() {
             ) : (
               <DetailField label="出貨日" value={formatDate(order.shipDate)} />
             )}
-            {/* 收貨地址沿 PI → 表1 帶入，出貨端只讀不填（決策40） */}
-            {order.shippingAddress && <DetailField label="收貨地址" value={order.shippingAddress} />}
+            {/*
+              收貨地址：建單時沿 PI → 表1 帶入，草稿階段可改（決策133）。
+              編輯時**一律顯示輸入框**，即使原本沒有值——上游沒帶到地址時，
+              若沿用「有值才顯示」的寫法，這張單就永遠補不上地址。
+            */}
+            {itemsEditable ? (
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs text-muted-foreground">收貨地址</label>
+                <Input
+                  value={headDraft.shippingAddress}
+                  onChange={(e) => setHeadDraft((d) => ({ ...d, shippingAddress: e.target.value }))}
+                  placeholder="自表1 帶入，可改為本次實際送達地點；留白則不印"
+                />
+              </div>
+            ) : (
+              order.shippingAddress && <DetailField label="收貨地址" value={order.shippingAddress} />
+            )}
             <DetailField label="倉管人員" value={operator?.name ?? '-'} />
             {/* 決策117：改記並列印操作帳號姓名，不再依角色推導部門 */}
             <DetailField label="出倉部門" value={operator?.name ?? '-'} />

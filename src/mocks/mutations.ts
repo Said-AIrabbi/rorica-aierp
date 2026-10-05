@@ -2489,6 +2489,8 @@ export interface ShippingOrderHeaderInput {
   shipDate: string
   isSampleOrder: boolean
   purpose?: ShippingOrder['purpose']
+  /** 收貨地址（決策133）：草稿階段可改；留白即不印，不自動退回表1 的值 */
+  shippingAddress?: string
   /** 箱/袋號：索引對應來源表1 的嘜頭組別，與單頭一起儲存（不另設專用儲存動作） */
   markingBoxNos?: string[]
 }
@@ -2505,6 +2507,11 @@ export function updateShippingOrderHeader(id: string, input: ShippingOrderHeader
     shipDate: input.shipDate,
     isSampleOrder: input.isSampleOrder,
     purpose: input.purpose,
+    /**
+     * 收貨地址（決策133）：清空即存為 undefined，列印端據此不印這一列。
+     * 不在清空時自動補回表1 的值——使用者刻意刪掉它，系統再填回去只會像是沒存成功。
+     */
+    shippingAddress: input.shippingAddress?.trim() ? input.shippingAddress.trim() : undefined,
     // 全部留白時不留下空陣列，列印端以「未填不印」判斷
     markingBoxNos: input.markingBoxNos?.some((v) => v.trim()) ? input.markingBoxNos : undefined,
   }
