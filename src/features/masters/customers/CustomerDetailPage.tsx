@@ -20,6 +20,7 @@ function toInput(customer: Customer): CustomerInput {
 
 const EMPTY_CONTACT: CustomerContact = {
   name: '',
+  title: '',
   email: '',
   phone: '',
   mobile: '',
@@ -32,6 +33,7 @@ function emptyInput(): CustomerInput {
   return {
     code: masterDefaults.customerCode(),
     shortName: '',
+    country: '',
     fullNameCN: '',
     fullNameEN: '',
     personInCharge: '',
@@ -40,6 +42,7 @@ function emptyInput(): CustomerInput {
     contacts: [EMPTY_CONTACT],
     address: '',
     invoiceAddress: '',
+    companyFax: '',
     taxId: '',
     foreignTaxId: '',
     taxRate: '5%',
@@ -151,6 +154,15 @@ export function CustomerDetailPage() {
               <Label className="text-xs">客戶簡稱</Label>
               <Input value={draft.shortName} onChange={(e) => set('shortName', e.target.value)} />
             </div>
+            <div className="space-y-1">
+              {/* 國家決定報價幣別與稅籍種類（國外客戶填 TAX ID 而非台灣統編），故與簡稱並列在同一眼能看到的位置 */}
+              <Label className="text-xs">國家</Label>
+              <Input
+                value={draft.country ?? ''}
+                onChange={(e) => set('country', e.target.value)}
+                placeholder="如 台灣、美國"
+              />
+            </div>
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs">客戶狀態</Label>
               {/* 潛客（尚未成交）→ A～C 往來等級 → 已歇業；以分段按鈕呈現，一眼看得出目前落在哪一段 */}
@@ -215,6 +227,15 @@ export function CustomerDetailPage() {
               <Label className="text-xs">負責人電話</Label>
               <Input value={draft.personInChargePhone} onChange={(e) => set('personInChargePhone', e.target.value)} />
             </div>
+            <div className="space-y-1">
+              {/* 公司層級的號碼，與各窗口的電話分開——部分客戶仍以傳真確認訂單 */}
+              <Label className="text-xs">公司傳真</Label>
+              <Input
+                value={draft.companyFax ?? ''}
+                onChange={(e) => set('companyFax', e.target.value)}
+                placeholder="非必填"
+              />
+            </div>
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs">公司地址</Label>
               <Input value={draft.address} onChange={(e) => set('address', e.target.value)} />
@@ -264,6 +285,14 @@ export function CustomerDetailPage() {
                     />
                   </div>
                   <div className="space-y-1">
+                    <Label className="text-xs">職稱</Label>
+                    <Input
+                      value={contact.title ?? ''}
+                      onChange={(e) => setContact(index, { title: e.target.value })}
+                      placeholder="非必填，如 採購專員"
+                    />
+                  </div>
+                  <div className="space-y-1">
                     <Label className="text-xs">E-MAIL</Label>
                     <Input
                       value={contact.email ?? ''}
@@ -287,7 +316,7 @@ export function CustomerDetailPage() {
                       placeholder="非必填"
                     />
                   </div>
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1 sm:col-span-2 lg:col-span-3">
                     <Label className="text-xs">收貨地址</Label>
                     <Input
                       value={contact.shippingAddress ?? ''}

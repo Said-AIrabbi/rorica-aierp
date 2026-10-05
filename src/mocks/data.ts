@@ -52,13 +52,16 @@ import {
 faker.seed(20260812)
 
 const CUSTOMER_NAMES = [
-  { short: 'Bella Rosa', cn: '貝拉羅莎婚紗有限公司', en: 'Bella Rosa Bridal Co., Ltd.' },
-  { short: 'Ivory Line', cn: '象牙線禮服股份有限公司', en: 'Ivory Line Couture Co., Ltd.' },
-  { short: '維多莉亞', cn: '維多莉亞婚紗實業有限公司', en: 'Victoria Bridal Industry Co., Ltd.' },
-  { short: 'Luna Bridal', cn: '露娜婚紗設計有限公司', en: 'Luna Bridal Design Co., Ltd.' },
-  { short: '雅緻服飾', cn: '雅緻服飾製造股份有限公司', en: 'Elegance Garment Mfg Co., Ltd.' },
-  { short: 'Chantilly', cn: '香緹麗禮服有限公司', en: 'Chantilly Couture Co., Ltd.' },
+  { short: 'Bella Rosa', cn: '貝拉羅莎婚紗有限公司', en: 'Bella Rosa Bridal Co., Ltd.', country: '美國' },
+  { short: 'Ivory Line', cn: '象牙線禮服股份有限公司', en: 'Ivory Line Couture Co., Ltd.', country: '加拿大' },
+  { short: '維多莉亞', cn: '維多莉亞婚紗實業有限公司', en: 'Victoria Bridal Industry Co., Ltd.', country: '台灣' },
+  { short: 'Luna Bridal', cn: '露娜婚紗設計有限公司', en: 'Luna Bridal Design Co., Ltd.', country: '英國' },
+  { short: '雅緻服飾', cn: '雅緻服飾製造股份有限公司', en: 'Elegance Garment Mfg Co., Ltd.', country: '台灣' },
+  { short: 'Chantilly', cn: '香緹麗禮服有限公司', en: 'Chantilly Couture Co., Ltd.', country: '法國' },
 ]
+
+/** 聯絡窗口的職稱範例：實務上逐一輸入，此處僅供模擬 */
+const CONTACT_TITLES = ['採購專員', '採購經理', '生產助理', '財務專員']
 
 /** 胚布規格常見的經緯紗支數寫法，供商品資料主檔「胚布規格」欄位模擬用 */
 const GREIGE_YARN_SPECS = ['75D/72F × 150D/48F', '50D/24F × 75D/36F', '30D/24F × 50D/48F', '100D/144F × 100D/144F']
@@ -147,6 +150,7 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
   id: `CUST-${pad(i + 1)}`,
   code: `C${pad(i + 1)}`,
   shortName: c.short,
+  country: c.country,
   fullNameCN: c.cn,
   fullNameEN: c.en,
   personInCharge: faker.person.fullName(),
@@ -155,6 +159,7 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
   contacts: [
     {
       name: faker.person.fullName(),
+      title: faker.helpers.arrayElement(CONTACT_TITLES),
       email: `${faker.internet.username().toLowerCase()}@example.com`,
       phone: faker.phone.number({ style: 'international' }),
       mobile: faker.phone.number({ style: 'international' }),
@@ -165,6 +170,7 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
       ? [
           {
             name: faker.person.fullName(),
+            title: '倉管主任',
             email: `${faker.internet.username().toLowerCase()}@example.com`,
             mobile: faker.phone.number({ style: 'international' }),
             shippingAddress: `新北市五股區工商路${faker.number.int({ min: 1, max: 200 })}號（倉庫收貨）`,
@@ -174,6 +180,7 @@ export const customers: Customer[] = CUSTOMER_NAMES.map((c, i) => ({
   ],
   address: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號${faker.number.int({ min: 1, max: 10 })}樓`,
   invoiceAddress: `台北市大同區重慶北路${faker.number.int({ min: 1, max: 300 })}號${faker.number.int({ min: 1, max: 10 })}樓`,
+  companyFax: `02-2${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
   taxId: faker.string.numeric(8),
   // 國外稅務統編：僅國外客戶有，故只給英文名客戶（展示兩種情況的畫面呈現）
   foreignTaxId: /^[A-Za-z]/.test(c.short) ? `VAT-${faker.string.alphanumeric(9).toUpperCase()}` : undefined,

@@ -62,7 +62,7 @@ const SPECS: Record<string, Spec> = {
   },
   // 客戶主檔的聯絡資訊（含 TAX ID 與銀行帳戶）
   customers: {
-    own: { 客戶聯絡資訊: ['taxId', 'bankAccount', 'personInChargePhone'] },
+    own: { 客戶聯絡資訊: ['taxId', 'bankAccount', 'personInChargePhone', 'companyFax'] },
     items: [{ key: 'contacts', map: { 客戶聯絡資訊: ['email', 'phone', 'mobile', 'address', 'bankAccount'] } }],
   },
 }

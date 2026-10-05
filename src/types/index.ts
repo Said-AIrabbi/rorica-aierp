@@ -19,6 +19,11 @@ export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number]
 export interface CustomerContact {
   /** 聯絡人姓名：每一組的必填欄位，其餘聯絡方式視實際有無填寫 */
   name: string
+  /**
+   * 職稱：該窗口在客戶公司的職務（採購專員、倉管主任等）。
+   * 逐組記錄而非客戶層級——同一客戶的採購與倉庫窗口職稱本來就不同。
+   */
+  title?: string
   email?: string
   /** 市話 */
   phone?: string
@@ -45,6 +50,8 @@ export interface Customer {
   /** 客戶代碼：對外使用的代號，由使用者維護，可隨時更新；需全檔唯一但非系統主鍵 */
   code: string
   shortName: string
+  /** 國家：客戶所在國別，影響報價幣別與稅務識別號的種類（國外客戶填 TAX ID 而非台灣統編） */
+  country?: string
   fullNameCN: string
   fullNameEN: string
   /** 負責人：與連絡人為兩個不同角色，各自留存聯絡方式 */
@@ -57,6 +64,8 @@ export interface Customer {
   contacts: CustomerContact[]
   address: string
   invoiceAddress: string
+  /** 公司傳真：公司層級的號碼，與各聯絡窗口的電話分開（部分客戶仍以傳真確認訂單） */
+  companyFax?: string
   taxId: string
   /**
    * TAX ID（國外稅務統編）：國外客戶的稅務識別號（如 VAT No.、EIN），與台灣統一編號分開存。
