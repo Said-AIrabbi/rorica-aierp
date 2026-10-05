@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
-import { PRINT_COMPANY } from '@/lib/print'
+import { companyProfile } from '@/mocks/data'
 import { formatDate } from '@/lib/dates'
 
 /**
@@ -47,14 +47,15 @@ export function PrintSheet({
     <section className={`pr-sheet${variantClass}`}>
       <header className="pr-head">
         <div>
-          <div className="pr-head-company">{PRINT_COMPANY.name}</div>
-          <div className="pr-head-company-en">{PRINT_COMPANY.nameEn}</div>
+          {/* 抬頭取自系統設定的公司資訊（決策136）：那裡改了，所有單據的紙本跟著改 */}
+          <div className="pr-head-company">{companyProfile.name}</div>
+          <div className="pr-head-company-en">{companyProfile.nameEn}</div>
           <div className="pr-head-contact">
-            統一編號 {PRINT_COMPANY.taxId}　{PRINT_COMPANY.address}
+            統一編號 {companyProfile.taxId}　{companyProfile.address}
             <br />
-            TEL {PRINT_COMPANY.phone}
+            TEL {companyProfile.phone}
             {/* 傳真未提供時整段不印，避免紙上出現空的 FAX 欄位 */}
-            {PRINT_COMPANY.fax && `　FAX ${PRINT_COMPANY.fax}`}
+            {companyProfile.fax && `　FAX ${companyProfile.fax}`}
           </div>
         </div>
         <div className="pr-head-right">

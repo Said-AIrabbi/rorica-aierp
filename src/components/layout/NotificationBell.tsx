@@ -16,7 +16,7 @@ import { api } from '@/mocks/api'
 import { markNotificationsRead } from '@/mocks/mutations'
 import { unreadDocumentEvents } from '@/mocks/document-events'
 import { buildNotifications } from '@/lib/notifications'
-import { DOC_LABELS } from '@/lib/permissions'
+import { EVENT_TARGET_LABELS } from '@/mocks/document-events'
 import { useCurrentAccount } from '@/lib/current-account-context'
 
 /**
@@ -67,7 +67,7 @@ export function NotificationBell() {
     const others = fresh.filter((e) => e.actorId !== account.id)
     if (others.length === 0) return
     const first = others[0]
-    toast(`${first.actorName}：${DOC_LABELS[first.doc]} ${first.kind}`, {
+    toast(`${first.actorName}：${EVENT_TARGET_LABELS[first.doc]} ${first.kind}`, {
       description: others.length === 1 ? first.summary : `${first.summary}（另有 ${others.length - 1} 則異動）`,
     })
   }, [events, account.id])
@@ -111,7 +111,7 @@ export function NotificationBell() {
               <Link to={e.link} className="flex flex-col items-start gap-0.5 whitespace-normal">
                 <span className="flex w-full items-baseline justify-between gap-2">
                   <span className="text-xs font-medium text-brand-dark">
-                    {DOC_LABELS[e.doc]} · {e.kind}
+                    {EVENT_TARGET_LABELS[e.doc]} · {e.kind}
                     {e.count > 1 && ` ${e.count} 筆`}
                   </span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">

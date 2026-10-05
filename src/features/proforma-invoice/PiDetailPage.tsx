@@ -42,7 +42,7 @@ import {
   piDueDate,
   piTotalAmount,
 } from '@/lib/pi'
-import { PRINT_BANK_ACCOUNT } from '@/lib/print'
+import { resolvePiBankAccount } from '@/lib/company'
 import { MarkingPreview, SmallMarkingPreview } from '@/features/packing-notice/MarkingPrint'
 import { PiPrint } from './PiPrint'
 
@@ -64,7 +64,10 @@ export function PiDetailPage() {
     queryKey: ['secondaryProcessingOrders'],
     queryFn: api.secondaryProcessingOrders,
   })
+  const { data: companyProfile } = useQuery({ queryKey: ['companyProfile'], queryFn: api.companyProfile })
   const pi = data.find((x) => x.id === id)
+  // 實際用的收款帳戶：送簽後為凍結的副本，草稿階段則跟著公司資訊走（決策138）
+  const piBank = pi ? resolvePiBankAccount(companyProfile, pi) : undefined
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['proformaInvoices'] })
@@ -397,7 +400,17 @@ export function PiDetailPage() {
               <DetailField label="估算 CBM" value="計算公式待皇加提供" />
               <DetailField
                 label="銀行帳戶（皇加收款帳戶）"
-                value={`${PRINT_BANK_ACCOUNT.bankName} ${PRINT_BANK_ACCOUNT.accountNo}`}
+                value={
+                  <>
+                    {piBank ? `${piBank.bankName}　${piBank.accountNo}` : '-'}
+                    {/* 已凍結時明說一句：否則公司資訊改了而這裡沒變，看起來像系統壞了 */}
+                    <div className="text-xs text-muted-foreground">
+                      {pi.bankAccountSnapshot
+                        ? '送簽時固定下來的內容，公司資訊之後的異動不影響本單'
+                        : '草稿階段跟著公司資訊走，送簽時才固定下來'}
+                    </div>
+                  </>
+                }
               />
               <DetailField label="已轉表1" value={pi.packingNoticeIds.length > 0 ? pi.packingNoticeIds.join('、') : '-'} />
               <DetailField label="作廢原因" value={pi.voidReason ?? '-'} />

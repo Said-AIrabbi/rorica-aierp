@@ -11,10 +11,11 @@
  * 一次操作內、同一種單據、同一種異動只記一筆（帶筆數），
  * 否則入庫時一口氣產生幾十張條碼標籤會把通知洗掉。
  */
-import type { DocKey } from '@/lib/permissions'
+import { DOC_LABELS, type DocKey } from '@/lib/permissions'
 import { getCurrentAccount } from './session'
 import {
   abnormalNotices,
+  companyProfile,
   documentEventReads,
   documentEvents,
   dyeOrders,
@@ -28,13 +29,21 @@ import {
   shippingOrders,
 } from './data'
 
+/**
+ * 通知的對象。除了十張單據，公司資訊（收款帳戶）的異動也走同一條路——
+ * 它不是單據，但「誰把收款帳戶改掉了」正是最該讓所有人看到的一則通知（決策140）。
+ */
+export type EventTarget = DocKey | '公司資訊'
+
+export const EVENT_TARGET_LABELS: Record<EventTarget, string> = { ...DOC_LABELS, 公司資訊: '公司資訊' }
+
 export interface DocumentEvent {
   id: string
   /** ISO 時間 */
   at: string
   actorId: string
   actorName: string
-  doc: DocKey
+  doc: EventTarget
   kind: '新增' | '更新'
   /** 本次操作影響的張數；> 1 時連結指向列表而非單張 */
   count: number
@@ -46,11 +55,13 @@ export interface DocumentEvent {
 }
 
 interface Tracked {
-  doc: DocKey
+  doc: EventTarget
   rows: () => { id: string; status?: string }[]
   /** 單張詳情與列表共用同一個前綴 */
   route: string
   label: string
+  /** 無單張詳情頁者（公司資訊只有一頁），連結一律指向 route 本身 */
+  singlePage?: boolean
 }
 
 const TRACKED: Tracked[] = [
@@ -64,6 +75,17 @@ const TRACKED: Tracked[] = [
   { doc: '表7', rows: () => fabricLabels, route: '/fabric-label', label: '表7 布疋條碼標籤' },
   { doc: '表8', rows: () => shippingOrders, route: '/shipping-order', label: '表8 出貨單' },
   { doc: '表9', rows: () => abnormalNotices, route: '/abnormal-notice', label: '表9 異常通知單' },
+  /**
+   * 公司資訊（決策140）：以單一偽列納入同一套比對，不另外在維護函式裡呼叫 notify()——
+   * 這整個模組存在的理由就是「不要逐一插入通知呼叫」。
+   */
+  {
+    doc: '公司資訊',
+    rows: () => [{ id: '公司資訊', ...companyProfile }],
+    route: '/settings/company',
+    label: '公司資訊',
+    singlePage: true,
+  },
 ]
 
 /** 通知只保留最近這麼多筆：這是展示環境，整包資料要塞進一次 HTTP 寫入裡 */
@@ -111,12 +133,12 @@ export function recordDocumentChanges(): void {
 
   const actor = getCurrentAccount()
   const at = new Date().toISOString()
-  const created = new Map<DocKey, string[]>()
-  const updated = new Map<DocKey, { id: string; from?: string; to?: string }[]>()
+  const created = new Map<EventTarget, string[]>()
+  const updated = new Map<EventTarget, { id: string; from?: string; to?: string }[]>()
 
   for (const [key, fp] of next) {
     const before = baseline.get(key)
-    const [doc, id] = key.split('\u0000') as [DocKey, string]
+    const [doc, id] = key.split('\u0000') as [EventTarget, string]
     if (!before) {
       created.set(doc, [...(created.get(doc) ?? []), id])
     } else if (before.json !== fp.json) {
@@ -175,7 +197,7 @@ function push(
     count: ids.length,
     docIds: ids.slice(0, 3),
     summary,
-    link: ids.length === 1 ? `${t.route}/${ids[0]}` : t.route,
+    link: ids.length === 1 && !t.singlePage ? `${t.route}/${ids[0]}` : t.route,
   })
 }
 

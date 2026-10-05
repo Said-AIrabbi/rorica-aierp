@@ -36,6 +36,7 @@ import { ProductListPage } from '@/features/masters/products/ProductListPage'
 import { ProductDetailPage } from '@/features/masters/products/ProductDetailPage'
 import { VendorListPage } from '@/features/masters/vendors/VendorListPage'
 import { VendorDetailPage } from '@/features/masters/vendors/VendorDetailPage'
+import { CompanyProfilePage } from '@/features/settings/CompanyProfilePage'
 import { AccountListPage } from '@/features/masters/accounts/AccountListPage'
 import { AccountDetailPage } from '@/features/masters/accounts/AccountDetailPage'
 import { RequireAction, RequireAdmin, RequireView } from '@/components/shared/ReadOnlyNotice'
@@ -191,6 +192,12 @@ export default function App() {
         <Route path="/masters/products/:id" element={<ProductDetailPage />} />
         <Route path="/masters/vendors" element={<VendorListPage />} />
         <Route path="/masters/vendors/:id" element={<VendorDetailPage />} />
+
+        {/*
+          系統設定／公司資訊（決策136）：全角色可檢視（收款帳戶印在客戶手上那張 PI 上），
+          編輯限管理層／財務／管理員，由頁面內的 canMaintain('公司') 控制，故不加路由層的守衛
+        */}
+        <Route path="/settings/company" element={<CompanyProfilePage />} />
 
         {/* 權限設定：角色矩陣與個別排除刻意分成兩頁（權限規格第二章「為何分兩頁」）；僅管理員可進入 */}
         {/*

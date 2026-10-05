@@ -10,6 +10,7 @@ import {
   suggestSplicingCombination,
 } from '@/lib/inventory'
 import { canConvertPi, effectivePiStatus, isPiOnManualHold, piOverwriteRule, piQuoteValidUntil } from '@/lib/pi'
+import { activeBankAccounts, defaultBankAccountFor, resolvePiBankAccount } from '@/lib/company'
 import {
   buildSecondaryProcessingPackaging,
   defaultRollYard,
@@ -41,6 +42,8 @@ import type {
   AbnormalNotice,
   Account,
   ActualReceiptComparison,
+  CompanyBankAccount,
+  CompanyProfile,
   Customer,
   CustomerContact,
   DyeOrder,
@@ -77,6 +80,7 @@ import {
   packingNotices,
   persistSessionSnapshot,
   products,
+  companyProfile,
   proformaInvoices,
   purchaseOrders,
   resolveProduct,
@@ -3747,10 +3751,31 @@ export interface ProformaInvoiceInput {
   paymentTerm: string
   paymentTermNote?: string
   itemUnit?: 'Yard' | 'Meter'
+  /** 收款帳戶（決策138）：未指定時依幣別取預設帳戶 */
+  bankAccountId?: string
   items: ProformaInvoiceItemInput[]
   markings: PackingNoticeMarking[]
   /** 取代版專用：填入被取代的前一張 PI 單號（決策24） */
   previousPiId?: string
+}
+
+/**
+ * 本張 PI 要記下哪一個收款帳戶（決策138）。
+ *
+ * 只存 id，不在草稿階段就複寫內容——草稿還在改，應該看到最新的主檔。
+ * 使用者沒選就落到該幣別的預設；選了已停用的帳戶則擋下（停用的不該進新單）。
+ */
+function resolvePiBankAccountId(
+  currency: ProformaInvoice['currency'],
+  bankAccountId: string | undefined,
+): string | undefined {
+  if (bankAccountId) {
+    const picked = companyProfile.bankAccounts.find((a) => a.id === bankAccountId)
+    if (!picked) throw new Error(`收款帳戶 ${bankAccountId} 不存在`)
+    if (picked.status === '停用') throw new Error(`收款帳戶「${picked.bankName}」已停用，不可用於新單`)
+    return picked.id
+  }
+  return defaultBankAccountFor(companyProfile, currency)?.id
 }
 
 function buildPiItems(id: string, items: ProformaInvoiceItemInput[]): ProformaInvoiceItem[] {
@@ -3869,6 +3894,7 @@ export function createProformaInvoice(input: ProformaInvoiceInput): Promise<Prof
     paymentTerm: input.paymentTerm,
     paymentTermNote: input.paymentTermNote?.trim() || undefined,
     itemUnit: input.itemUnit ?? 'Yard',
+    bankAccountId: resolvePiBankAccountId(input.currency, input.bankAccountId),
     items: buildPiItems(id, input.items),
     markings: input.markings,
     packingNoticeIds: [],
@@ -3965,6 +3991,7 @@ export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): 
     paymentTerm: input.paymentTerm,
     paymentTermNote: input.paymentTermNote?.trim() || undefined,
     itemUnit: input.itemUnit ?? current.itemUnit,
+    bankAccountId: resolvePiBankAccountId(input.currency, input.bankAccountId),
     items: buildPiItems(id, input.items),
     markings: input.markings,
   }
@@ -3972,13 +3999,26 @@ export function updateProformaInvoice(id: string, input: ProformaInvoiceInput): 
   return delay(updated)
 }
 
-/** 送出批准：草稿 → 待批准 */
+/**
+ * 送出批准：草稿 → 待批准。
+ *
+ * **此時凍結收款帳戶**（決策138）：送簽是這張單離開草稿的那一刻。
+ * 凍結得更晚（例如批准時）的話，待批准期間主檔一改，
+ * 管理層看到的就不是業務送出的那一份。
+ */
 export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
   assertCanAct(getCurrentAccount(), 'PI', '送簽')
   const idx = piIndex(id)
-  assertNotOnManualHold(proformaInvoices[idx])
-  if (proformaInvoices[idx].status !== '草稿') throw new Error('僅草稿可送出批准')
-  const updated: ProformaInvoice = { ...proformaInvoices[idx], status: '待批准' }
+  const current = proformaInvoices[idx]
+  assertNotOnManualHold(current)
+  if (current.status !== '草稿') throw new Error('僅草稿可送出批准')
+  const account = resolvePiBankAccount(companyProfile, current)
+  const updated: ProformaInvoice = {
+    ...current,
+    status: '待批准',
+    // 複本留整份：日後主檔改了行名或 SWIFT，這張單仍要印出客戶當初被告知的內容
+    bankAccountSnapshot: account ? { ...account } : undefined,
+  }
   proformaInvoices[idx] = updated
   return delay(updated)
 }
@@ -4031,6 +4071,8 @@ export function rejectProformaInvoice(id: string, reason: string): Promise<Profo
   const updated: ProformaInvoice = {
     ...current,
     status: '草稿',
+    // 回到草稿即解除收款帳戶的凍結（決策138）：退回的原因之一就可能是帳戶挑錯了
+    bankAccountSnapshot: undefined,
     rejections: [
       ...(current.rejections ?? []),
       { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() },
@@ -4354,5 +4396,151 @@ export function voidProformaInvoice(id: string, reason: string): Promise<Proform
     voidReason: reason.trim() || '人工作廢',
   }
   proformaInvoices[idx] = updated
+  return delay(updated)
+}
+
+// ---------- 公司資訊（系統設定，決策136～140） ----------
+
+/** 公司基本資料的可編輯欄位；收款帳戶與異動紀錄另有專用函式，不經由此處 */
+export type CompanyProfileInput = Omit<CompanyProfile, 'bankAccounts' | 'changes' | 'updatedAt' | 'updatedBy'>
+
+/** 新增時不帶 id；狀態一律由專用函式切換，不從表單傳入 */
+export type CompanyBankAccountInput = Omit<CompanyBankAccount, 'id' | 'status'> & { id?: string }
+
+/**
+ * 公司資訊的異動留痕（決策140）。
+ *
+ * 收款帳戶是整個系統最值得被人改掉的欄位——對外詐騙的標準手法就是改匯款帳號。
+ * 通知不在這裡發送：公司資訊已納入 document-events 的比對清單，
+ * 由 mutation 的共同出口統一比出「公司資訊 內容已更新」並通知所有人。
+ */
+function recordCompanyChange(summary: string): void {
+  const account = requireCurrentAccount()
+  companyProfile.changes = [
+    ...companyProfile.changes,
+    { at: new Date().toISOString(), actorId: account.id, actorName: account.name, summary },
+  ]
+  companyProfile.updatedAt = new Date().toISOString()
+  companyProfile.updatedBy = account.name
+}
+
+function assertCanMaintainCompany(): void {
+  assertCanMaintainMaster(requireCurrentAccount(), '公司')
+}
+
+/** 公司基本資料（名稱、統編、地址、電話、傳真）。收款帳戶不在此函式範圍內 */
+export function updateCompanyProfile(input: CompanyProfileInput): Promise<CompanyProfile> {
+  assertCanMaintainCompany()
+  const name = input.name.trim()
+  const taxId = input.taxId.trim()
+  if (!name) throw new Error('公司名稱必填')
+  // 統編印在表2 等對廠商單據上（買方＝皇加），空白會讓廠商無法開立發票
+  if (!taxId) throw new Error('統一編號必填——對廠商單據上的買方統編由此帶出')
+
+  const before = { ...companyProfile }
+  companyProfile.name = name
+  companyProfile.nameEn = input.nameEn.trim()
+  companyProfile.taxId = taxId
+  companyProfile.address = input.address.trim()
+  companyProfile.addressEn = input.addressEn?.trim() || undefined
+  companyProfile.phone = input.phone.trim()
+  companyProfile.fax = input.fax?.trim() || undefined
+
+  const changed = (['name', 'nameEn', 'taxId', 'address', 'addressEn', 'phone', 'fax'] as const).filter(
+    (key) => (before[key] ?? '') !== (companyProfile[key] ?? ''),
+  )
+  // 沒有任何欄位實際改變時不留紀錄，否則按一下儲存就多一行雜訊
+  if (changed.length > 0) recordCompanyChange(`修改公司基本資料：${changed.join('、')}`)
+  return delay(companyProfile)
+}
+
+/**
+ * 預設標記的唯一性由資料層維護（決策137）：
+ * 把 B 標為 USD 預設時自動解除 A 的標記，而不是報錯要使用者先去取消。
+ */
+function enforceDefaultUniqueness(saved: CompanyBankAccount): void {
+  companyProfile.bankAccounts = companyProfile.bankAccounts.map((a) => {
+    if (a.id === saved.id) return a
+    let next = a
+    if (saved.isDefault && a.isDefault) next = { ...next, isDefault: false }
+    if (saved.isDefaultForCurrency && a.isDefaultForCurrency) {
+      // 只跟「同一個幣別」互斥：不同幣別各有自己的預設
+      const overlap = (saved.currencies ?? []).some((c) => (a.currencies ?? []).includes(c))
+      if (overlap) next = { ...next, isDefaultForCurrency: false }
+    }
+    return next
+  })
+}
+
+/** 新增或修改收款帳戶。沒有刪除——停用的帳戶舊單仍要印得出來（決策137） */
+export function saveCompanyBankAccount(input: CompanyBankAccountInput): Promise<CompanyBankAccount> {
+  assertCanMaintainCompany()
+  const required: [keyof CompanyBankAccountInput, string][] = [
+    ['bankName', '銀行名稱'],
+    ['accountName', '戶名'],
+    ['accountNo', '帳號'],
+  ]
+  for (const [key, label] of required) {
+    if (!String(input[key] ?? '').trim()) throw new Error(`${label}必填`)
+  }
+
+  const existingIdx = input.id ? companyProfile.bankAccounts.findIndex((a) => a.id === input.id) : -1
+  if (input.id && existingIdx === -1) throw new Error(`收款帳戶 ${input.id} 不存在`)
+
+  const base: CompanyBankAccount = {
+    id: input.id ?? `BANK-${pad(companyProfile.bankAccounts.length + 1)}`,
+    bankName: input.bankName.trim(),
+    bankNameEn: input.bankNameEn?.trim() || undefined,
+    bankCode: input.bankCode.trim(),
+    swift: input.swift.trim(),
+    accountName: input.accountName.trim(),
+    accountNo: input.accountNo.trim(),
+    bankAddress: input.bankAddress?.trim() || undefined,
+    currencies: input.currencies && input.currencies.length > 0 ? input.currencies : undefined,
+    isDefaultForCurrency: input.isDefaultForCurrency || undefined,
+    isDefault: input.isDefault || undefined,
+    // 既有帳戶沿用現狀，新帳戶一律啟用
+    status: existingIdx >= 0 ? companyProfile.bankAccounts[existingIdx].status : '啟用',
+    note: input.note?.trim() || undefined,
+  }
+  // 幣別沒有選的帳戶標「該幣別預設」沒有意義，會變成一個永遠用不到的標記
+  if (base.isDefaultForCurrency && !base.currencies) {
+    throw new Error('要標記為幣別預設，請先指定適用幣別；全幣別通用的帳戶請改用「全域預設」')
+  }
+
+  if (existingIdx >= 0) {
+    companyProfile.bankAccounts = companyProfile.bankAccounts.map((a, i) => (i === existingIdx ? base : a))
+  } else {
+    companyProfile.bankAccounts = [...companyProfile.bankAccounts, base]
+  }
+  enforceDefaultUniqueness(base)
+  recordCompanyChange(
+    `${existingIdx >= 0 ? '修改' : '新增'}收款帳戶 ${base.bankName} ${base.accountNo}`,
+  )
+  return delay(base)
+}
+
+/**
+ * 啟用／停用收款帳戶（決策137）。
+ *
+ * 刻意**不提供刪除**：帳戶一旦被 PI 引用過，刪掉就讓那張單印不出客戶當初被告知的帳戶。
+ * 停用者不出現在新單的選項裡，舊單仍印得出來，已足夠。
+ */
+export function setCompanyBankAccountStatus(
+  id: string,
+  status: CompanyBankAccount['status'],
+): Promise<CompanyBankAccount> {
+  assertCanMaintainCompany()
+  const idx = companyProfile.bankAccounts.findIndex((a) => a.id === id)
+  if (idx === -1) throw new Error(`收款帳戶 ${id} 不存在`)
+  const current = companyProfile.bankAccounts[idx]
+  if (current.status === status) return delay(current)
+  // 最後一個啟用帳戶不得停用：否則新開的 PI 無帳戶可選，而錯誤要到列印時才會被發現
+  if (status === '停用' && activeBankAccounts(companyProfile).length <= 1) {
+    throw new Error('至少要保留一個啟用的收款帳戶——全部停用後新開的 PI 會無帳戶可印')
+  }
+  const updated: CompanyBankAccount = { ...current, status }
+  companyProfile.bankAccounts = companyProfile.bankAccounts.map((a, i) => (i === idx ? updated : a))
+  recordCompanyChange(`${status === '停用' ? '停用' : '啟用'}收款帳戶 ${updated.bankName} ${updated.accountNo}`)
   return delay(updated)
 }

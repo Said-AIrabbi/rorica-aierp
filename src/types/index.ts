@@ -220,6 +220,73 @@ export interface Vendor {
   paymentTerms: string
 }
 
+// ---------- 皇加自身資料（系統設定／公司資訊，決策136） ----------
+
+/**
+ * 皇加的收款帳戶（決策137）。
+ *
+ * 這是「客戶要匯款給皇加」的帳戶，與客戶主檔聯絡資訊裡的銀行帳戶**性質不同**——
+ * 那是客戶自己的帳戶（屬他人營業資訊，受欄位可見性遮蔽），
+ * 本帳戶則印在交給客戶的 PI 上，是對外公開資訊，不遮蔽（決策139）。
+ */
+export interface CompanyBankAccount {
+  id: string
+  bankName: string
+  /** 英文行名：PI 為英文版面，中文行名不適用 */
+  bankNameEn?: string
+  bankCode: string
+  swift: string
+  accountName: string
+  accountNo: string
+  /** 受款行地址：國外匯款常被要求填寫 */
+  bankAddress?: string
+  /**
+   * 適用幣別。留空＝全幣別通用。
+   * 皇加的多帳戶同時有「幣別分開」與「分散銀行」兩個原因，故同一幣別可有多個帳戶。
+   */
+  currencies?: PiCurrency[]
+  /** 該幣別的預設帳戶；同一幣別只能有一個被標記（資料層維護唯一性） */
+  isDefaultForCurrency?: boolean
+  /** 全域預設：幣別找不到對應帳戶時的退路。全檔只能有一個 */
+  isDefault?: boolean
+  /** 停用者不出現在新單選項，但舊單仍印得出來（故不提供刪除） */
+  status: '啟用' | '停用'
+  /**
+   * 用途備註，顯示在 PI 的帳戶下拉選項裡。
+   * 同一幣別有兩家銀行時，業務需要知道為什麼有兩個（「歐洲客戶用」「大額匯款用」）——
+   * 這比任何自動規則都有效，而且由管理層自己決定怎麼寫。
+   */
+  note?: string
+}
+
+/** 公司資訊的異動紀錄（決策140）：收款帳戶是最值得被人改掉的欄位，異動要留痕 */
+export interface CompanyProfileChange {
+  at: string
+  actorId: string
+  actorName: string
+  summary: string
+}
+
+/**
+ * 皇加自身資料。**全系統唯一一筆**，不可新增、不可刪除（決策136）。
+ * 不列為第六張主檔：五大主檔都是可搜尋、可多筆的清單，這裡只有一筆。
+ */
+export interface CompanyProfile {
+  name: string
+  nameEn: string
+  taxId: string
+  address: string
+  /** 英文地址：PI 為英文版面 */
+  addressEn?: string
+  phone: string
+  /** 留空時列印抬頭不印 FAX 欄位，不留空白佔位 */
+  fax?: string
+  bankAccounts: CompanyBankAccount[]
+  changes: CompanyProfileChange[]
+  updatedAt: string
+  updatedBy: string
+}
+
 export type AccountRole = '生管' | '業務' | '倉管' | '財務' | '管理層' | '管理員'
 
 export interface Account {
@@ -1208,6 +1275,18 @@ export interface ProformaInvoice {
   contactIndex?: number
   /** 收貨地址：由選定聯絡窗口帶出，隨轉換帶入表1、表8（決策40） */
   shippingAddress?: string
+  /**
+   * 收款帳戶（決策138）。草稿階段只存 id、顯示與列印皆即時讀主檔（草稿還在改，該看到最新的）；
+   * 送簽時凍結成 bankAccountSnapshot，此後主檔異動不影響本單。
+   */
+  bankAccountId?: string
+  /**
+   * 送簽當下的帳戶副本。
+   * 已對外送出的 PI 必須永遠印出客戶被告知的那個帳戶——
+   * 改了主檔就讓舊單重印成新帳戶，等於跟客戶手上那張紙不一致。
+   * 退回／撤回回草稿時清除（編輯者可能就是要換帳戶）。
+   */
+  bankAccountSnapshot?: CompanyBankAccount
   currency: PiCurrency
   tradeTerm: string
   tradeTermNote?: string

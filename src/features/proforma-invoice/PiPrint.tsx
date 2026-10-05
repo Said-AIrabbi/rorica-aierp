@@ -1,11 +1,12 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn } from '@/components/print/PrintSheet'
-import { PI_SIGNATURE_LABELS, PRINT_BANK_ACCOUNT, PRINT_TITLES, printValue } from '@/lib/print'
+import { PI_SIGNATURE_LABELS, PRINT_TITLES, printValue } from '@/lib/print'
+import { resolvePiBankAccount } from '@/lib/company'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, yardPriceToMeterPrice } from '@/lib/units'
 import { PI_CURRENCY_SYMBOL, piTotalAmount } from '@/lib/pi'
 import { basisQtyText } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
-import { getProduct } from '@/mocks/data'
+import { companyProfile, getProduct } from '@/mocks/data'
 import type { ProformaInvoice, ProformaInvoiceItem } from '@/types'
 
 /**
@@ -15,6 +16,12 @@ import type { ProformaInvoice, ProformaInvoiceItem } from '@/types'
  */
 export function PiPrint({ pi }: { pi: ProformaInvoice }) {
   const symbol = PI_CURRENCY_SYMBOL[pi.currency]
+  /**
+   * 收款帳戶（決策138）：送簽後印的是**凍結的副本**，不是現在的主檔內容。
+   * 已對外送出的 PI 重印必須與客戶手上那張紙一致——
+   * 否則客戶照新帳戶匯款，錢進了哪裡沒人說得清。
+   */
+  const bank = resolvePiBankAccount(companyProfile, pi)
   const total = piTotalAmount(pi)
   const totalQty = pi.items.reduce((sum, item) => sum + (pi.itemUnit === 'Yard' ? item.yard : item.meter), 0)
   /**
@@ -146,18 +153,27 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
           <tbody>
             <tr>
               <th style={{ width: '30mm' }}>BANK</th>
+              {/* 英文行名優先：這是英文版面的對外文件，中文行名國外銀行不受理 */}
               <td>
-                {PRINT_BANK_ACCOUNT.bankName}（{PRINT_BANK_ACCOUNT.bankCode}）
+                {printValue(bank?.bankNameEn || bank?.bankName)}
+                {bank?.bankCode ? `（${bank.bankCode}）` : ''}
               </td>
               <th style={{ width: '26mm' }}>SWIFT</th>
-              <td>{PRINT_BANK_ACCOUNT.swift}</td>
+              <td>{printValue(bank?.swift)}</td>
             </tr>
             <tr>
               <th>ACCOUNT NAME</th>
-              <td>{PRINT_BANK_ACCOUNT.accountName}</td>
+              <td>{printValue(bank?.accountName)}</td>
               <th>ACCOUNT NO.</th>
-              <td>{PRINT_BANK_ACCOUNT.accountNo}</td>
+              <td>{printValue(bank?.accountNo)}</td>
             </tr>
+            {/* 受款行地址：國外匯款常被要求填寫；沒填則整列不印，不留空白欄位 */}
+            {bank?.bankAddress && (
+              <tr>
+                <th>BANK ADDRESS</th>
+                <td colSpan={3}>{bank.bankAddress}</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </PrintSection>

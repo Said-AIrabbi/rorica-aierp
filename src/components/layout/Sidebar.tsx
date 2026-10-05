@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   AlertTriangle,
   Boxes,
+  Building2,
   Tags,
   Home,
   Layers,
@@ -64,6 +65,16 @@ const masterNav: NavEntry[] = [
   { to: '/masters/accounts', label: '帳戶主檔', icon: PackageSearch, master: '帳號' },
 ]
 
+/**
+ * 系統設定（決策136）：皇加自身的資料。
+ *
+ * 公司資訊刻意**不列入主檔區**——五大主檔都是可搜尋、可多筆的清單，公司只有一筆，
+ * 混進去會讓人以為可以新增第二家公司。權限設定不在此列：它已併入帳戶主檔。
+ */
+const settingsNav: NavEntry[] = [
+  { to: '/settings/company', label: '公司資訊', icon: Building2, master: '公司' },
+]
+
 function NavItem({ to, label, icon: Icon, nested = false }: { to: string; label: string; icon: typeof Home; nested?: boolean }) {
   return (
     <NavLink
@@ -92,6 +103,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   // 權限設定僅管理員可操作（權限規格第七章第 1 節，不開放授予其他角色）
   const docs = documentNav.filter((item) => canView(item.doc))
   const masters = masterNav.filter((item) => canViewMasterData(item.master))
+  const settings = settingsNav.filter((item) => canViewMasterData(item.master))
 
   return (
     <div className="flex h-full flex-col" onClick={onNavigate}>
@@ -143,6 +155,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         </div>
 
+        {settings.length > 0 && (
+          <div>
+            <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              系統設定
+            </div>
+            <div className="space-y-0.5">
+              {settings.map((item) => (
+                <NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} />
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* 版本戳記：客戶回饋意見時可對照是哪一版，避免「上次不是長這樣」對不上 */}

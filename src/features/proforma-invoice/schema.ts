@@ -72,6 +72,11 @@ export const piFormSchema = z.object({
   paymentTerm: z.string().min(1, '請選擇或輸入付款條件'),
   paymentTermNote: z.string().optional(),
   itemUnit: z.enum(['Yard', 'Meter']),
+  /**
+   * 收款帳戶（決策138）：空字串＝未選，資料層會落到該幣別的預設帳戶。
+   * 不設必填——既有草稿沒有這個欄位，要求必填會讓它們改不下去。
+   */
+  bankAccountId: z.string().optional(),
   items: z.array(piItemSchema).min(1, '至少需要一筆明細'),
   markings: z.array(piMarkingSchema).min(1, '至少需要一組嘜頭'),
 })

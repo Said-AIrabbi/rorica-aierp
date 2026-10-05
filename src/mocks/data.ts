@@ -12,6 +12,7 @@ import type { DocumentEvent } from './document-events'
 import type {
   AbnormalNotice,
   Account,
+  CompanyProfile,
   Customer,
   DigitalColor,
   DyeOrder,
@@ -1257,6 +1258,72 @@ export const documentEvents: DocumentEvent[] = []
 /** 每個帳號讀到哪個時間點（ISO）。未列入者＝從未讀過 */
 export const documentEventReads: Record<string, string> = {}
 
+/**
+ * 皇加自身資料（決策136）。全系統唯一一筆，不可新增、不可刪除。
+ *
+ * 三個收款帳戶刻意涵蓋皇加多帳戶的兩個原因：
+ *   ① **幣別分開**——台幣客戶走第三個帳戶
+ *   ② **分散銀行**——美金同時有第一銀行與玉山兩個帳戶，以備註說明用途
+ * 帳號皆為原型示意用的假號碼（docs 不入 git，種子資料一律去識別化）。
+ */
+export const companyProfile: CompanyProfile = {
+  name: '皇加布業有限公司',
+  nameEn: 'RORICA TEXTILE CO., LTD.',
+  taxId: '16784675',
+  address: '242 新北市新莊區中央路712號2樓',
+  addressEn: '2F., No. 712, Zhongyang Rd., Xinzhuang Dist., New Taipei City 242, Taiwan (R.O.C.)',
+  phone: '02-2296-8760',
+  // 傳真：皇加確認暫不提供；留空時列印抬頭不印出 FAX 欄位
+  fax: '',
+  bankAccounts: [
+    {
+      id: 'BANK-001',
+      bankName: '第一商業銀行 新莊分行',
+      bankNameEn: 'FIRST COMMERCIAL BANK, HSINCHUANG BRANCH',
+      bankCode: '007-1234',
+      swift: 'FCBKTWTP',
+      accountName: 'RORICA TEXTILE CO., LTD.',
+      accountNo: '123-45-678901',
+      bankAddress: 'No. 100, Zhongzheng Rd., Xinzhuang Dist., New Taipei City, Taiwan',
+      currencies: ['USD'],
+      isDefaultForCurrency: true,
+      isDefault: true,
+      status: '啟用',
+      note: '美金主要收款帳戶',
+    },
+    {
+      id: 'BANK-002',
+      bankName: '玉山商業銀行 新莊分行',
+      bankNameEn: 'E.SUN COMMERCIAL BANK, HSINCHUANG BRANCH',
+      bankCode: '808-5678',
+      swift: 'ESUNTWTP',
+      accountName: 'RORICA TEXTILE CO., LTD.',
+      accountNo: '456-78-901234',
+      bankAddress: 'No. 200, Zhongzheng Rd., Xinzhuang Dist., New Taipei City, Taiwan',
+      currencies: ['USD', 'EUR', 'HKD'],
+      status: '啟用',
+      note: '歐洲與港澳客戶、大額匯款用',
+    },
+    {
+      id: 'BANK-003',
+      bankName: '第一商業銀行 新莊分行（台幣）',
+      bankNameEn: 'FIRST COMMERCIAL BANK, HSINCHUANG BRANCH',
+      bankCode: '007-1234',
+      swift: 'FCBKTWTP',
+      accountName: '皇加布業有限公司',
+      accountNo: '123-45-678902',
+      currencies: ['NTD'],
+      isDefaultForCurrency: true,
+      status: '啟用',
+      note: '台幣客戶',
+    },
+  ],
+  // 不預塞異動紀錄：開站第一眼就有一串「誰改過帳戶」會讓人以為真的有人動過
+  changes: [],
+  updatedAt: dayjs().subtract(30, 'day').toISOString(),
+  updatedBy: '系統種子資料',
+}
+
 // 版號隨資料結構調整遞增：舊快照的欄位已不相容（如產品編號改制），沿用會讓畫面顯示舊資料
 const SESSION_STORAGE_KEY = 'rorica-erp-session-snapshot-v2'
 
@@ -1280,6 +1347,8 @@ export interface SessionSnapshot {
   /** 單據異動通知與各帳號的已讀時間點，一併留存，否則換台裝置就看不到同事做了什麼 */
   documentEvents: DocumentEvent[]
   documentEventReads: Record<string, string>
+  /** 公司資訊：單筆物件而非陣列，套用時以 Object.assign 覆寫同一個參照 */
+  companyProfile: CompanyProfile
 }
 
 /**
@@ -1305,6 +1374,7 @@ export function buildSessionSnapshot(): SessionSnapshot {
     vendors,
     documentEvents,
     documentEventReads,
+    companyProfile,
   }
 }
 
@@ -1355,6 +1425,8 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
     for (const key of Object.keys(documentEventReads)) delete documentEventReads[key]
     Object.assign(documentEventReads, snapshot.documentEventReads)
   }
+  // 公司資訊為後續新增的快照欄位；物件不能 splice，改以 assign 覆寫同一個參照
+  if (snapshot.companyProfile) Object.assign(companyProfile, snapshot.companyProfile)
 }
 
 /**

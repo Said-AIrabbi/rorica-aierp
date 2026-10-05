@@ -30,7 +30,7 @@ import {
   PI_TRADE_TERM_HINTS,
   piQuoteValidUntil,
 } from '@/lib/pi'
-import { PRINT_BANK_ACCOUNT } from '@/lib/print'
+import { bankAccountOptions, bankAccountScopeText, defaultBankAccountFor } from '@/lib/company'
 import { MarkingPreview, SmallMarkingPreview } from '@/features/packing-notice/MarkingPrint'
 import {
   COLOR_RATIO_MAX,
@@ -102,6 +102,7 @@ export function PiFormPage() {
   const { data: customers = [] } = useQuery({ queryKey: ['customers'], queryFn: api.customers })
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
   const { data: proformaInvoices = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
+  const { data: profile } = useQuery({ queryKey: ['companyProfile'], queryFn: api.companyProfile })
   const existing = isEdit ? proformaInvoices.find((pi) => pi.id === id) : undefined
 
   const {
@@ -127,6 +128,7 @@ export function PiFormPage() {
       paymentTerm: PI_PAYMENT_TERM_TEMPLATES[0],
       paymentTermNote: '',
       itemUnit: 'Yard',
+      bankAccountId: '',
       items: [EMPTY_ITEM],
       markings: [EMPTY_MARKING],
     },
@@ -155,6 +157,7 @@ export function PiFormPage() {
       paymentTerm: existing.paymentTerm,
       paymentTermNote: existing.paymentTermNote ?? '',
       itemUnit: existing.itemUnit,
+      bankAccountId: existing.bankAccountId ?? '',
       items: existing.items.map((item) => ({
         poNo: item.poNo,
         roricaProductName: item.roricaProductName,
@@ -174,6 +177,19 @@ export function PiFormPage() {
 
   const values = watch()
   const itemUnit = values.itemUnit
+  /**
+   * 收款帳戶的選項（決策137）：啟用中的全部列出，本幣別的預設排在最前。
+   * 已停用的帳戶不列出——它們不該進新單；若這張草稿原本選的就是後來被停用的那一個，
+   * 下拉會落回預設值，送出時資料層也會擋下已停用的帳戶。
+   */
+  const bankOptions = profile ? bankAccountOptions(profile, values.currency) : []
+
+  // 新單：公司資訊載入後把預設帳戶填進表單，否則下拉顯示第一項、送出的卻是空值
+  useEffect(() => {
+    if (!profile || isEdit || values.bankAccountId) return
+    setValue('bankAccountId', defaultBankAccountFor(profile, values.currency)?.id ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, isEdit, values.currency])
   const matchedCustomer = customers.find(
     (c) => c.shortName === values.customerName?.trim() || c.fullNameCN === values.customerName?.trim(),
   )
@@ -245,6 +261,8 @@ export function PiFormPage() {
         contactIndex: addingContact ? undefined : v.contactIndex,
         // schema 只驗得出「是這四個數字之一」，型別上仍是 number，於此收斂
         leadTimeDays: v.leadTimeDays as (typeof PI_LEAD_TIME_DAYS)[number],
+        // 空字串代表沒選，交給資料層取該幣別的預設帳戶
+        bankAccountId: v.bankAccountId || undefined,
         items: v.items.map((item) => ({
           ...item,
           customerProductName: item.customerProductName ?? '',
@@ -372,7 +390,15 @@ export function PiFormPage() {
                         type="radio"
                         className="h-4 w-4"
                         checked={values.currency === c}
-                        onChange={() => setValue('currency', c, { shouldValidate: true })}
+                        onChange={() => {
+                          setValue('currency', c, { shouldValidate: true })
+                          /*
+                           * 幣別換了，收款帳戶跟著換成該幣別的預設（決策137）。
+                           * 這會覆蓋手動挑過的帳戶——刻意如此：原本挑的那一家可能根本不收這個幣別，
+                           * 而「挑錯銀行」比「要再挑一次」便宜得多。下拉仍可改回去。
+                           */
+                          if (profile) setValue('bankAccountId', defaultBankAccountFor(profile, c)?.id ?? '')
+                        }}
                       />
                       {c}
                     </label>
@@ -469,11 +495,24 @@ export function PiFormPage() {
               </div>
 
               <div className="space-y-1.5 lg:col-span-2">
-                <Label>銀行帳戶（皇加收款帳戶，固定列印於 PI）</Label>
-                <Input
-                  value={`${PRINT_BANK_ACCOUNT.bankName}（${PRINT_BANK_ACCOUNT.bankCode}）　${PRINT_BANK_ACCOUNT.accountNo}`}
-                  disabled
-                />
+                <Label>銀行帳戶（皇加收款帳戶，列印於 PI）</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  {...register('bankAccountId')}
+                >
+                  {/* 列出全部啟用帳戶、不依幣別過濾：同一幣別可能刻意要走另一家銀行（決策137） */}
+                  {bankOptions.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.bankName}　{account.accountNo}（{bankAccountScopeText(account)}）
+                      {account.note ? `　${account.note}` : ''}
+                    </option>
+                  ))}
+                  {bankOptions.length === 0 && <option value="">（公司資訊尚未設定收款帳戶）</option>}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  預設為本幣別的收款帳戶，可改選其他帳戶。帳戶內容於<b>送簽時固定</b>，之後公司資訊的異動不影響已送出的 PI。
+                  帳戶本身於「系統設定／公司資訊」維護。
+                </p>
               </div>
 
               <div className="space-y-1.5">

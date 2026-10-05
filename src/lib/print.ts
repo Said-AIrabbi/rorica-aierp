@@ -1,32 +1,14 @@
 /**
  * 單據列印共用設定。
- * 公司抬頭資訊為列印版面固定內容（買方＝皇加，見表2「統一編號、抬頭」欄位規則），
- * 集中於此一處維護，日後異動只需改這裡，不需逐張單據修改。
+ *
+ * 公司抬頭與收款帳戶**不在此檔**（2026/10/05，決策136）：
+ * 它們已改為可在「系統設定／公司資訊」維護的資料（`companyProfile`，見 mocks/data.ts），
+ * 由 PrintSheet 與 PiPrint 直接讀取。寫死在這裡的話，畫面上改了抬頭、紙上卻不會變。
+ * 本檔只留真正屬於**版面定義**的東西：表號、單據名稱、簽名欄——
+ * 那些不是公司資料，開放編輯只會讓人把表號改掉。
  */
-export const PRINT_COMPANY = {
-  name: '皇加布業有限公司',
-  nameEn: 'RORICA TEXTILE CO., LTD.',
-  taxId: '16784675',
-  address: '242 新北市新莊區中央路712號2樓',
-  phone: '02-2296-8760',
-  /** 傳真：皇加確認暫不提供；留空時列印抬頭不印出 FAX 欄位，不留空白佔位 */
-  fax: '',
-} as const
 
 /** 各單據的列印抬頭：表號與單據名稱一律成對出現，與系統畫面的 formCode 用語一致 */
-/**
- * PI 單列印用的皇加收款帳戶（Phase 2 決策35）。
- * 這是「客戶要匯款給皇加」的帳戶，屬公司層級固定資訊——
- * 與客戶主檔聯絡資訊裡的銀行帳戶無關（那是客戶自己的帳戶，供收付時對帳）。
- */
-export const PRINT_BANK_ACCOUNT = {
-  bankName: '第一商業銀行 新莊分行',
-  bankCode: '007-1234',
-  swift: 'FCBKTWTP',
-  accountName: 'RORICA TEXTILE CO., LTD.',
-  accountNo: '123-45-678901',
-} as const
-
 export const PRINT_TITLES = {
   proformaInvoice: { formCode: 'PI', title: 'PROFORMA INVOICE 預估發票' },
   packingNotice: { formCode: '表1', title: '包裝通知單' },

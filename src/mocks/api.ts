@@ -1,6 +1,7 @@
 import {
   abnormalNotices,
   accounts,
+  companyProfile,
   customers,
   documentEvents,
   dyeOrders,
@@ -74,7 +75,20 @@ export const api = {
    */
   documentEvents: () => {
     const account = getCurrentAccount()
-    const rows = documentEvents.filter((e) => canViewDoc(account, e.doc))
+    const rows = documentEvents.filter((e) => e.doc === '公司資訊' || canViewDoc(account, e.doc))
     return delay([...rows].reverse())
   },
+  /**
+   * 公司資訊（決策136）。全角色可讀——收款帳戶印在交給客戶的 PI 上，
+   * 本來就是對外公開資訊，對內遮蔽買不到任何東西，只會讓業務看不到自己單據上印了什麼（決策139）。
+   *
+   * 回傳複本而非記憶體裡那一份：mutation 是就地改同一個物件，
+   * 直接回傳同一個參照會讓查詢端比不出差異、畫面不更新（其他主檔經過欄位過濾，本來就已是複本）。
+   */
+  companyProfile: () =>
+    delay({
+      ...companyProfile,
+      bankAccounts: companyProfile.bankAccounts.map((a) => ({ ...a })),
+      changes: [...companyProfile.changes],
+    }),
 }
