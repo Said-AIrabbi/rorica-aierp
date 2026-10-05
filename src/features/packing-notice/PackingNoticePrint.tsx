@@ -18,23 +18,35 @@ export function toleranceText(notice: PackingNotice): string {
 /**
  * 明細欄位：數量以建單時的輸入基準為主值，另一單位標為換算值（≈）——
  * 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的。
+ *
+ * **欄寬依實測內容分配**（2026/10/05）：以種子資料逐欄量出最長內容需要的寬度，
+ * 再把紙面剩餘寬度分給可能變長的文字欄，合計正好是 A4 直式的可用寬度 190mm
+ * （210 − 左右邊界各 10mm）。原本多數欄位沒給寬度，交由瀏覽器自行分配，
+ * 結果是長的欄壓縮短的欄、兩邊都換行。
+ *
+ * **彩條、加工方法與備註移到第二行**（見 itemSubRow）：這三欄的內容動輒四、五十字，
+ * 留在表內就不可能讓每格只佔一行——十個欄位的內容總寬量出來是 351mm，紙只有 190mm。
  */
 const buildItemColumns = (unit: 'Yard' | 'Meter'): PrintColumn<PackingNoticeItem>[] => [
-  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '客戶品名', cell: (r) => r.customerProductName },
-  { header: '皇加品名', cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}` },
-  { header: '顏色', cell: (r) => r.color },
+  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
+  { header: '客戶品名', cell: (r) => r.customerProductName, width: '36mm' },
+  {
+    header: '皇加品名',
+    cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
+    width: '32mm',
+  },
+  { header: '顏色', cell: (r) => r.color, width: '18mm' },
   {
     header: unit === 'Yard' ? '商品總數 (Y)' : '商品總數 (M)',
     cell: (r) => formatNumber(unit === 'Yard' ? r.yard : r.meter, 1),
     align: 'right',
-    width: '20mm',
+    width: '23mm',
   },
   {
     header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
     cell: (r) => formatNumber(unit === 'Yard' ? r.meter : r.yard, 1),
     align: 'right',
-    width: '18mm',
+    width: '15mm',
   },
   {
     header: '包裝方式',
@@ -44,23 +56,27 @@ const buildItemColumns = (unit: 'Yard' | 'Meter'): PrintColumn<PackingNoticeItem
         {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
       </>
     ),
+    width: '56mm',
   },
-  // 彩條：逐品項最多 3 組客人指定，顯示文字集中於 lib/workflow
-  { header: '彩條', cell: (r) => colorRatioText(r.colorRatios) },
-  {
-    header: '加工方法',
-    cell: (r) =>
-      r.processingMethod ? (
-        <>
-          {r.processingMethod}
-          {r.processingMethodNote ? <div>（{r.processingMethodNote}）</div> : null}
-        </>
-      ) : (
-        '不指定'
-      ),
-  },
-  { header: '備註', cell: (r) => r.note ?? ' ' },
 ]
+
+/**
+ * 同一項次的第二行：加工方法、彩條與備註。
+ *
+ * 加工方法擺第一個——它是這張單要交代給生產的事，比彩條與備註重要。
+ * 三者皆空則不輸出第二行（不留一條空白列）。
+ */
+const itemSubRow = (item: PackingNoticeItem) => {
+  const ratios = (item.colorRatios ?? []).filter((v) => v.trim())
+  const parts = [
+    item.processingMethod
+      ? `加工方法：${item.processingMethod}${item.processingMethodNote ? `（${item.processingMethodNote}）` : ''}`
+      : undefined,
+    ratios.length > 0 ? `彩條：${colorRatioText(item.colorRatios)}` : undefined,
+    item.note ? `備註：${item.note}` : undefined,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join('　／　') : null
+}
 
 /**
  * 表1 包裝通知單列印版面。
@@ -100,6 +116,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
         <PrintTable
           columns={buildItemColumns(itemUnit)}
           rows={notice.items}
+          subRow={itemSubRow}
           totalRow={[
             '合計',
             null,
@@ -107,8 +124,6 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
             null,
             formatNumber(itemUnit === 'Yard' ? totalYard : totalMeter, 1),
             formatNumber(itemUnit === 'Yard' ? totalMeter : totalYard, 1),
-            null,
-            null,
             null,
           ]}
         />

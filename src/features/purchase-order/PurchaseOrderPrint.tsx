@@ -17,11 +17,30 @@ import { colorRatioText } from '@/lib/workflow'
  *
  * 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈，對外單據才看得出賣方要交的是幾碼還是幾米。
  */
+/*
+ * 欄寬以實測內容分配（2026/10/05），合計 190mm＝A4 直式可用寬度。
+ * 成品單與胚布單的欄位數不同（胚布不印顏色、包裝方式與彩條，決策92），
+ * 故品名欄的寬度分開給：胚布單少了三欄，那些寬度全歸品名。
+ *
+ * 彩條移到同一項次的第二行（見 ratioSubRow）——實測單欄內容需 114mm，
+ * 留在表內其他欄位會被壓到每格都換行。
+ */
 const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
-  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '皇加品名', cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}` },
-  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color }]),
-  ...basisQtyColumns<PurchaseOrderItem>({ unit, label: '數量', yard: (r) => r.yard, meter: (r) => r.meter }),
+  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
+  {
+    header: '皇加品名',
+    cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
+    width: isGreige ? '104mm' : '40mm',
+  },
+  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '18mm' }]),
+  ...basisQtyColumns<PurchaseOrderItem>({
+    unit,
+    label: '數量',
+    yard: (r) => r.yard,
+    meter: (r) => r.meter,
+    width: '22mm',
+    convertedWidth: '18mm',
+  }),
   ...(isGreige
     ? []
     : [
@@ -33,18 +52,27 @@ const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOr
               {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
             </>
           ),
+          width: '44mm',
         },
       ]),
-  // 彩條與包裝方式同屬包裝要求：胚布單不印（顏色、包裝方式同樣不印，見決策92）
-  ...(isGreige ? [] : [{ header: '彩條', cell: (r: PurchaseOrderItem) => colorRatioText(r.colorRatios) }]),
-  { header: '單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
+  { header: '單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '18mm' },
   {
     header: '金額',
     cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice * r.yard, 0)),
     align: 'right',
-    width: '20mm',
+    width: isGreige ? '18mm' : '20mm',
   },
 ]
+
+/**
+ * 同一項次的第二行：彩條。
+ * 彩條與包裝方式同屬包裝要求，胚布單一律不印（決策92），故胚布單不輸出第二行。
+ */
+const ratioSubRow = (isGreige: boolean) => (item: PurchaseOrderItem) => {
+  if (isGreige) return null
+  const ratios = (item.colorRatios ?? []).filter((v) => v.trim())
+  return ratios.length > 0 ? `彩條：${colorRatioText(item.colorRatios)}` : null
+}
 
 /**
  * 表2 訂購單列印版面：送賣方（供應商／染整廠）簽名回傳的對外單據，
@@ -57,7 +85,9 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
   const amount = sumLineAmounts(order.items, (i) => i.unitPrice, (i) => i.yard)
   const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
   // 胚布單：顏色未定、包裝屬成品規格，兩欄都不印
-  const columns = buildColumns(itemUnit, order.type === '胚布')
+  // 胚布單的欄位與欄寬都不同（不印顏色、包裝方式與彩條，決策92）
+  const isGreige = order.type === '胚布'
+  const columns = buildColumns(itemUnit, isGreige)
   const qtyIndex = columns.findIndex((c) => String(c.header).startsWith('數量'))
 
   const meta: PrintMetaItem[] = [
@@ -87,6 +117,7 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
         <PrintTable
           columns={columns}
           rows={order.items}
+          subRow={ratioSubRow(isGreige)}
           /* 合計列以欄位位置推算，不寫死 null 的個數——欄位會依單據類型增減，寫死一定會錯位 */
           totalRow={columns.map((col, i) => {
             if (i === 0) return '合計'

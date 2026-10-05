@@ -9,38 +9,56 @@ import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { SecondaryProcessingItem, SecondaryProcessingOrder } from '@/types'
 import { colorRatioText } from '@/lib/workflow'
 
-/** 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈ */
+/**
+ * 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈。
+ *
+ * 欄寬依實測內容分配，合計 190mm（A4 直式可用寬度）；
+ * 加工方法、彩條與備註移到同一項次的第二行（見 itemSubRow）——
+ * 十一個欄位的內容總寬量出來是 332mm，留在表內每一格都會換行。
+ */
 const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] => [
-  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '客戶品名', cell: (r) => r.customerProductName },
-  { header: '皇加品名', cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}` },
-  { header: '顏色', cell: (r) => r.color },
+  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
+  { header: '客戶品名', cell: (r) => r.customerProductName, width: '40mm' },
+  {
+    header: '皇加品名',
+    cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
+    width: '36mm',
+  },
+  { header: '顏色', cell: (r) => r.color, width: '18mm' },
   ...basisQtyColumns<SecondaryProcessingItem>({
     unit,
     label: '商品總數',
     yard: (r) => r.yard,
     meter: (r) => r.meter,
-    width: '20mm',
+    width: '23mm',
+    convertedWidth: '15mm',
   }),
   {
-    header: '加工方法',
-    cell: (r) => (
-      <>
-        {r.processingMethod ?? ' '}
-        {r.processingMethodNote ? <div>（{r.processingMethodNote}）</div> : null}
-      </>
-    ),
+    header: '加工單價',
+    cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)),
+    align: 'right',
+    width: '22mm',
   },
-  { header: '加工單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
   {
     header: '金額',
     cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice * r.yard, 0)),
     align: 'right',
-    width: '18mm',
+    width: '26mm',
   },
-  { header: '彩條', cell: (r) => colorRatioText(r.colorRatios) },
-  { header: '備註', cell: (r) => r.note ?? ' ' },
 ]
+
+/** 同一項次的第二行：加工方法（本單的主題）、彩條、備註；皆空則不輸出 */
+const itemSubRow = (item: SecondaryProcessingItem) => {
+  const ratios = (item.colorRatios ?? []).filter((v) => v.trim())
+  const parts = [
+    item.processingMethod
+      ? `加工方法：${item.processingMethod}${item.processingMethodNote ? `（${item.processingMethodNote}）` : ''}`
+      : undefined,
+    ratios.length > 0 ? `彩條：${colorRatioText(item.colorRatios)}` : undefined,
+    item.note ? `備註：${item.note}` : undefined,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join('　／　') : null
+}
 
 /**
  * 表5 二次加工單列印版面：送加工廠的對外單據。
@@ -77,6 +95,7 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
         <PrintTable
           columns={buildColumns(itemUnit)}
           rows={order.items}
+          subRow={itemSubRow}
           totalRow={[
             '合計',
             null,
@@ -85,9 +104,7 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
             formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.yard : i.meter), 0), 1),
             formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0), 1),
             null,
-            null,
             amount ? formatNumber(amount, 0) : null,
-            null,
           ]}
         />
       </PrintSection>

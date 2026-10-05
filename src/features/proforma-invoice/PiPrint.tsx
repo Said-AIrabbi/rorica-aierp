@@ -32,11 +32,15 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
     pi.itemUnit === 'Yard' ? row.unitPrice : yardPriceToMeterPrice(row.unitPrice)
   const priceUnitLabel = pi.itemUnit === 'Yard' ? 'Y' : 'M'
 
+  /*
+ * 欄寬以實測內容分配（2026/10/05）：逐欄量出種子資料裡最長的內容需要幾毫米，
+ * 再把剩餘寬度分給可能變長的文字欄，合計 190mm＝A4 直式可用寬度（210 − 左右各 10mm）。
+ */
   const columns: PrintColumn<ProformaInvoiceItem>[] = [
-    { header: 'PO NO.', cell: (row) => row.poNo, width: '20mm' },
-    { header: 'ITEM NO.', cell: (row) => row.roricaProductName, width: '24mm' },
-    { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '24mm' },
-    { header: 'COLOR', cell: (row) => row.color, width: '20mm' },
+    { header: 'PO NO.', cell: (row) => row.poNo, width: '21mm' },
+    { header: 'ITEM NO.', cell: (row) => row.roricaProductName, width: '26mm' },
+    { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '28mm' },
+    { header: 'COLOR', cell: (row) => row.color, width: '14mm' },
     {
       // 報價基準為 Meter 時另附碼數：皇加內部與下游單據一律以碼計，客戶對帳時用得到
       header: `QTY (${pi.itemUnit})`,
@@ -45,19 +49,21 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
           ? basisQtyText(row.yard, row.meter, pi.itemUnit)
           : `${basisQtyText(row.yard, row.meter, pi.itemUnit)}（${formatNumber(row.yard, 1)} Y）`,
       align: 'right',
-      width: '26mm',
+      // 以米報價時這一欄要塞「5,070.3 Meter（5,545 Y）」這種內容，實測需 41.3mm
+      width: '42mm',
     },
     {
       header: `UNIT PRICE (${symbol}/${priceUnitLabel})`,
       cell: (row) => formatNumber(pricePerDisplayUnit(row), 2),
       align: 'right',
-      width: '22mm',
+      // 表頭本身比內容長（如 UNIT PRICE (US$/M)），故欄寬以表頭為準
+      width: '33mm',
     },
     {
       header: `AMOUNT (${symbol})`,
       cell: (row) => formatNumber(row.unitPrice * row.yard, 2),
       align: 'right',
-      width: '24mm',
+      width: '26mm',
     },
   ]
 

@@ -9,16 +9,20 @@ import { colorRatioText } from '@/lib/workflow'
 /**
  * 胚布規格與成品規格字串長（如「100% POLY 75D/72F × 150D/48F」），
  * 擠在同一列會把其他欄位壓到換行；改排在同一項次的第二行（見 subRow）。
+ *
+ * **成分亦於 2026/10/05 一併移入第二行**：實測最長 56mm（如
+ * 「57% NYLON/39% METALLIC/4% SPANDEX」），留在表內九欄的內容總寬 215mm，
+ * 超出 A4 直式可用的 190mm，每一格都會換行。欄寬其餘各欄依實測內容分配，合計 190mm。
  */
 const columns: PrintColumn<DyeOrderItem>[] = [
-  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '顏色', cell: (r) => r.color },
-  { header: '色樣編號', cell: (r) => r.sampleCode ?? '________' },
-  { header: '對色標準', cell: (r) => r.colorMatchStandard ?? ' ' },
-  { header: '成分', cell: (r) => r.fabricMaterial ?? ' ' },
-  { header: '單卷碼數', cell: (r) => (r.rollYard ? `${formatNumber(r.rollYard, 1)} Y` : ' '), align: 'right', width: '18mm' },
-  { header: '指染數量', cell: (r) => formatNumber(r.inDyeQty, 1), align: 'right', width: '18mm' },
-  { header: '成品數量', cell: (r) => formatNumber(r.finishedQty, 1), align: 'right', width: '18mm' },
+  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
+  { header: '顏色', cell: (r) => r.color, width: '18mm' },
+  // 色樣編號是染廠回填的長編號（如 ORD-20260909-001-D1-L1-SAMPLE），實測需 49mm
+  { header: '色樣編號', cell: (r) => r.sampleCode ?? '________', width: '59mm' },
+  { header: '對色標準', cell: (r) => r.colorMatchStandard ?? ' ', width: '30mm' },
+  { header: '單卷碼數', cell: (r) => (r.rollYard ? `${formatNumber(r.rollYard, 1)} Y` : ' '), align: 'right', width: '19mm' },
+  { header: '指染數量', cell: (r) => formatNumber(r.inDyeQty, 1), align: 'right', width: '19mm' },
+  { header: '成品數量', cell: (r) => formatNumber(r.finishedQty, 1), align: 'right', width: '19mm' },
   { header: '加工單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
 ]
 
@@ -26,6 +30,7 @@ const columns: PrintColumn<DyeOrderItem>[] = [
 const specSubRow = (item: DyeOrderItem) => {
   const ratios = (item.colorRatios ?? []).filter((v) => v.trim())
   const parts = [
+    item.fabricMaterial ? `成分：${item.fabricMaterial}` : undefined,
     item.fabricSpec ? `胚布規格：${item.fabricSpec}` : undefined,
     item.finishedSpec ? `成品規格：${item.finishedSpec}` : undefined,
     // 彩條為明細層級（決策105），與規格同列在第二行，避免表頭再橫向增欄

@@ -8,21 +8,26 @@ import { getAccount, getCustomer, getPackingNotice } from '@/mocks/data'
 import type { ShippingOrder, ShippingOrderItem } from '@/types'
 
 /** 數量欄依來源表1 的輸入基準排序：主值在前，換算值標 ≈，避免對外單據看不出客戶實際下的數字 */
+/*
+ * 欄寬以實測內容分配（2026/10/05）：逐欄量出種子資料裡最長的內容需要幾毫米，
+ * 再把剩餘寬度分給可能變長的文字欄，合計 190mm＝A4 直式可用寬度（210 − 左右各 10mm）。
+ */
 const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<ShippingOrderItem>[] => [
-  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '客戶品名', cell: (r) => r.customerProductName ?? ' ' },
-  { header: '皇加品名', cell: (r) => r.roricaProductName ?? ' ' },
-  { header: '顏色', cell: (r) => r.color ?? ' ' },
+  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
+  { header: '客戶品名', cell: (r) => r.customerProductName ?? ' ', width: '34mm' },
+  { header: '皇加品名', cell: (r) => r.roricaProductName ?? ' ', width: '30mm' },
+  { header: '顏色', cell: (r) => r.color ?? ' ', width: '18mm' },
   {
     header: '布疋條碼編號',
-    // 拼接出貨時一筆明細對應多個捲號，逐一印出供客訴回溯
+    // 拼接出貨時一筆明細對應多個捲號，逐一印出供客訴回溯（故本欄本來就會多行）
     cell: (r) => (r.rollCodes.length === 0 ? ' ' : r.rollCodes.map((c) => <div key={c}>{c}</div>)),
+    width: '30mm',
   },
   {
     header: unit === 'Yard' ? '數量 (Y)' : '數量 (M)',
     cell: (r) => formatNumber(unit === 'Yard' ? r.yard : r.meter, 1),
     align: 'right',
-    width: '18mm',
+    width: '19mm',
   },
   {
     header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
@@ -31,7 +36,7 @@ const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<ShippingOrderItem>[] 
     width: '16mm',
   },
   // 售價與金額不列印：本單隨貨交付客戶，價格資訊不隨貨外流，僅保留於系統畫面
-  { header: '備註', cell: (r) => r.note ?? ' ' },
+  { header: '備註', cell: (r) => r.note ?? ' ', width: '33mm' },
 ]
 
 /**

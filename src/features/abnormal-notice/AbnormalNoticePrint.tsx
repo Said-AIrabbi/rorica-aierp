@@ -12,20 +12,25 @@ interface HandlingRow {
   note: string
 }
 
+/*
+ * 欄寬以實測內容分配（2026/10/05）：逐欄量出種子資料裡最長的內容需要幾毫米，
+ * 再把剩餘寬度分給可能變長的文字欄，合計 190mm＝A4 直式可用寬度（210 − 左右各 10mm）。
+ */
 const handlingColumns: PrintColumn<HandlingRow>[] = [
-  { header: '處理方式', cell: (r) => r.name, width: '30mm' },
-  { header: '碼數 (Y)', cell: (r) => r.qty, align: 'right', width: '22mm' },
-  { header: '金額／費用估算', cell: (r) => r.amount, width: '40mm' },
-  { header: '說明', cell: (r) => r.note },
+  { header: '處理方式', cell: (r) => r.name, width: '26mm' },
+  { header: '碼數 (Y)', cell: (r) => r.qty, align: 'right', width: '20mm' },
+  { header: '金額／費用估算', cell: (r) => r.amount, width: '42mm' },
+  // 說明欄是整句話（如「向某染整廠申請扣款（金額依異常程度，非全額）」），實測需 81mm
+  { header: '說明', cell: (r) => r.note, width: '102mm' },
 ]
 
 const returnedColumns: PrintColumn<ReturnedRoll>[] = [
-  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '8mm' },
-  { header: '原布卷條碼', cell: (r) => r.rollCode ?? '（條碼遺失）' },
-  { header: '退回碼數 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '22mm' },
-  { header: '複核判定', cell: (r) => r.verdict, align: 'center', width: '18mm' },
-  { header: '複核後條碼', cell: (r) => printValue(r.newRollCode) },
-  { header: '備註', cell: (r) => printValue(r.note) },
+  { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
+  { header: '原布卷條碼', cell: (r) => r.rollCode ?? '（條碼遺失）', width: '36mm' },
+  { header: '退回碼數 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '26mm' },
+  { header: '複核判定', cell: (r) => r.verdict, align: 'center', width: '22mm' },
+  { header: '複核後條碼', cell: (r) => printValue(r.newRollCode), width: '36mm' },
+  { header: '備註', cell: (r) => printValue(r.note), width: '60mm' },
 ]
 
 /**

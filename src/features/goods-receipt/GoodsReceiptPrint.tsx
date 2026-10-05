@@ -12,21 +12,23 @@ import type { GoodsReceipt, GoodsReceiptRoll } from '@/types'
  */
 const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<GoodsReceiptRoll>[] => [
   { header: '疋號', cell: (r) => r.rollNo, align: 'center', width: '14mm' },
-  { header: '批號', cell: (r) => r.batchCode ?? ' ', width: '24mm' },
+  { header: '批號', cell: (r) => r.batchCode ?? ' ', width: '44mm' },
   {
     header: unit === 'Yard' ? '碼數 (Y)＊' : '碼數 (Y)',
     cell: (r) => formatNumber(r.length, 1),
     align: 'right',
-    width: '22mm',
+    width: '26mm',
   },
   {
     header: unit === 'Meter' ? '米數 (M)＊' : '米數 (M)',
     cell: (r) => formatNumber(r.meter, 1),
     align: 'right',
-    width: '22mm',
+    width: '26mm',
   },
-  { header: '重量 (KG)', cell: (r) => formatNumber(r.weight, 1), align: 'right', width: '22mm' },
+  { header: '重量 (KG)', cell: (r) => formatNumber(r.weight, 1), align: 'right', width: '26mm' },
   {
+    // 內容最長為「低（待複核）」；其餘欄位分完後剩下的寬度給它
+    width: '54mm',
     header: 'OCR 信心度',
     cell: (r) => `${r.ocrConfidence}${r.ocrConfidence === '低' ? (r.reviewed ? '（已複核）' : '（待複核）') : ''}`,
     align: 'center',
