@@ -19,10 +19,6 @@ export function bankAccountScopeText(account: CompanyBankAccount): string {
   return account.currencies && account.currencies.length > 0 ? account.currencies.join('、') : '全幣別通用'
 }
 
-export function bankAccountLabel(account: CompanyBankAccount): string {
-  return `${account.bankName}　${account.accountNo}`
-}
-
 function appliesTo(account: CompanyBankAccount, currency: PiCurrency): boolean {
   return (account.currencies ?? []).includes(currency)
 }
