@@ -48,6 +48,17 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
   // 包裝設定原樣帶入自表1：倉管依此出貨、客戶也照此驗收，與表5 共用同一份版面
   const packaging = notice ? buildSecondaryProcessingPackaging(notice) : undefined
 
+  /**
+   * 地址欄（決策133）：這張紙是送貨的人與客戶驗收時看的，印錯地址就是送錯地方。
+   *
+   * 有本單的收貨地址（自表1 帶入，或倉管在出貨單上改過）就印它，標題為「收貨地址」；
+   * 留白才退回印客戶主檔的公司地址，標題也跟著回到「客戶地址」——
+   * **標題與值一起換**：若一律標成收貨地址卻印著公司地址，看紙的人會以為那就是客戶指定的送達地點。
+   */
+  const addressMeta: PrintMetaItem = order.shippingAddress
+    ? { label: '收貨地址', value: order.shippingAddress, span: 2 }
+    : { label: '客戶地址', value: customer?.address ?? ' ', span: 2 }
+
   const meta: PrintMetaItem[] = [
     { label: '出貨單號', value: order.id },
     { label: '來源包裝通知單', value: order.parentId },
@@ -57,7 +68,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
     { label: '倉管人員', value: operator?.name ?? ' ' },
     // 決策117：列印操作帳號姓名，不再依角色推導部門
     { label: '出倉部門', value: operator?.name ?? ' ' },
-    { label: '客戶地址', value: customer?.address ?? ' ', span: 2 },
+    addressMeta,
     { label: '用途', value: order.purpose ?? ' ' },
     { label: '數量輸入基準', value: `${itemUnit}（另一單位為換算值）` },
     { label: '狀態', value: order.status },
