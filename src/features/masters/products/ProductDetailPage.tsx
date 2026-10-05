@@ -262,6 +262,51 @@ export function ProductDetailPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>價格</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              進價／售價以「碼」為計價單位，牌價Y／牌價M 不拆分為兩個欄位；每米單價由全公司統一係數 0.9144 即時換算（每米單價 ＝ 每碼單價 ÷ 0.9144）。欄位可見範圍待依角色權限另行設定。
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-xs">進價（每碼）</Label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="w-28"
+                    value={draft.costPrice ?? ''}
+                    onChange={(e) => set('costPrice', e.target.value === '' ? undefined : num(e.target.value))}
+                  />
+                  <span className="w-40 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+                    {draft.costPrice != null ? `＝ ${formatNumber(yardPriceToMeterPrice(draft.costPrice), 1)} / 米` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">售價（每碼）</Label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="w-28"
+                    value={draft.sellPrice ?? ''}
+                    onChange={(e) => set('sellPrice', e.target.value === '' ? undefined : num(e.target.value))}
+                  />
+                  <span className="w-40 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+                    {draft.sellPrice != null ? `＝ ${formatNumber(yardPriceToMeterPrice(draft.sellPrice), 1)} / 米` : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>規格</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -370,51 +415,6 @@ export function ProductDetailPage() {
                 onChange={(e) => set('originalRollStandardYard', num(e.target.value))}
               />
               <p className="text-xs text-muted-foreground">接疋判斷基準，數值須大於客戶要求的捲長</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>價格</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              進價／售價以「碼」為計價單位，牌價Y／牌價M 不拆分為兩個欄位；每米單價由全公司統一係數 0.9144 即時換算（每米單價 ＝ 每碼單價 ÷ 0.9144）。欄位可見範圍待依角色權限另行設定。
-            </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label className="text-xs">進價（每碼）</Label>
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    className="w-28"
-                    value={draft.costPrice ?? ''}
-                    onChange={(e) => set('costPrice', e.target.value === '' ? undefined : num(e.target.value))}
-                  />
-                  <span className="w-40 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-                    {draft.costPrice != null ? `＝ ${formatNumber(yardPriceToMeterPrice(draft.costPrice), 1)} / 米` : ''}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">售價（每碼）</Label>
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    className="w-28"
-                    value={draft.sellPrice ?? ''}
-                    onChange={(e) => set('sellPrice', e.target.value === '' ? undefined : num(e.target.value))}
-                  />
-                  <span className="w-40 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-                    {draft.sellPrice != null ? `＝ ${formatNumber(yardPriceToMeterPrice(draft.sellPrice), 1)} / 米` : ''}
-                  </span>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
