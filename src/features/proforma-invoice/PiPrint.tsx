@@ -39,8 +39,8 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
   const columns: PrintColumn<ProformaInvoiceItem>[] = [
     { header: 'PO NO.', cell: (row) => row.poNo, width: '21mm' },
     { header: 'ITEM NO.', cell: (row) => row.roricaProductName, width: '26mm' },
-    { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '28mm' },
-    { header: 'COLOR', cell: (row) => row.color, width: '14mm' },
+    { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '34mm' },
+    { header: 'COLOR', cell: (row) => row.color, width: '21mm' },
     {
       // 報價基準為 Meter 時另附碼數：皇加內部與下游單據一律以碼計，客戶對帳時用得到
       header: `QTY (${pi.itemUnit})`,
@@ -53,11 +53,19 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
       width: '42mm',
     },
     {
-      header: `UNIT PRICE (${symbol}/${priceUnitLabel})`,
+      // 標題分兩行：接成一行時它比欄內的數字長得多，欄寬只能遷就標題，
+      // 省下的寬度讓給內容真的會變長的 COLOR 與客戶品名
+      header: (
+        <>
+          <div>UNIT PRICE</div>
+          <div>
+            ({symbol}/{priceUnitLabel})
+          </div>
+        </>
+      ),
       cell: (row) => formatNumber(pricePerDisplayUnit(row), 2),
       align: 'right',
-      // 表頭本身比內容長（如 UNIT PRICE (US$/M)），故欄寬以表頭為準
-      width: '33mm',
+      width: '20mm',
     },
     {
       header: `AMOUNT (${symbol})`,

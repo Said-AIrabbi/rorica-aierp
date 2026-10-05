@@ -105,7 +105,12 @@ export function PrintSection({ title, note, children }: { title: string; note?: 
 }
 
 export interface PrintColumn<T> {
-  header: string
+  /**
+   * 欄位標題。允許 ReactNode 是為了讓過長的標題能在指定位置分兩行
+   * （如 PI 的 UNIT PRICE／(US$/Y)）——否則欄寬得由標題決定，
+   * 把內容本來就長的欄位（顏色、客戶品名）擠到換行。
+   */
+  header: ReactNode
   /** 儲存格內容 */
   cell: (row: T, index: number) => ReactNode
   /** 數值欄右對齊 */
