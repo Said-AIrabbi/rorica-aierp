@@ -3815,9 +3815,11 @@ export function submitProformaInvoice(id: string): Promise<ProformaInvoice> {
 }
 
 /**
- * 管理層批准：待批准／已逾期（重新報價）→ 待簽回，並重新起算 14 天報價效期。
- * 核決者即帳號主檔既有的「管理層」角色（決策47，不另設董事長角色）；
- * 權限判斷本身屬另立的簽核模組，原型不做角色檢查。
+ * 批准：待批准／已逾期（重新報價）→ 待簽回，並重新起算 14 天報價效期。
+ *
+ * 核決者原為帳號主檔的「管理層」角色（決策47，不另設董事長角色），
+ * **2026/10/05 起業務亦可批准，且可批准自己送簽的 PI**（主文件決策131）——
+ * PI 是對外報價、尚未成為訂單，真正的把關點在客戶回簽後轉表1 的那一次管理層簽核。
  */
 export function approveProformaInvoice(id: string): Promise<ProformaInvoice> {
   assertCanAct(getCurrentAccount(), 'PI', '批准')
@@ -3959,7 +3961,7 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
       markings: current.markings,
       sourcePiId: current.id,
       shippingAddress: current.shippingAddress,
-      // PI 轉來的表1 一樣從「未送簽」起步（決策118）：管理層批准的是報價，不是生產指示。
+      // PI 轉來的表1 一樣從「未送簽」起步（決策118）：PI 批准的是報價，不是生產指示。
       // 漏了這一欄，這張單會卡在「草稿但顯示已簽核」而永遠生效不了
       approvalState: '未送簽',
       ...packingDefaultsFromPi(),

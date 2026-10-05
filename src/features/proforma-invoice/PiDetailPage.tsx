@@ -146,7 +146,7 @@ export function PiDetailPage() {
                   <Button
                     size="sm"
                     className="bg-brand hover:bg-brand-dark"
-                    onClick={() => run(() => submitProformaInvoice(pi.id), '已送出，等待管理層批准')}
+                    onClick={() => run(() => submitProformaInvoice(pi.id), '已送出，等待批准')}
                   >
                     送出批准
                   </Button>
@@ -164,7 +164,7 @@ export function PiDetailPage() {
                   )
                 }
               >
-                {status === '已逾期' ? '重新報價並批准' : '管理層批准'}
+                {status === '已逾期' ? '重新報價並批准' : '批准'}
               </Button>
             )}
             {/* 批准的另一半：不批准就得退回，否則單子只能卡在待批准（權限規格決策50） */}
@@ -391,7 +391,7 @@ export function PiDetailPage() {
               />
               <DetailField label="建立日" value={formatDate(pi.createdAt)} />
               <DetailField label="報價有效期限" value={formatDate(pi.quoteValidUntil)} />
-              <DetailField label="管理層批准" value={pi.approvedAt ? formatDateTime(pi.approvedAt) : '-'} />
+              <DetailField label="批准時間" value={pi.approvedAt ? formatDateTime(pi.approvedAt) : '-'} />
               <DetailField label="客戶簽回" value={pi.signedBackAt ? formatDateTime(pi.signedBackAt) : '-'} />
               <DetailField label="簽回附件" value={pi.signedBackFileName ?? '（未上傳，非必填）'} />
               <DetailField label="估算 CBM" value="計算公式待皇加提供" />
