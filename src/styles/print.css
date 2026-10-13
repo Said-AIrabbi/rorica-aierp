@@ -11,12 +11,13 @@
 }
 
 /*
- * 表7布疋條碼標籤：印在 A4 標籤紙上，每張 寬45mm×長62mm，一頁 4×4＝16 張。
- * 頁邊界即為標籤區置中後的留白：左右 (210−180)/2＝15mm、上下 (297−248)/2＝24.5mm
+ * 表7布疋條碼標籤（決策141）：專用連續標籤紙，每張紙 寬48mm×高65mm，一張標籤一頁。
+ * 列印範圍 寬45mm×高62mm 置中，故四周邊界各 (48−45)/2＝(65−62)/2＝1.5mm。
+ * 標籤之間的齒孔是紙本身的裁切線，系統不印。
  */
 @page pr-label {
-  size: A4 portrait;
-  margin: 24.5mm 15mm;
+  size: 48mm 65mm;
+  margin: 1.5mm;
 }
 
 #print-root {
@@ -115,22 +116,27 @@
 
 .pr-label-sheet {
   page: pr-label;
-  width: 180mm;
+  width: 45mm;
   font-size: 7pt;
   line-height: 1.25;
 }
 
+/*
+ * 預覽：畫成一條連續紙卷——紙張 48×65mm 一張接一張、中間不留縫，
+ * 接縫以虛線示意齒孔。這條虛線只在畫面上，實際列印時紙本身就有。
+ */
 .pr-preview .pr-label-sheet {
-  width: 210mm;
-  min-height: 297mm;
-  padding: 24.5mm 15mm;
+  width: 48mm;
+  height: 65mm;
+  min-height: 0;
+  padding: 1.5mm;
+  margin-bottom: 0;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 12%);
+  border-bottom: 1px dashed #999;
 }
 
-/* 4 欄 × 4 列的固定格位：尺寸寫死，不隨內容伸縮，才對得上標籤紙的裁切線 */
-.pr-label-a4 {
-  display: grid;
-  grid-template-columns: repeat(4, 45mm);
-  grid-auto-rows: 62mm;
+.pr-preview .pr-label-sheet:last-of-type {
+  margin-bottom: 24px;
 }
 
 /* ---------- 抬頭 ---------- */
@@ -355,11 +361,24 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  /* 細框兼作裁切參考線 */
-  border: 0.25pt solid #000;
-  padding: 1.5mm;
+  /*
+   * 不再畫外框：原本外框兼作 A4 上的裁切參考線，改用專用標籤紙後裁切線就是紙本身的齒孔，
+   * 再印一圈框只會在走紙稍有偏移時露出歪掉的線。
+   * 左右留 1.5mm 給條碼的靜區（掃描槍需要條碼兩側有空白才讀得到），上下不留——
+   * 下條碼區的位置是從齒孔量的，再加 padding 就對不上了。
+   */
+  padding: 0 1.5mm;
   text-align: center;
   break-inside: avoid;
+}
+
+/* 條碼區高度由元件指定（LABEL_BARCODE_ZONE_MM）；不隨內容伸縮，位置才對得上實測規格 */
+.pr-label-barcode {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
 }
 
 .pr-label-code {

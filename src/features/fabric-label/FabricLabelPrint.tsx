@@ -4,13 +4,23 @@ import { getProduct, productBranchSuffix } from '@/mocks/data'
 import type { FabricLabel } from '@/types'
 
 /**
- * 表7 布疋條碼標籤：每張 寬 45mm × 長 62mm，排在 A4 直式上。
- * A4（210×297mm）一橫排放 4 張（180mm）、直排放 4 列（248mm），一頁 16 張；
- * 超過 16 捲才接第二頁。整組置中，四周各留 15mm／24.5mm，避開印表機的不可列印邊界。
+ * 表7 布疋條碼標籤（決策141）：印在**專用連續標籤紙**上。
+ *
+ * 紙張每張 寬 48mm × 高 65mm，列印範圍 寬 45mm × 高 62mm 置中（四周各 1.5mm）；
+ * 一張標籤一頁，沿紙卷垂直連續——一次印十幾捲是機器自己連續走紙，不必換紙。
+ * 頁面尺寸與邊界見 print.css 的 @page pr-label。
  */
-export const LABEL_COLUMNS = 4
-export const LABEL_ROWS = 4
-export const LABELS_PER_A4 = LABEL_COLUMNS * LABEL_ROWS
+
+/**
+ * 條碼區（條碼＋人讀碼）的高度。
+ *
+ * 實測規格：**下條碼區上緣到標籤紙齒孔為 12mm**。齒孔是紙本身的裁切線、系統不印，
+ * 而列印範圍底邊離齒孔還有 1.5mm 紙張留白，故條碼區在列印範圍內的實高是 12 − 1.5 ＝ 10.5mm。
+ * 上條碼區比照同一高度——兩個條碼是同一個掃描目標，大小不一致只會讓人以為印錯。
+ */
+export const LABEL_BARCODE_ZONE_MM = 12 - 1.5
+/** 條碼本體高度：條碼區扣掉人讀碼一行（7pt × 行高 1.25 ≈ 3.1mm）與間距 */
+const LABEL_BARCODE_HEIGHT_MM = 7
 
 /**
  * 單張標籤。非系統畫面／表單，而是貼附於布捲的實體身分標籤：
@@ -23,8 +33,8 @@ function FabricLabelCard({ label }: { label: FabricLabel }) {
   const meter = label.unit === 'Meter' ? label.length : yardToMeter(label.length)
 
   const barcodeBlock = (
-    <div>
-      <Barcode value={label.rollCode} height={9} />
+    <div className="pr-label-barcode" style={{ height: `${LABEL_BARCODE_ZONE_MM}mm` }}>
+      <Barcode value={label.rollCode} height={LABEL_BARCODE_HEIGHT_MM} />
       <div className="pr-label-code">{label.rollCode}</div>
     </div>
   )
@@ -65,26 +75,23 @@ function FabricLabelCard({ label }: { label: FabricLabel }) {
   )
 }
 
-/** 多張標籤：每 16 張一頁 A4，由左而右、由上而下排列；最後一頁不足 16 張時其餘格位留白 */
+/**
+ * 多張標籤：一張一頁，依序沿紙卷往下印。
+ * 換頁由 .pr-sheet + .pr-sheet 的 break-before 處理，每一頁的尺寸就是一張標籤紙。
+ */
 export function FabricLabelSheets({ labels }: { labels: FabricLabel[] }) {
-  const pages: FabricLabel[][] = []
-  for (let i = 0; i < labels.length; i += LABELS_PER_A4) pages.push(labels.slice(i, i + LABELS_PER_A4))
   return (
     <>
-      {pages.map((page, p) => (
-        <section key={p} className="pr-sheet pr-label-sheet">
-          <div className="pr-label-a4">
-            {page.map((label) => (
-              <FabricLabelCard key={label.id} label={label} />
-            ))}
-          </div>
+      {labels.map((label) => (
+        <section key={label.id} className="pr-sheet pr-label-sheet">
+          <FabricLabelCard label={label} />
         </section>
       ))}
     </>
   )
 }
 
-/** 單捲列印：同樣印在 A4 標籤紙上，佔左上第一格 */
+/** 單捲列印：一張標籤紙 */
 export function FabricLabelPrint({ label }: { label: FabricLabel }) {
   return <FabricLabelSheets labels={[label]} />
 }

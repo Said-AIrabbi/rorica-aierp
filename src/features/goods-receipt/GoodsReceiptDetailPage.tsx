@@ -11,7 +11,7 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { GoodsReceiptPrint } from './GoodsReceiptPrint'
-import { FabricLabelSheets, LABELS_PER_A4 } from '@/features/fabric-label/FabricLabelPrint'
+import { FabricLabelSheets } from '@/features/fabric-label/FabricLabelPrint'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -249,7 +249,7 @@ export function GoodsReceiptDetailPage() {
             <StatusBadge status={receipt.status} className="text-sm" />
             {/*
               入庫單本身為內部驗收存查；表7標籤實務上是整張入庫單一次印完（10捲即10張），
-              故第二個列印輸出直接把本單產生的布卷標籤全部排版在 A4 標籤紙上，一頁 16 張，超過才接下一頁。
+              故第二個列印輸出直接把本單產生的布卷標籤全部依序送出，在連續標籤紙上一張接一張印（決策141）。
             */}
             <PrintActions
               sheets={[
@@ -258,7 +258,7 @@ export function GoodsReceiptDetailPage() {
                   ? [
                       {
                         key: 'labels',
-                        label: `列印布卷標籤（${receiptLabels.length} 張，A4 ${Math.ceil(receiptLabels.length / LABELS_PER_A4)} 頁）`,
+                        label: `列印布卷標籤（${receiptLabels.length} 張）`,
                         sheet: <FabricLabelSheets labels={receiptLabels} />,
                       },
                     ]
