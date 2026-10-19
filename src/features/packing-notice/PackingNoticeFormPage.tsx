@@ -26,6 +26,7 @@ import {
   MARKING_SHAPES,
   PACKAGING_TYPES,
   PACKING_METHODS,
+  PI_CURRENCIES,
   PROCESSING_METHODS,
   SHIP_METHODS,
   TOLERANCE_MODES,
@@ -112,8 +113,11 @@ export function PackingNoticeFormPage() {
    */
   const { canSee } = useCurrentAccount()
   const showPrice = canSee('售價')
-  // 由 PI 轉來者沿用 PI 幣別；直接建立者視為 NTD（與商品主檔牌價同一幣別）
-  const priceCurrency = existing?.currency ?? 'NTD'
+  /**
+   * 幣別（決策143）：由 PI 轉來者沿用 PI 幣別、不可改；直接建立者可選，但**僅草稿階段**——
+   * 生效時表8 已自動建立並記下當時的幣別，再改這裡兩張單就對不上（資料層同樣擋）。
+   */
+  const currencyLocked = Boolean(existing?.sourcePiId) || (existing !== undefined && existing.status !== '草稿')
 
   const {
     register,
@@ -137,6 +141,7 @@ export function PackingNoticeFormPage() {
       tolerance: { mode: TOLERANCE_MODES[0], customText: '' },
       items: [EMPTY_ITEM],
       allowSplicing: false,
+      currency: 'NTD',
       embossing: [],
       edgeCut: false,
       markings: [EMPTY_MARKING],
@@ -173,6 +178,7 @@ export function PackingNoticeFormPage() {
             unitPrice: item.unitPrice,
           })),
           allowSplicing: existing.allowSplicing,
+          currency: existing.currency ?? 'NTD',
           markings: existing.markings,
           embossing: existing.embossing.filter((o) => o !== '否'),
           edgeCut: existing.edgeCut,
@@ -185,6 +191,8 @@ export function PackingNoticeFormPage() {
   const embossingValues = watch('embossing') ?? []
   const labelTypeValues = watch('labelTypes') ?? []
   const itemValues = watch('items') ?? []
+  // 單價的幣別跟著表單值走：直接建立者改了幣別，明細的欄名要立刻跟著變
+  const priceCurrency = watch('currency') ?? 'NTD'
   // 嘜頭預覽要跟著輸入即時更新，故取 watch 值而非 field array 的快照
   const markingValues = watch('markings') ?? []
   const customerNameValue = watch('customerName')
@@ -475,7 +483,30 @@ export function PackingNoticeFormPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">明細</CardTitle>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* 幣別：只描述單價，看不到售價的角色不呈現 */}
+              {showPrice && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">幣別</span>
+                  {currencyLocked ? (
+                    <span
+                      className="rounded-md border border-input bg-muted px-3 py-1 text-xs"
+                      title={existing?.sourcePiId ? '沿用來源 PI 的幣別，不可修改' : '表1 已生效，售價已帶往出貨單，幣別不可再改'}
+                    >
+                      {priceCurrency}
+                      {existing?.sourcePiId ? '（沿用 PI）' : ''}
+                    </span>
+                  ) : (
+                    <select className="h-7 rounded-md border border-input bg-background px-2 text-xs" {...register('currency')}>
+                      {PI_CURRENCIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
               {/* 單位切換：一次套用到明細區塊所有品項，非逐列設定 */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">單位</span>

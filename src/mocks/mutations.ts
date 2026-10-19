@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
-import { COLOR_RATIO_MAX } from '@/types'
+import { COLOR_RATIO_MAX, PI_CURRENCIES } from '@/types'
 import {
   allocateWholeRolls,
   availableFabricLabels,
@@ -56,6 +56,7 @@ import type {
   PackingNotice,
   PackingNoticeItem,
   PackingNoticeMarking,
+  PiCurrency,
   Product,
   ProformaInvoice,
   ProformaInvoiceItem,
@@ -154,6 +155,8 @@ export interface PackingNoticeInput {
   items: PackingNoticeItemInput[]
   /** 明細數量的輸入單位基準（Yard／Meter），供畫面與列印比照建單時的呈現 */
   itemUnit?: 'Yard' | 'Meter'
+  /** 明細單價的幣別（決策143）：僅直接建立的表1 採用；由 PI 轉來者一律沿用 PI 幣別 */
+  currency?: PiCurrency
   allowSplicing?: boolean
   markings: PackingNoticeMarking[]
   embossing: PackingNotice['embossing']
@@ -202,6 +205,29 @@ function keepHiddenNoticePrices(
     ...item,
     unitPrice: item.id ? current.items.find((i) => i.id === item.id)?.unitPrice : undefined,
   }))
+}
+
+function assertNoticeCurrency(currency: PiCurrency): PiCurrency {
+  if (!PI_CURRENCIES.includes(currency)) throw new Error(`不支援的幣別：${currency}`)
+  return currency
+}
+
+/**
+ * 表1 存檔後的幣別（決策143）。
+ *
+ * - 由 PI 轉來者：一律沿用原值（即 PI 幣別），輸入值不採用——幣別跟著報價走
+ * - 直接建立者：**僅草稿階段可改**。生效時表8 草稿已自動建立並記下當時的幣別，
+ *   此後再改表1 的幣別，兩張單的同一筆價格就對到不同幣別
+ * - 沒帶幣別（如看不到售價的帳號存檔，畫面上沒有這個欄位）：維持原值
+ */
+function nextNoticeCurrency(current: PackingNotice, requested: PiCurrency | undefined): PiCurrency | undefined {
+  if (current.sourcePiId || requested === undefined) return current.currency
+  const before = current.currency ?? 'NTD'
+  if (requested === before) return current.currency
+  if (current.status !== '草稿') {
+    throw new Error(`表1 已生效，幣別不可再改（目前為 ${before}）——售價已帶往出貨單`)
+  }
+  return assertNoticeCurrency(requested)
 }
 
 /** 燙金（多選）帶入表2/表4時，以頓號連接顯示 */
@@ -401,7 +427,7 @@ function reserveRollsForItem(
       // 出貨數量以訂單需求量為準；整捲＋裁切時最後一捲裁剩的零碼布留庫存
       yard: item.yard,
       meter: Number(yardToMeter(item.yard).toFixed(1)),
-      unitPrice: noticeItemSalePrice(notice, item) ?? product?.sellPrice,
+      unitPrice: defaultShippingPrice(notice, item, product),
       note: item.note,
     },
   ])
@@ -651,6 +677,7 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
     tolerance: input.tolerance,
     items: buildItems(id, input.items),
     itemUnit: input.itemUnit ?? 'Yard',
+    currency: assertNoticeCurrency(input.currency ?? 'NTD'),
     allowSplicing: input.allowSplicing ?? false,
     markings: input.markings,
     embossing: input.embossing,
@@ -799,7 +826,7 @@ function createDownstreamDraftsOnEffective(notice: PackingNotice): void {
         rollCodes: reservation?.rollCodes ?? [],
         yard: item.yard,
         meter: Number(yardToMeter(item.yard).toFixed(1)),
-        unitPrice: noticeItemSalePrice(notice, item) ?? product?.sellPrice,
+        unitPrice: defaultShippingPrice(notice, item, product),
         note: item.note,
       },
     ])
@@ -862,6 +889,7 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
     tolerance: input.tolerance,
     items: buildItems(id, keepHiddenNoticePrices(packingNotices[idx], input.items)),
     itemUnit: input.itemUnit ?? packingNotices[idx].itemUnit ?? 'Yard',
+    currency: nextNoticeCurrency(packingNotices[idx], input.currency),
     allowSplicing: input.allowSplicing ?? packingNotices[idx].allowSplicing,
     markings: input.markings,
     embossing: input.embossing,
@@ -2261,7 +2289,7 @@ export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']
           rollCodes: [label.rollCode],
           yard: label.length,
           meter: Number(yardToMeter(label.length).toFixed(1)),
-          unitPrice: noticeItemSalePrice(notice, sourceItem) ?? product?.sellPrice,
+          unitPrice: defaultShippingPrice(notice, sourceItem, product),
           note: sourceItem?.note,
         }
       })
@@ -2446,6 +2474,8 @@ function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, n
     parentId,
     customerId,
     shippingAddress: sourceNotice?.shippingAddress,
+    // 幣別記在表8 身上（決策143）：看得到售價的財務沒有表1 檢視權，不能顯示時才回頭查
+    currency: sourceNotice?.currency ?? 'NTD',
     markingBoxNos: markingBoxNosFromNotice(sourceNotice),
     status: '草稿',
     shipDate: dayjs().toISOString(),
@@ -2489,6 +2519,23 @@ function noticeItemSalePrice(
   return item.unitPrice ?? piUnitPriceForNoticeItem(notice, item.id)
 }
 
+/**
+ * 自動建立的表8 明細售價（決策142、143）：表1 單價 → 來源 PI 單價 → 主檔牌價。
+ *
+ * **主檔牌價只在表1 為台幣時才採用**：牌價是台幣（Phase 2 決策41）。
+ * 美金訂單的某一列沒有單價時若退回牌價，表8 就會出現一個標著 USD 的台幣數字——
+ * 寧可留空讓倉管補，也不要一個看起來合理、其實錯了三十倍的價格。
+ */
+function defaultShippingPrice(
+  notice: PackingNotice | undefined,
+  item: PackingNoticeItem | undefined,
+  product: Product | undefined,
+): number | undefined {
+  const fromOrder = noticeItemSalePrice(notice, item)
+  if (fromOrder !== undefined) return fromOrder
+  return (notice?.currency ?? 'NTD') === 'NTD' ? product?.sellPrice : undefined
+}
+
 function piUnitPriceForNoticeItem(notice: PackingNotice | undefined, sourceItemId: string | undefined): number | undefined {
   if (!notice?.sourcePiId || !sourceItemId) return undefined
   const noticeItem = notice.items.find((i) => i.id === sourceItemId)
@@ -2508,6 +2555,7 @@ export function createShippingOrder(input: ShippingOrderInput): Promise<Shipping
     parentId: input.parentId,
     customerId: input.customerId,
     shippingAddress: sourceNotice?.shippingAddress,
+    currency: sourceNotice?.currency ?? 'NTD',
     markingBoxNos: markingBoxNosFromNotice(sourceNotice),
     status: '草稿',
     shipDate: dayjs().toISOString(),
@@ -2515,7 +2563,13 @@ export function createShippingOrder(input: ShippingOrderInput): Promise<Shipping
     items: input.items.map((item) => ({
       ...item,
       meter: Number(yardToMeter(item.yard).toFixed(1)),
-      unitPrice: item.unitPrice ?? piUnitPriceForNoticeItem(sourceNotice, item.sourceItemId),
+      // 手動建單時沒填售價者，同樣先取表1 單價（決策142）
+      unitPrice:
+        item.unitPrice ??
+        noticeItemSalePrice(
+          sourceNotice,
+          sourceNotice?.items.find((i) => i.id === item.sourceItemId),
+        ),
     })),
     operatorAccountId: warehouseAccount.id,
     purpose: input.purpose,

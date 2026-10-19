@@ -7,6 +7,7 @@ import {
   MARKING_SHAPES,
   PACKAGING_TYPES,
   PACKING_METHODS,
+  PI_CURRENCIES,
   PROCESSING_METHODS,
   SHIP_METHODS,
   TOLERANCE_MODES,
@@ -89,6 +90,8 @@ export const packingNoticeFormSchema = z
     packagingType: z.enum(PACKAGING_TYPES),
     tolerance: packingNoticeToleranceSchema,
     items: z.array(packingNoticeItemSchema).min(1, '至少需要一筆明細'),
+    /** 明細單價的幣別（決策143）：直接建立者可選，預設 NTD；由 PI 轉來者唯讀 */
+    currency: z.enum(PI_CURRENCIES),
     allowSplicing: z.boolean(),
     // 嘜頭比照明細可多組：一張訂單可能有不同目的地／箱型的嘜頭
     markings: z.array(packingNoticeMarkingSchema).min(1, '至少需要一組嘜頭'),

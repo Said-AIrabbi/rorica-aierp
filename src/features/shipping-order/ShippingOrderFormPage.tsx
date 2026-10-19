@@ -247,12 +247,20 @@ export function ShippingOrderFormPage() {
                     <Input value={yard ? formatNumber(yardToMeter(Number(yard)), 1) : ''} disabled placeholder="-" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">售價 (/Y)</Label>
-                    <Input type="number" step="0.1" {...register(`items.${index}.unitPrice`)} />
+                    {/* 幣別取自所選的表1（決策143）；建單後記在表8 身上 */}
+                    <Label className="text-xs">售價 ({selectedNotice?.currency ?? 'NTD'}/Y)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="留空則帶入表1 單價"
+                      {...register(`items.${index}.unitPrice`, {
+                        setValueAs: (v) => (v === '' || v == null ? undefined : Number(v)),
+                      })}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">金額（自動計算）</Label>
-                    <Input value={amount != null ? amount.toFixed(1) : ''} disabled placeholder="-" />
+                    <Input value={amount != null ? amount.toFixed(2) : ''} disabled placeholder="-" />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs">備註</Label>

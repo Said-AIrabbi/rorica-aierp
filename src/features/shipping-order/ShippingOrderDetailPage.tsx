@@ -43,6 +43,11 @@ export function ShippingOrderDetailPage() {
   const { data: shippingOrders = [] } = useQuery({ queryKey: ['shippingOrders'], queryFn: api.shippingOrders })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const order = shippingOrders.find((s) => s.id === id)
+  /**
+   * 售價幣別（決策143）：讀本單自己記下的值，不回頭查表1——
+   * 看得到售價的財務沒有表1 的檢視權，回頭查會查不到，美金就被標成台幣。
+   */
+  const priceCurrency = order?.currency ?? 'NTD'
 
   const [signatures, setSignatures] = useState<ShippingOrderSignatures>({})
   useEffect(() => {
@@ -407,8 +412,8 @@ export function ShippingOrderDetailPage() {
                   <TableHead>色號</TableHead>
                   <TableHead>布卷條碼（拼接時為捲號組合）</TableHead>
                   <TableHead className="text-right">數量 ({itemUnit})</TableHead>
-                  <TableHead className="text-right">售價 (/Y)</TableHead>
-                  <TableHead className="text-right">金額</TableHead>
+                  <TableHead className="text-right">售價 ({priceCurrency}/Y)</TableHead>
+                  <TableHead className="text-right">金額 ({priceCurrency})</TableHead>
                   <TableHead>備註</TableHead>
                   {itemsEditable && <TableHead />}
                 </TableRow>
@@ -449,7 +454,7 @@ export function ShippingOrderDetailPage() {
                       {itemsEditable ? (
                         <Input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           className="w-24 text-right"
                           value={item.unitPrice ?? ''}
@@ -462,13 +467,13 @@ export function ShippingOrderDetailPage() {
                           }
                         />
                       ) : item.unitPrice != null ? (
-                        formatNumber(item.unitPrice, 1)
+                        formatNumber(item.unitPrice, 2)
                       ) : (
                         '-'
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {item.unitPrice != null ? formatNumber(item.yard * item.unitPrice, 1) : '-'}
+                      {item.unitPrice != null ? formatNumber(item.yard * item.unitPrice, 2) : '-'}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {itemsEditable ? (

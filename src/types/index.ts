@@ -529,8 +529,11 @@ export interface PackingNotice {
    */
   sourcePiId?: string
   /**
-   * 明細單價的幣別（決策142）：由 PI 轉換者沿用 PI 幣別；**直接建立者留空，視為 NTD**
-   * （與商品主檔牌價同一幣別，Phase 2 決策41）。不提供編輯——幣別跟著報價走，不是表1 自己決定的。
+   * 明細單價的幣別（決策142、143）。
+   *   - 由 PI 轉換者：沿用 PI 幣別，**不可修改**——幣別跟著報價走
+   *   - 直接建立者：建單時選擇，預設 NTD；**僅草稿階段可改**——生效後單價已帶往表8，
+   *     幣別再改，表8 的數字就對到錯的幣別
+   * 舊資料未記錄者視為 NTD（與商品主檔牌價同一幣別，Phase 2 決策41）。
    */
   currency?: PiCurrency
   /**
@@ -965,6 +968,12 @@ export interface ShippingOrder {
    * 故三張單據自此允許不一致，列印時各自印自己的值。
    */
   shippingAddress?: string
+  /**
+   * 售價幣別（決策143）：建單時自表1 帶入（表1 再自 PI 帶入），**記在本單身上**，不是顯示時回頭查表1。
+   * 財務看得到表8 售價卻沒有表1 的檢視權——回頭查會查不到，美金價格就被標成台幣。
+   * 舊資料未記錄者視為 NTD。
+   */
+  currency?: PiCurrency
   id: string
   parentId: string
   customerId: string

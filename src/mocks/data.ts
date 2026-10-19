@@ -1253,6 +1253,21 @@ batchDefectLabels.forEach((label) => {
 })
 
 /**
+ * 表8 的售價幣別（決策143）：本欄位新增之前建立的表8 沒有記錄，依來源表1 補上。
+ *
+ * 只補沒有值的單，不覆蓋已記錄的——已記錄者就是建單當下的幣別，那才是事實。
+ * 種子資料建完、以及套用外部快照（伺服器上可能存著舊資料）之後各跑一次。
+ */
+function backfillShippingCurrencies(): void {
+  shippingOrders.forEach((order, i) => {
+    if (order.currency) return
+    const parent = packingNotices.find((n) => n.id === order.parentId)
+    shippingOrders[i] = { ...order, currency: parent?.currency ?? 'NTD' }
+  })
+}
+backfillShippingCurrencies()
+
+/**
  * 單據異動通知：全員共用同一份清單（見 document-events.ts）。
  * 種子資料不預先塞通知——開站第一眼就有一串「別人剛改了什麼」會讓人以為真有人在線上操作。
  */
@@ -1430,6 +1445,7 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   }
   // 公司資訊為後續新增的快照欄位；物件不能 splice，改以 assign 覆寫同一個參照
   if (snapshot.companyProfile) Object.assign(companyProfile, snapshot.companyProfile)
+  backfillShippingCurrencies()
 }
 
 /**
