@@ -312,6 +312,8 @@ export interface Account {
   exclusions?: {
     actions?: { doc: string; action: string }[]
     fieldGroups?: string[]
+    /** 主檔維護（權限規格決策60）：排除後該主檔對此帳號為唯讀 */
+    masters?: string[]
   }
 }
 

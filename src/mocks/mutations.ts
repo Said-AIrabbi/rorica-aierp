@@ -27,12 +27,16 @@ import {
   assertCanAct,
   assertCanMaintainMaster,
   assertCanReleaseReservation,
+  EXCLUDABLE_MASTERS,
+  MASTER_LABELS,
   canDoActionByRoles,
+  canMaintainMasterByRoles,
   canSeeFieldGroup,
   canSeeFieldGroupByRoles,
   type DocAction,
   type DocKey,
   type FieldGroup,
+  type MasterKey,
 } from '@/lib/permissions'
 import { validateDigitalColor } from '@/lib/digital-color'
 import { getCurrentAccount, requireCurrentAccount } from './session'
@@ -3830,7 +3834,7 @@ export function updateAccount(id: string, input: AccountInput): Promise<Account>
  */
 export function setAccountExclusions(
   id: string,
-  exclusions: { actions?: { doc: string; action: string }[]; fieldGroups?: string[] },
+  exclusions: { actions?: { doc: string; action: string }[]; fieldGroups?: string[]; masters?: string[] },
 ): Promise<Account> {
   assertCanMaintainMaster(getCurrentAccount(), '帳號')
   const idx = accounts.findIndex((a) => a.id === id)
@@ -3848,6 +3852,16 @@ export function setAccountExclusions(
     if (!canSeeFieldGroupByRoles(account.roles, g as FieldGroup)) {
       throw new Error(
         `「${account.name}」的角色本來就看不到「${g}」，個別排除只能收緊、不能放寬（決策32）`,
+      )
+    }
+  })
+  exclusions.masters?.forEach((master) => {
+    if (!EXCLUDABLE_MASTERS.includes(master as MasterKey)) {
+      throw new Error('帳號主檔不可排除——排除後可能沒有任何管理員能再修改權限（權限規格決策60）')
+    }
+    if (!canMaintainMasterByRoles(account.roles, master as MasterKey)) {
+      throw new Error(
+        `「${account.name}」的角色本來就不能維護「${MASTER_LABELS[master as MasterKey]}」，個別排除只能收緊、不能放寬（決策32）`,
       )
     }
   })

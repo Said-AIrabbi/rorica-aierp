@@ -530,6 +530,24 @@ export function overriddenCount(): number {
 export const MASTER_KEYS = ['客戶', '商品', '廠商', '帳號', '布卷', '公司'] as const
 export type MasterKey = (typeof MASTER_KEYS)[number]
 
+/** 設定介面用的顯示名稱：「公司」實為系統設定底下的公司資訊頁 */
+export const MASTER_LABELS: Record<MasterKey, string> = {
+  客戶: '客戶主檔',
+  商品: '商品主檔',
+  廠商: '廠商主檔',
+  帳號: '帳號主檔',
+  布卷: '布卷主檔',
+  公司: '公司資訊（系統設定）',
+}
+
+/**
+ * 可在個別排除中收回維護權的主檔（權限規格決策60）。
+ *
+ * **帳號主檔不列入**：它只有管理員能維護，允許排除就可能把所有管理員都鎖在外面，
+ * 從此沒人能改權限、也解不開這個排除。要限制帳號管理請調整角色。
+ */
+export const EXCLUDABLE_MASTERS: MasterKey[] = MASTER_KEYS.filter((m) => m !== '帳號')
+
 /** 可維護（新增／編輯／刪除）該主檔的角色；未列者為唯讀，帳號主檔則為完全不可見 */
 const MASTER_MAINTAINERS: Record<MasterKey, AccountRole[]> = {
   客戶: ['業務', '管理員'],
@@ -553,9 +571,20 @@ export function canViewMaster(account: Account | undefined, master: MasterKey): 
   return true
 }
 
+/**
+ * 最終維護權 ＝ 角色給的 － 個別排除（權限規格決策60）。
+ * 全系統的維護檢查（畫面按鈕與 mutations 的 assertCanMaintainMaster）都經過這裡，排除因此一處生效。
+ * 起因是生管主管：掛管理層角色就連帶拿到公司資訊（含收款帳戶）的編輯權，而原本的排除收不回主檔權限。
+ */
 export function canMaintainMaster(account: Account | undefined, master: MasterKey): boolean {
   if (!account) return false
-  return account.roles.some((r) => MASTER_MAINTAINERS[master].includes(r))
+  if (master !== '帳號' && exclusionsOf(account).masters?.includes(master)) return false
+  return canMaintainMasterByRoles(account.roles, master)
+}
+
+/** 只看角色、不套排除：驗證個別排除「只能收緊」時要知道角色本來給了什麼 */
+export function canMaintainMasterByRoles(roles: AccountRole[], master: MasterKey): boolean {
+  return roles.some((r) => MASTER_MAINTAINERS[master].includes(r))
 }
 
 // ---------- 個別排除（權限規格決策32） ----------
@@ -567,6 +596,8 @@ export function canMaintainMaster(account: Account | undefined, master: MasterKe
 export interface AccountExclusions {
   actions?: { doc: DocKey; action: DocAction }[]
   fieldGroups?: FieldGroup[]
+  /** 主檔維護（決策60）：帳號主檔不可排除，見 EXCLUDABLE_MASTERS */
+  masters?: MasterKey[]
 }
 
 function exclusionsOf(account: Account): NonNullable<Account['exclusions']> {

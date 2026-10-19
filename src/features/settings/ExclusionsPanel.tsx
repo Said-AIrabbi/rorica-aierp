@@ -9,8 +9,11 @@ import {
   DOC_ACTIONS,
   DOC_KEYS,
   DOC_LABELS,
+  EXCLUDABLE_MASTERS,
   FIELD_GROUPS,
+  MASTER_LABELS,
   canDoActionByRoles,
+  canMaintainMasterByRoles,
   canSeeFieldGroupByRoles,
 } from '@/lib/permissions'
 import type { Account } from '@/types'
@@ -49,22 +52,33 @@ export function ExclusionsPanel() {
 
   const excludedActions = selected.exclusions?.actions ?? []
   const excludedGroups = selected.exclusions?.fieldGroups ?? []
+  const excludedMasters = selected.exclusions?.masters ?? []
+  // 三類一起送：只送改到的那一類，另外兩類會被清空
+  const current = { actions: excludedActions, fieldGroups: excludedGroups, masters: excludedMasters }
 
   const toggleAction = (doc: string, action: string, excluded: boolean) => {
     const actions = excluded
       ? [...excludedActions, { doc, action }]
       : excludedActions.filter((e) => !(e.doc === doc && e.action === action))
-    mutation.mutate({ id: selected.id, exclusions: { actions, fieldGroups: excludedGroups } })
+    mutation.mutate({ id: selected.id, exclusions: { ...current, actions } })
   }
 
   const toggleGroup = (group: string, excluded: boolean) => {
     const fieldGroups = excluded ? [...excludedGroups, group] : excludedGroups.filter((g) => g !== group)
-    mutation.mutate({ id: selected.id, exclusions: { actions: excludedActions, fieldGroups } })
+    mutation.mutate({ id: selected.id, exclusions: { ...current, fieldGroups } })
   }
+
+  const toggleMaster = (master: string, excluded: boolean) => {
+    const masters = excluded ? [...excludedMasters, master] : excludedMasters.filter((m) => m !== master)
+    mutation.mutate({ id: selected.id, exclusions: { ...current, masters } })
+  }
+  const maintainable = EXCLUDABLE_MASTERS.filter((master) => canMaintainMasterByRoles(selected.roles, master))
 
   return (
     <div>
-      <p className="mb-3 text-sm text-muted-foreground">針對單一帳號勾掉特定動作或欄位群組。排除永遠勝過角色聯集。</p>
+      <p className="mb-3 text-sm text-muted-foreground">
+        針對單一帳號勾掉特定動作、欄位群組或主檔維護權。排除永遠勝過角色聯集。
+      </p>
 
       <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
         <p className="font-medium text-ink-body">
@@ -89,7 +103,10 @@ export function ExclusionsPanel() {
           </CardHeader>
           <CardContent className="space-y-1">
             {accounts.map((a) => {
-              const count = (a.exclusions?.actions?.length ?? 0) + (a.exclusions?.fieldGroups?.length ?? 0)
+              const count =
+                (a.exclusions?.actions?.length ?? 0) +
+                (a.exclusions?.fieldGroups?.length ?? 0) +
+                (a.exclusions?.masters?.length ?? 0)
               return (
                 <button
                   key={a.id}
@@ -194,6 +211,42 @@ export function ExclusionsPanel() {
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
                 該帳號的角色看不到的群組不會列在這裡——排除只能收緊，不能用來放寬。
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* 主檔維護排除（權限規格決策60） */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">排除主檔維護</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {maintainable.length === 0 ? (
+                <p className="text-sm text-muted-foreground">該帳號的角色沒有可排除的主檔維護權。</p>
+              ) : (
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {maintainable.map((master) => {
+                    const excluded = excludedMasters.includes(master)
+                    return (
+                      <label key={master} className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={excluded}
+                          disabled={mutation.isPending}
+                          onChange={(e) => toggleMaster(master, e.target.checked)}
+                          className="h-4 w-4 accent-[var(--color-destructive)]"
+                        />
+                        <span className={excluded ? 'text-destructive line-through' : 'text-ink-body'}>
+                          {MASTER_LABELS[master]}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="mt-3 text-xs text-muted-foreground">
+                勾起來＝該主檔對這個帳號變成<b>唯讀</b>（仍看得到，不能新增、編輯、刪除）。
+                帳號主檔不在此列：排除後可能沒有任何管理員能再修改權限，要限制請調整角色。
               </p>
             </CardContent>
           </Card>
