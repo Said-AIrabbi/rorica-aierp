@@ -23,8 +23,9 @@ export function PackingNoticeListPage() {
       { accessorKey: 'id', header: '單號' },
       {
         id: 'customer',
-        header: '客戶',
-        accessorFn: (row) => getCustomer(row.customerId)?.shortName ?? row.customerId,
+        // 與詳細頁、列印一致，以客戶主檔的客戶代碼識別（決策146）
+        header: '客戶代碼',
+        accessorFn: (row) => getCustomer(row.customerId)?.code ?? row.customerId,
       },
       { accessorKey: 'customerOrderNo', header: '客戶訂單號' },
       {
