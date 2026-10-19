@@ -28,9 +28,16 @@ export function ProductListPage() {
 
   const columns = useMemo<ColumnDef<Product, unknown>[]>(
     () => [
-      // 欄位順序依皇加指定：品名→產品類別→編號→分支→客戶→成分→幅寬→碼重→米重→厚度，
-      // 其餘欄位排在厚度之後（先接規格類，再依序為價格、庫存）
+      // 欄位順序依皇加指定：品名→售價→產品類別→編號→分支→客戶→成分→幅寬→碼重→米重→厚度，
+      // 其餘欄位排在厚度之後（先接規格類，再依序為進價、庫存）。
+      // 售價緊接品名（2026/10/19，決策149）：開單報價時最常查的就是「這個品名賣多少」
       { accessorKey: 'productName', header: '皇加品名' },
+      // 牌價Y／牌價M 不拆分為兩個欄位，改以共用係數 0.9144 即時換算兩種計價單位
+      {
+        id: 'sellPrice',
+        header: '售價 (每碼／每米)',
+        accessorFn: (row) => (row.sellPrice != null ? dualUnitPrice(row.sellPrice) : '-'),
+      },
       {
         id: 'category',
         header: '產品類別',
@@ -69,11 +76,6 @@ export function ProductListPage() {
         id: 'costPrice',
         header: '進價 (每碼／每米)',
         accessorFn: (row) => (row.costPrice != null ? dualUnitPrice(row.costPrice) : '-'),
-      },
-      {
-        id: 'sellPrice',
-        header: '售價 (每碼／每米)',
-        accessorFn: (row) => (row.sellPrice != null ? dualUnitPrice(row.sellPrice) : '-'),
       },
       {
         id: 'rolls',
