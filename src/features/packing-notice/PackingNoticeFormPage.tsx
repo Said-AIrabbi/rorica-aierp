@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Lock, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Copy, Lock, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -124,6 +124,7 @@ export function PackingNoticeFormPage() {
     control,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<PackingNoticeFormValues>({
@@ -216,7 +217,22 @@ export function PackingNoticeFormPage() {
       (itemValues[index]?.colorRatios ?? []).filter((_, i) => i !== ratioIndex),
     )
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+  const { fields, append, insert, remove } = useFieldArray({ control, name: 'items' })
+
+  /**
+   * 複製明細（決策150）：只複製按下的那一項，副本緊接插在原項目之下。
+   *
+   * 兩個欄位**不能**跟著複製：
+   *   - id：明細 id 是下游（庫存預留、表4、表8）對位的鍵，兩列同一個 id 會讓下游對錯列。
+   *     留空，存檔時由 buildItems 給新號
+   *   - sourcePiItemId：副本不是從 PI 來的；留著的話，PI 改版覆蓋時會被當成 PI 的同一列
+   * 彩條是陣列，另外複製一份，否則兩列共用同一個陣列。輸入暫存以列索引為鍵，插入後一併清除。
+   */
+  const copyItem = (index: number) => {
+    const { id: _id, sourcePiItemId: _sourcePiItemId, ...source } = getValues(`items.${index}`)
+    insert(index + 1, { ...source, colorRatios: [...(source.colorRatios ?? [])] })
+    resetDrafts()
+  }
   // 嘜頭比照明細可多組：一張訂單可能有不同目的地／箱型的嘜頭
   const {
     fields: markingFields,
@@ -712,6 +728,16 @@ export function PackingNoticeFormPage() {
                     <Label className="text-xs">明細備註</Label>
                     <div className="flex gap-1.5">
                       <Input {...register(`items.${index}.note`)} placeholder="非必填" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shrink-0"
+                        title={`複製第 ${index + 1} 項，副本插在本項之下`}
+                        onClick={() => copyItem(index)}
+                      >
+                        <Copy className="mr-1 h-3.5 w-3.5" /> 複製明細
+                      </Button>
                       <Button
                         type="button"
                         variant="ghost"

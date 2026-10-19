@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Copy, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -110,6 +110,7 @@ export function PiFormPage() {
     control,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     reset,
     formState: { errors, isSubmitting },
@@ -134,7 +135,18 @@ export function PiFormPage() {
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
+  const { fields, append, insert, remove } = useFieldArray({ control, name: 'items' })
+
+  /**
+   * 複製明細（決策150）：只複製按下的那一項，副本**緊接插在原項目之下**，方便對照修改
+   * （同品名換色、同色換包裝是最常見的情境）。彩條是陣列，要另外複製一份，否則兩列共用同一個陣列。
+   * 輸入暫存以列索引為鍵，插入後索引位移，一併清除。
+   */
+  const copyItem = (index: number) => {
+    const source = getValues(`items.${index}`)
+    insert(index + 1, { ...source, colorRatios: [...(source.colorRatios ?? [])] })
+    resetDrafts()
+  }
   const {
     fields: markingFields,
     append: appendMarking,
@@ -725,6 +737,16 @@ export function PiFormPage() {
                       <Label className="text-xs">明細備註</Label>
                       <div className="flex gap-1.5">
                         <Input {...register(`items.${index}.note`)} placeholder="非必填" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0"
+                          title={`複製第 ${index + 1} 項，副本插在本項之下`}
+                          onClick={() => copyItem(index)}
+                        >
+                          <Copy className="mr-1 h-3.5 w-3.5" /> 複製明細
+                        </Button>
                         <Button
                           type="button"
                           variant="ghost"
