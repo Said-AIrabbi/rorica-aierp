@@ -1277,6 +1277,37 @@ function backfillShippingCurrencies(): void {
 backfillShippingCurrencies()
 
 /**
+ * 生管主管（決策153、權限規格決策59）：「生管＋管理層」兩個角色掛在同一個帳號上，
+ * 再以個別排除收回不屬於他的部分——結果是只能簽核表2／表4 的管理層。
+ *
+ * 刻意在所有種子單據建完之後才加入：上面幾處以 faker 從帳號清單隨機挑生管、
+ * 或以「第一個管理層」當簽核者，提早加入會讓既有示範資料整批換人。
+ * 信箱與電話也不走 faker，免得推動亂數序列。
+ */
+accounts.push({
+  id: `ACC-${pad(accounts.length + 1)}`,
+  code: 'R007',
+  name: '周雅婷',
+  password: DEMO_PASSWORD,
+  mailbox: 'production.lead@example.com',
+  phone: '+886 2 2555 0107',
+  roles: ['生管', '管理層'],
+  status: '啟用',
+  exclusions: {
+    actions: [
+      { doc: '表1', action: '簽核' },
+      { doc: '表1', action: '退回' },
+      { doc: 'PI', action: '批准' },
+      { doc: 'PI', action: '退回' },
+      { doc: '表9', action: '批准' },
+      { doc: '表9', action: '退回' },
+    ],
+    // 管理層預設看得到售價與客戶聯絡資訊，生管看不到；他的可見範圍維持與一般生管相同
+    fieldGroups: ['售價', '客戶聯絡資訊'],
+  },
+})
+
+/**
  * 單據異動通知：全員共用同一份清單（見 document-events.ts）。
  * 種子資料不預先塞通知——開站第一眼就有一串「別人剛改了什麼」會讓人以為真有人在線上操作。
  */

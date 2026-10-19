@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Save } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Save, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
+import { ApprovalReviewButtons, ApprovalStatusNotes } from '@/components/shared/DraftApproval'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -20,8 +21,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { api } from '@/mocks/api'
 import { getVendor, primaryContactName, vendorDisplayName } from '@/mocks/data'
 import {
-  confirmDyeOrder,
+  approveDyeOrder,
   createDyeRequest,
+  rejectDyeOrder,
+  submitDyeOrderForApproval,
   submitDyeOrderLargeSample,
   updateDyeOrderDraft,
   updateDyeOrderItems,
@@ -30,7 +33,7 @@ import {
 } from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { colorRatioText, rollYardUpperLimit } from '@/lib/workflow'
+import { colorRatioText, draftApprovalState, rollYardUpperLimit } from '@/lib/workflow'
 
 export function DyeOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -49,7 +52,7 @@ export function DyeOrderDetailPage() {
    * 是兩件事——存成數字時清空會立刻變 0，使用者看到的是自己沒打的數字。
    */
   const [itemDraft, setItemDraft] = useState<Record<string, { unitPrice: string; inDyeQty: string }>>({})
-  /** 單頭草稿：僅草稿階段可改，確認正式建單後回復唯讀 */
+  /** 單頭草稿：僅草稿且未送簽時可改，送簽後回復唯讀（決策153） */
   const [headDraft, setHeadDraft] = useState({
     dueDate: '',
     vendorId: '',
@@ -116,17 +119,37 @@ export function DyeOrderDetailPage() {
     mutationFn: (reason: string) => withdrawDyeOrder(id!, reason),
     onSuccess: async (updated) => {
       await invalidateAll()
-      toast.success(`${updated.id} 已撤回為草稿，可修改後重新確認建單`)
+      toast.success(`${updated.id} 已撤回為草稿，生管修改後須重新送簽、重新簽核`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
 
-  const confirmOrderMutation = useMutation({
-    mutationFn: () => confirmDyeOrder(id!),
+  /** 決策153 的三個動作：生管送簽 → 管理層簽核並送出（即生效）或退回 */
+  const submitMutation = useMutation({
+    mutationFn: () => submitDyeOrderForApproval(id!),
     onSuccess: async () => {
       await invalidateAll()
-      toast.success(`${id} 已正式建單，狀態變為生效，已觸發委外加工`)
+      toast.success('已送簽，等待管理層簽核（草稿此時轉為唯讀）')
     },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: () => approveDyeOrder(id!),
+    onSuccess: async () => {
+      await invalidateAll()
+      toast.success(`${id} 已簽核並送出，狀態變為生效，已觸發委外加工`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => rejectDyeOrder(id!, reason),
+    onSuccess: async () => {
+      await invalidateAll()
+      toast.success('已退回草稿，回到生管手上可編輯')
+    },
+    onError: (error: Error) => toast.error(error.message),
   })
 
   // 大貨樣「通過」即為結案動作：狀態轉已完成、指染轉成品、並依明細去向建立下一張單據，無需另一道人工結案
@@ -217,16 +240,23 @@ export function DyeOrderDetailPage() {
   // 色樣編號在結案（已完成）前皆可修改，不受表3回填時機限制
   // 每個操作對應寫入端要求的動作權限（mutations 的 assertCanAct），唯讀角色一律只看
   const canEditDraft = permissions.can('表4', '編輯草稿')
-  const canConfirm = permissions.can('表4', '轉生效')
+  // 決策153：生管送簽、管理層簽核並送出／退回／撤回
+  const approvalState = draftApprovalState(order)
+  const canSubmit = permissions.can('表4', '送簽')
+  const canApprove = permissions.can('表4', '簽核並送出')
+  const canReject = permissions.can('表4', '退回')
+  const approveBlocked = permissions.blockedReason('表4', '簽核並送出', order.submittedByAccountId)
+  // 送簽後草稿唯讀：要改得先請管理層退回
+  const draftOpen = order.status === '草稿' && approvalState === '未送簽'
   const canClose = permissions.can('表4', '結案')
   const canWithdraw = permissions.can('表4', '撤回草稿')
   const sampleCodeEditable = order.status !== '已完成' && canEditDraft
   const sampleCodeDirty = order.items.some((i) => (sampleCodeDraft[i.id] ?? '') !== (i.sampleCode ?? ''))
   /**
-   * 加工單價與指染數量僅草稿可改（決策125）：轉生效即已對外發包，
+   * 加工單價與指染數量僅草稿且未送簽時可改（決策125、153）：簽核並送出即已對外發包，
    * 單價成為雙方談定的價格，指染數量改由胚布到貨與結案歸零推動。
    */
-  const itemsEditable = order.status === '草稿' && canEditDraft
+  const itemsEditable = draftOpen && canEditDraft
   const itemsDirty = order.items.some((i) => {
     const d = itemDraft[i.id]
     if (!d) return false
@@ -269,19 +299,32 @@ export function DyeOrderDetailPage() {
             {order.status === '生效' && !order.greigeArrivedAt && canWithdraw && (
               <WithdrawDraftButton
                 pending={withdrawMutation.isPending}
-                description="單據會回到草稿，可修改交期、委外加工廠與明細後重新確認建單。胚布一到貨（已登記指染）即不可撤回——布已可投入染整，收回單子救不了已經下鍋的布。"
+                description="單據會回到草稿，生管可修改交期、委外加工廠與明細，修改後須重新送簽、重新簽核。胚布一到貨（已登記指染）即不可撤回——布已可投入染整，收回單子救不了已經下鍋的布。"
                 onConfirm={(reason) => withdrawMutation.mutate(reason)}
               />
             )}
-            {order.status === '草稿' && canConfirm && (
+            {draftOpen && canSubmit && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
-                disabled={confirmOrderMutation.isPending}
-                onClick={() => confirmOrderMutation.mutate()}
+                disabled={submitMutation.isPending}
+                onClick={() => submitMutation.mutate()}
               >
-                確認正式建單
+                <Send className="mr-1 h-4 w-4" /> 送簽
               </Button>
+            )}
+            {order.status === '草稿' && approvalState === '待簽核' && (
+              <ApprovalReviewButtons
+                docId={order.id}
+                canApprove={canApprove}
+                canReject={canReject}
+                blocked={approveBlocked}
+                approveLabel="簽核並送出（即生效）"
+                rejectDescription="退回後本單回到草稿，生管可修改後重新送簽。"
+                pending={approveMutation.isPending || rejectMutation.isPending}
+                onApprove={() => approveMutation.mutate()}
+                onReject={(reason) => rejectMutation.mutate(reason)}
+              />
             )}
 
           </>
@@ -291,6 +334,13 @@ export function DyeOrderDetailPage() {
       <ReadOnlyNotice doc="表4" />
 
       <WithdrawalNotes entries={order.withdrawals} />
+
+      <ApprovalStatusNotes
+        isDraft={order.status === '草稿'}
+        state={approvalState}
+        afterApproval="即生效，觸發委外加工"
+        rejections={order.rejections}
+      />
 
       <Card>
         <CardHeader>
@@ -313,10 +363,10 @@ export function DyeOrderDetailPage() {
         </CardContent>
       </Card>
 
-      {order.status === '草稿' && canEditDraft && (
+      {draftOpen && canEditDraft && (
         <Card className="mt-4 border-brand/30">
           <CardHeader>
-            <CardTitle className="text-base">草稿編輯（確認正式建單後回復唯讀）</CardTitle>
+            <CardTitle className="text-base">草稿編輯（送簽後回復唯讀）</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

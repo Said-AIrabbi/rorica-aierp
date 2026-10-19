@@ -3,6 +3,7 @@ import { addWorkdays } from '@/lib/dates'
 import { meterToYard } from '@/lib/units'
 import type {
   AbnormalNotice,
+  DraftApprovalState,
   DyeOrder,
   GoodsReceipt,
   PackingNotice,
@@ -66,6 +67,18 @@ export function packingNoticeApprovalState(
   return notice.status === '草稿' ? '未送簽' : '已簽核'
 }
 
+/**
+ * 表2／表4 的簽核旗標（決策153），推定規則與表1 相同：
+ * 未記錄者，草稿視為未送簽、其餘視為已簽核——本機制上線前已送出的單不倒退回待簽核。
+ */
+export function draftApprovalState(doc: {
+  approvalState?: DraftApprovalState
+  status: string
+}): DraftApprovalState {
+  if (doc.approvalState) return doc.approvalState
+  return doc.status === '草稿' ? '未送簽' : '已簽核'
+}
+
 export function packingNoticeLocks(
   notice: Pick<PackingNotice, 'effectiveAt' | 'status' | 'manualHoldPiId' | 'approvalState' | 'submittedAt'>,
 ): DocumentLock[] {
@@ -124,17 +137,28 @@ export function isPurchaseOrderEditable(order: Pick<PurchaseOrder, 'effectiveAt'
   return !isFrozen(order.effectiveAt)
 }
 
-/** 訂購單建立後是否已逾 2 天仍未簽回 */
-export function isPurchaseOrderOverdue(order: Pick<PurchaseOrder, 'status' | 'createdAt' | 'signedAt'>): boolean {
+/**
+ * 訂購單送到廠商手上後是否已逾 2 天仍未簽回。
+ *
+ * 起算點為管理層「簽核並送出」的時間（決策153）——那才是廠商收到單子的時刻。
+ * 原本自建單日起算，加了簽核關卡後，表1 生效時自動建立的草稿可能放了幾天才簽核，
+ * 一送出就已經「逾期」。撤回後重新簽核即重新送出，故以最新一次簽核為準。
+ * 本欄位上線前送出的舊單沒有簽核時間，沿用建單日。
+ */
+export function isPurchaseOrderOverdue(
+  order: Pick<PurchaseOrder, 'status' | 'createdAt' | 'signedAt' | 'approvedAt'>,
+): boolean {
   if (order.status !== '待簽回' || order.signedAt) return false
-  return dayjs().diff(dayjs(order.createdAt), 'day') >= PURCHASE_ORDER_OVERDUE_DAYS
+  return dayjs().diff(dayjs(order.approvedAt ?? order.createdAt), 'day') >= PURCHASE_ORDER_OVERDUE_DAYS
 }
 
 /**
  * 顯示用的「有效狀態」：逾期未簽回的訂購單，畫面上呈現為已逾期，
  * 但效果等同已確認，不阻擋後續「標記完成」等流程。
  */
-export function effectivePurchaseOrderStatus(order: Pick<PurchaseOrder, 'status' | 'createdAt' | 'signedAt'>): PurchaseOrder['status'] {
+export function effectivePurchaseOrderStatus(
+  order: Pick<PurchaseOrder, 'status' | 'createdAt' | 'signedAt' | 'approvedAt'>,
+): PurchaseOrder['status'] {
   return isPurchaseOrderOverdue(order) ? '已逾期' : order.status
 }
 
@@ -145,7 +169,10 @@ export function effectivePurchaseOrderStatus(order: Pick<PurchaseOrder, 'status'
  * （成品/胚布純採購：表6入庫完成；胚布送染整：表4染整單完成），比照PRD「三種完成判定各自獨立」規則。
  */
 export function isPurchaseOrderReadyToTriggerFulfillment(
-  order: Pick<PurchaseOrder, 'status' | 'createdAt' | 'signedAt' | 'type' | 'hasDyeVendor' | 'largeSampleConfirmedAt' | 'parentId'>,
+  order: Pick<
+    PurchaseOrder,
+    'status' | 'createdAt' | 'signedAt' | 'approvedAt' | 'type' | 'hasDyeVendor' | 'largeSampleConfirmedAt' | 'parentId'
+  >,
   goodsReceipts: Pick<GoodsReceipt, 'parentId' | 'source'>[],
   dyeOrders: Pick<DyeOrder, 'parentId'>[],
 ): boolean {

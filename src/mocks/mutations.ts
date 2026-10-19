@@ -14,6 +14,7 @@ import { activeBankAccounts, defaultBankAccountFor, resolvePiBankAccount } from 
 import {
   buildSecondaryProcessingPackaging,
   defaultRollYard,
+  draftApprovalState,
   ABNORMAL_CLAIM_MONTHS,
   effectivePurchaseOrderStatus,
   isPackingNoticeFullyShipped,
@@ -615,7 +616,7 @@ export function rejectSplicingSuggestion(id: string): Promise<SplicingSuggestion
  * 無庫存路徑：系統於表1判斷「無庫存」時自動建立表2訂購單草稿（非生管手動開單）。
  * 只帶「庫存不足」的明細逐列（1:1）進來——已預留到現貨的品項不需要再採購，
  * 否則會對同一批貨重複下單。狀態為「草稿」，類型/廠商等欄位留待生管透過
- * completePurchaseOrderDraft() 補齊後才送出為「待簽回」。建立後由通知中心提示生管有新草稿待處理。
+ * completePurchaseOrderDraft() 補齊後送簽，管理層簽核並送出才轉「待簽回」（決策153）。建立後由通知中心提示生管有新草稿待處理。
  */
 function autoCreatePurchaseOrderDraft(notice: PackingNotice, outOfStockItems: PackingNoticeItem[]): void {
   if (outOfStockItems.length === 0) return
@@ -1016,10 +1017,10 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
     vendorId: input.vendorId,
     // 染整廠僅在「是否填入染整廠商」開關打開時記錄，與賣方各自獨立
     dyeVendorId: input.type === '胚布' && input.hasDyeVendor ? input.dyeVendorId : undefined,
-    status: '待簽回',
+    // 手動建單也先存草稿（決策153）：原本建單當下即轉待簽回，等於繞過簽核關卡
+    status: '草稿',
+    approvalState: '未送簽',
     createdAt: dayjs().toISOString(),
-    // 手動建單當下即送出（待簽回），視同生效，凍結旗標自此起算
-    effectiveAt: dayjs().toISOString(),
     dueDate: input.dueDate,
     note: input.note,
     items,
@@ -1040,15 +1041,20 @@ export interface PurchaseOrderDraftCompletionInput {
 }
 
 /**
- * 生管補齊系統自動建立的表2草稿（廠商／類型／交期／單價等），送出後狀態由「草稿」轉為「待簽回」，
- * 進入正常簽回流程（2日內未簽回自動標記已逾期）。
+ * 生管補齊表2 草稿（廠商／類型／交期／單價等）並送簽（決策153）：草稿轉唯讀，進入管理層的待簽清單。
+ * 狀態仍是草稿——要等管理層「簽核並送出」才轉待簽回、送到廠商手上。
  */
 export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraftCompletionInput): Promise<PurchaseOrder> {
-  assertCanAct(getCurrentAccount(), '表2', '編輯草稿')
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表2', '編輯草稿')
+  assertCanAct(account, '表2', '送簽')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const current = purchaseOrders[idx]
-  if (current.status !== '草稿') throw new Error('僅草稿狀態可送出')
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可送簽')
+  if (draftApprovalState(current) !== '未送簽') throw new Error('本單已送簽，等待管理層簽核')
+  if (!input.vendorId) throw new Error('請先選擇賣方再送簽')
+  if (!input.dueDate) throw new Error('請先填寫交期再送簽')
   const updated: PurchaseOrder = {
     ...current,
     type: input.type,
@@ -1058,9 +1064,57 @@ export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraft
     dueDate: input.dueDate,
     note: input.note,
     items: current.items.map((item) => ({ ...item, unitPrice: input.itemUnitPrices[item.id] ?? item.unitPrice })),
+    approvalState: '待簽核',
+    submittedAt: dayjs().toISOString(),
+    submittedByAccountId: account.id,
+  }
+  purchaseOrders[idx] = updated
+  return delay(updated)
+}
+
+/**
+ * 表2 簽核並送出（決策153）：待簽核 → 待簽回，送到廠商手上。
+ *
+ * - 生效日（凍結 7 個工作天的起點）只寫一次：撤回後重新簽核不重寫（決策132）
+ * - 簽核時間每次覆寫：逾期 2 天自最新一次簽核起算——撤回重簽等於重新送出，廠商從這次才收到
+ * - 職責分離以送簽者判斷；具管理層角色者不受約束（決策131），生管主管可簽自己送簽的單
+ */
+export function approvePurchaseOrder(id: string): Promise<PurchaseOrder> {
+  const idx = purchaseOrders.findIndex((p) => p.id === id)
+  if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
+  const current = purchaseOrders[idx]
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表2', '簽核並送出', current.submittedByAccountId)
+  if (current.status !== '草稿') throw new Error('本單已經送出，不需要再簽核')
+  if (draftApprovalState(current) !== '待簽核') throw new Error('本單尚未送簽，無法簽核')
+  const now = dayjs().toISOString()
+  const updated: PurchaseOrder = {
+    ...current,
     status: '待簽回',
-    // 草稿送出即為生效，凍結旗標自此日起算7個工作天（草稿期間不計）
-    effectiveAt: current.effectiveAt ?? dayjs().toISOString(),
+    approvalState: '已簽核',
+    approvedAt: now,
+    approvedByAccountId: account.id,
+    effectiveAt: current.effectiveAt ?? now,
+  }
+  purchaseOrders[idx] = updated
+  return delay(updated)
+}
+
+/** 表2 退回草稿（決策153，規則同表1）：待簽核 → 未送簽，回到生管手上可編輯；原因必填、逐次留存 */
+export function rejectPurchaseOrder(id: string, reason: string): Promise<PurchaseOrder> {
+  const idx = purchaseOrders.findIndex((p) => p.id === id)
+  if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
+  const current = purchaseOrders[idx]
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表2', '退回')
+  if (!reason.trim()) throw new Error('退回原因必填——沒有原因，生管無從修正')
+  if (current.status !== '草稿' || draftApprovalState(current) !== '待簽核') {
+    throw new Error('僅「待簽核」的訂購單可退回草稿')
+  }
+  const updated: PurchaseOrder = {
+    ...current,
+    approvalState: '未送簽',
+    rejections: [...(current.rejections ?? []), { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() }],
   }
   purchaseOrders[idx] = updated
   return delay(updated)
@@ -1093,6 +1147,8 @@ export function withdrawPurchaseOrder(id: string, reason: string): Promise<Purch
   const updated: PurchaseOrder = {
     ...current,
     status: '草稿',
+    // 撤回後須重新送簽、重新簽核（決策153）
+    approvalState: '未送簽',
     withdrawals: [...(current.withdrawals ?? []), withdrawal],
   }
   purchaseOrders[idx] = updated
@@ -1105,6 +1161,7 @@ export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftComp
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const current = purchaseOrders[idx]
   if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  if (draftApprovalState(current) === '待簽核') throw new Error('本單已送簽，草稿唯讀；要修改請先請管理層退回')
   const updated: PurchaseOrder = {
     ...current,
     type: input.type,
@@ -1146,7 +1203,7 @@ export function submitPurchaseOrderLargeSample(id: string, result: '通過' | '�
 
 /** 賣方（供應商／染整廠）簽回訂購單；2日內未簽回則系統自動標記為已逾期，效果等同已確認 */
 export function signPurchaseOrder(id: string): Promise<PurchaseOrder> {
-  assertCanAct(getCurrentAccount(), '表2', '送出')
+  assertCanAct(getCurrentAccount(), '表2', '登記簽回')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const updated: PurchaseOrder = {
@@ -1318,7 +1375,7 @@ function resolveProductForCustomer(productId: string | undefined, productName: s
  * （表6入庫單／表4染整單）完成時回頭結案（見 setGoodsReceiptStatus／submitDyeOrderLargeSample）。
  */
 export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrder> {
-  assertCanAct(getCurrentAccount(), '表2', '送出')
+  assertCanAct(getCurrentAccount(), '表2', '建立後續單據')
   const idx = purchaseOrders.findIndex((p) => p.id === id)
   if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
   const order = purchaseOrders[idx]
@@ -1871,6 +1928,7 @@ export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrd
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
   if (current.status !== '草稿') throw new Error('僅草稿狀態可修改加工單價與指染數量')
+  if (draftApprovalState(current) === '待簽核') throw new Error('本單已送簽，草稿唯讀；要修改請先請管理層退回')
 
   for (const [itemId, input] of Object.entries(itemsById)) {
     if (!current.items.some((i) => i.id === itemId)) throw new Error(`染整單 ${id} 沒有明細 ${itemId}`)
@@ -1920,6 +1978,7 @@ export function updateDyeOrderDraft(id: string, input: DyeOrderDraftInput): Prom
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
   if (current.status !== '草稿') throw new Error('僅草稿狀態可修改')
+  if (draftApprovalState(current) === '待簽核') throw new Error('本單已送簽，草稿唯讀；要修改請先請管理層退回')
   const updated: DyeOrder = {
     ...current,
     dueDate: input.dueDate,
@@ -1952,21 +2011,74 @@ export function withdrawDyeOrder(id: string, reason: string): Promise<DyeOrder> 
   const updated: DyeOrder = {
     ...current,
     status: '草稿',
+    // 撤回後須重新送簽、重新簽核（決策153）
+    approvalState: '未送簽',
     withdrawals: [...(current.withdrawals ?? []), withdrawal],
   }
   dyeOrders[idx] = updated
   return delay(updated)
 }
 
-export function confirmDyeOrder(id: string): Promise<DyeOrder> {
-  assertCanAct(getCurrentAccount(), '表4', '轉生效')
+/** 表4 送簽（決策153）：草稿轉唯讀，進入管理層的待簽清單；狀態仍是草稿 */
+export function submitDyeOrderForApproval(id: string): Promise<DyeOrder> {
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表4', '送簽')
   const idx = dyeOrders.findIndex((d) => d.id === id)
   if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
   const current = dyeOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可送簽')
+  if (draftApprovalState(current) !== '未送簽') throw new Error('本單已送簽，等待管理層簽核')
+  if (!current.vendorId) throw new Error('請先選擇委外加工廠再送簽')
+  const updated: DyeOrder = {
+    ...current,
+    approvalState: '待簽核',
+    submittedAt: dayjs().toISOString(),
+    submittedByAccountId: account.id,
+  }
+  dyeOrders[idx] = updated
+  return delay(updated)
+}
+
+/** 表4 退回草稿（決策153，規則同表1）：待簽核 → 未送簽；原因必填、逐次留存 */
+export function rejectDyeOrder(id: string, reason: string): Promise<DyeOrder> {
+  const idx = dyeOrders.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
+  const current = dyeOrders[idx]
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表4', '退回')
+  if (!reason.trim()) throw new Error('退回原因必填——沒有原因，生管無從修正')
+  if (current.status !== '草稿' || draftApprovalState(current) !== '待簽核') {
+    throw new Error('僅「待簽核」的染整單可退回草稿')
+  }
+  const updated: DyeOrder = {
+    ...current,
+    approvalState: '未送簽',
+    rejections: [...(current.rejections ?? []), { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() }],
+  }
+  dyeOrders[idx] = updated
+  return delay(updated)
+}
+
+/**
+ * 表4 簽核並送出（決策153）：待簽核 → 生效，取代原本生管的「確認正式建單」。
+ * 生效當下觸發的事照舊（依胚布到貨日補登指染數量）；職責分離以送簽者判斷，管理層不受約束（決策131）。
+ */
+export function approveDyeOrder(id: string): Promise<DyeOrder> {
+  const idx = dyeOrders.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
+  const current = dyeOrders[idx]
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表4', '簽核並送出', current.submittedByAccountId)
+  if (current.status !== '草稿') throw new Error('本單已經生效，不需要再簽核')
+  if (draftApprovalState(current) !== '待簽核') throw new Error('本單尚未送簽，無法簽核')
+  const now = dayjs().toISOString()
   const updated: DyeOrder = {
     ...current,
     status: '生效',
-    effectiveAt: dayjs().toISOString(),
+    approvalState: '已簽核',
+    approvedAt: now,
+    approvedByAccountId: account.id,
+    effectiveAt: now,
   }
   dyeOrders[idx] = updated
 

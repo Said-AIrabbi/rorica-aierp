@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Lock, Save } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Lock, Save, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
+import { ApprovalReviewButtons, ApprovalStatusNotes } from '@/components/shared/DraftApproval'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
@@ -20,7 +21,9 @@ import { api } from '@/mocks/api'
 import { getVendor, primaryContactName, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import {
   savePurchaseOrderDraft,
+  approvePurchaseOrder,
   completePurchaseOrderDraft,
+  rejectPurchaseOrder,
   signPurchaseOrder,
   submitPurchaseOrderLargeSample,
   triggerPurchaseOrderFulfillment,
@@ -32,6 +35,7 @@ import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { BasisQty } from '@/components/shared/BasisQty'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { colorRatioText,
+  draftApprovalState,
   effectivePurchaseOrderStatus,
   freezeDate,
   isPurchaseOrderEditable,
@@ -113,7 +117,7 @@ export function PurchaseOrderDetailPage() {
     mutationFn: (reason: string) => withdrawPurchaseOrder(id!, reason),
     onSuccess: async (updated) => {
       await invalidateAll()
-      toast.success(`${updated.id} 已撤回為草稿，可重新補齊後再送出`)
+      toast.success(`${updated.id} 已撤回為草稿，生管修改後須重新送簽、重新簽核`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -172,7 +176,26 @@ export function PurchaseOrderDetailPage() {
       }),
     onSuccess: async (updated) => {
       await invalidateAll()
-      toast.success(`${updated.id} 已送出，進入待簽回`)
+      toast.success(`${updated.id} 已送簽，等待管理層簽核（草稿此時轉為唯讀）`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  /** 決策153：管理層簽核並送出（轉待簽回，送到廠商手上）或退回 */
+  const approveMutation = useMutation({
+    mutationFn: () => approvePurchaseOrder(id!),
+    onSuccess: async (updated) => {
+      await invalidateAll()
+      toast.success(`${updated.id} 已簽核並送出，進入待簽回`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (reason: string) => rejectPurchaseOrder(id!, reason),
+    onSuccess: async (updated) => {
+      await invalidateAll()
+      toast.success(`${updated.id} 已退回草稿，回到生管手上可編輯`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -192,8 +215,17 @@ export function PurchaseOrderDetailPage() {
   const overdue = isPurchaseOrderOverdue(order)
   const editable = isPurchaseOrderEditable(order)
   // 每個操作對應寫入端要求的動作權限（mutations 的 assertCanAct），畫面與後端同一把尺
-  const canSend = permissions.can('表2', '送出')
+  // 表2 原本的「送出」拆成依階段命名的兩個動作（決策153）
+  const canRecordSignBack = permissions.can('表2', '登記簽回')
+  const canCreateDownstream = permissions.can('表2', '建立後續單據')
   const canEditDraft = permissions.can('表2', '編輯草稿')
+  const canSubmit = permissions.can('表2', '送簽')
+  const canApprove = permissions.can('表2', '簽核並送出')
+  const canReject = permissions.can('表2', '退回')
+  const approvalState = draftApprovalState(order)
+  const approveBlocked = permissions.blockedReason('表2', '簽核並送出', order.submittedByAccountId)
+  // 送簽後草稿唯讀：要改得先請管理層退回
+  const draftOpen = order.status === '草稿' && approvalState === '未送簽'
   const canClose = permissions.can('表2', '結案')
   const canWithdraw = permissions.can('表2', '撤回草稿')
   const displayStatus = effectivePurchaseOrderStatus(order)
@@ -229,7 +261,20 @@ export function PurchaseOrderDetailPage() {
                 <Lock className="h-3 w-3" /> 已凍結
               </span>
             )}
-            {order.status === '待簽回' && !order.signedAt && canSend && (
+            {order.status === '草稿' && approvalState === '待簽核' && (
+              <ApprovalReviewButtons
+                docId={order.id}
+                canApprove={canApprove}
+                canReject={canReject}
+                blocked={approveBlocked}
+                approveLabel="簽核並送出"
+                rejectDescription="退回後本單回到草稿，生管可修改後重新送簽。"
+                pending={approveMutation.isPending || rejectMutation.isPending}
+                onApprove={() => approveMutation.mutate()}
+                onReject={(reason) => rejectMutation.mutate(reason)}
+              />
+            )}
+            {order.status === '待簽回' && !order.signedAt && canRecordSignBack && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={signMutation.isPending} onClick={() => signMutation.mutate()}>
                 確認已簽回
               </Button>
@@ -237,11 +282,11 @@ export function PurchaseOrderDetailPage() {
             {displayStatus === '待簽回' && !order.signedAt && canWithdraw && (
               <WithdrawDraftButton
                 pending={withdrawMutation.isPending}
-                description="單據會回到草稿，可重新修改廠商、交期與單價後再送出。凍結時鐘不重算（仍自第一次送出日起算）；廠商已簽回或已逾期的單不可撤回。"
+                description="單據會回到草稿，生管可修改廠商、交期與單價，修改後須重新送簽、重新簽核。凍結時鐘不重算（仍自第一次簽核送出日起算）；廠商已簽回或已逾期的單不可撤回。"
                 onConfirm={(reason) => withdrawMutation.mutate(reason)}
               />
             )}
-            {readyToTrigger && canSend && (
+            {readyToTrigger && canCreateDownstream && (
               <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={triggerMutation.isPending} onClick={() => triggerMutation.mutate()}>
                 {order.type === '胚布' && order.hasDyeVendor ? '建立染整單' : '建立入庫單'}
               </Button>
@@ -254,11 +299,18 @@ export function PurchaseOrderDetailPage() {
 
       <WithdrawalNotes entries={order.withdrawals} />
 
+      <ApprovalStatusNotes
+        isDraft={order.status === '草稿'}
+        state={approvalState}
+        afterApproval="轉待簽回，送到廠商手上"
+        rejections={order.rejections}
+      />
+
       {overdue && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            建立超過 {PURCHASE_ORDER_OVERDUE_DAYS} 天仍未簽回，系統已自動標記為「已逾期」，效果視同已確認，不影響後續流程；請業務跟催廠商補簽回。
+            簽核送出超過 {PURCHASE_ORDER_OVERDUE_DAYS} 天仍未簽回，系統已自動標記為「已逾期」，效果視同已確認，不影響後續流程；請業務跟催廠商補簽回。
           </span>
         </div>
       )}
@@ -272,10 +324,10 @@ export function PurchaseOrderDetailPage() {
         </div>
       )}
 
-      {order.status === '草稿' && canEditDraft && (
+      {draftOpen && canEditDraft && (
         <Card className="mb-4 border-brand/30">
           <CardHeader>
-            <CardTitle className="text-base">系統自動建立草稿（表1判斷無庫存時自動觸發），請補齊以下資訊後送出</CardTitle>
+            <CardTitle className="text-base">草稿：請補齊以下資訊後送簽，管理層簽核後才會送到廠商手上</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -363,7 +415,7 @@ export function PurchaseOrderDetailPage() {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap justify-end gap-2">
-              {/* 儲存與送出分開：草稿可以只存不送，沒按儲存則維持原狀 */}
+              {/* 儲存與送簽分開：草稿可以只存不送，沒按儲存則維持原狀 */}
               <Button
                 variant="outline"
                 disabled={saveDraftMutation.isPending || completeDraftMutation.isPending}
@@ -376,13 +428,14 @@ export function PurchaseOrderDetailPage() {
                 disabled={
                   saveDraftMutation.isPending ||
                   completeDraftMutation.isPending ||
+                  !canSubmit ||
                   !draftVendorId ||
                   !draftDueDate ||
                   (draftType === '胚布' && draftHasDyeVendor && !draftDyeVendorId)
                 }
                 onClick={() => completeDraftMutation.mutate()}
               >
-                送出（進入待簽回）
+                <Send className="mr-1 h-4 w-4" /> 送簽
               </Button>
             </div>
           </CardContent>

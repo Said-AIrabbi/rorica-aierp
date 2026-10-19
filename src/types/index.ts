@@ -349,6 +349,9 @@ export type PackingNoticeStatus = '草稿' | '生效' | '已完成'
  */
 export type PackingNoticeApprovalState = '未送簽' | '待簽核' | '已簽核'
 
+/** 表2／表4 的簽核旗標（決策153）：與表1 同一組值，規則也相同 */
+export type DraftApprovalState = PackingNoticeApprovalState
+
 /**
  * 退回紀錄（權限規格決策37）：表1、表8、表9 三處退回共用同一套規則——
  * 原因必填、每次寫入不覆蓋前次、不設次數上限。反覆退回本身即為異常訊號，
@@ -666,8 +669,24 @@ export interface PurchaseOrder {
    */
   dyeVendorId?: string
   status: PurchaseOrderStatus
+  /**
+   * 簽核旗標（決策153）：比照表1——狀態機不新增狀態，簽核以草稿上的這個旗標呈現。
+   * 未記錄者依狀態推定（草稿＝未送簽，其餘＝已簽核），早於本機制的單不需補簽。
+   */
+  approvalState?: DraftApprovalState
+  /** 生管送簽的時間與帳號；退回或撤回後再次送簽會覆蓋為最新一次 */
+  submittedAt?: string
+  submittedByAccountId?: string
+  /** 管理層「簽核並送出」的時間與帳號；撤回後重新簽核會覆蓋為最新一次 */
+  approvedAt?: string
+  approvedByAccountId?: string
+  /** 歷次退回（權限規格決策37）：原因必填、不覆蓋前次、不設次數上限 */
+  rejections?: DocumentRejection[]
   createdAt: string
-  /** 生效日：草稿送出（轉為待簽回）當下記錄；凍結旗標自此日起算7個工作天 */
+  /**
+   * 生效日：管理層「簽核並送出」（轉為待簽回）當下記錄；凍結旗標自此日起算7個工作天。
+   * 撤回後重新簽核不重寫（決策132：撤回一次就多七天可改的空窗，凍結形同虛設）
+   */
   effectiveAt?: string
   /**
    * 胚布到貨確認日：僅「胚布」類型適用，由關聯的表6入庫單結案時回填。
@@ -799,6 +818,19 @@ export interface DyeOrder {
   withdrawals?: DocumentWithdrawal[]
   parentId: string
   status: DyeOrderStatus
+  /**
+   * 簽核旗標（決策153）：比照表1——狀態機不新增狀態，簽核以草稿上的這個旗標呈現。
+   * 未記錄者依狀態推定（草稿＝未送簽，其餘＝已簽核），早於本機制的單不需補簽。
+   */
+  approvalState?: DraftApprovalState
+  /** 生管送簽的時間與帳號；退回或撤回後再次送簽會覆蓋為最新一次 */
+  submittedAt?: string
+  submittedByAccountId?: string
+  /** 管理層「簽核並送出」的時間與帳號；撤回後重新簽核會覆蓋為最新一次 */
+  approvedAt?: string
+  approvedByAccountId?: string
+  /** 歷次退回（權限規格決策37）：原因必填、不覆蓋前次、不設次數上限 */
+  rejections?: DocumentRejection[]
   /** 交期：可手動修改；有訂購單時預設帶入其交貨日期，「有胚」無訂購單則人工選擇，預設規則同樣14天 */
   dueDate: string
   /** 品名：唯讀，帶入表1包裝通知單「皇加品名」 */

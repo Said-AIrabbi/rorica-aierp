@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { addWorkdays } from '@/lib/dates'
-import { freezeDate, isFrozen, isPurchaseOrderOverdue } from '@/lib/workflow'
+import { draftApprovalState, freezeDate, isFrozen, isPurchaseOrderOverdue } from '@/lib/workflow'
 import { effectivePiStatus, isPiShipmentOverdue, piAutoVoidAt, piDueDate } from '@/lib/pi'
 import type { PackingNotice, ProformaInvoice, PurchaseOrder, StockReservation } from '@/types'
 
@@ -65,11 +65,12 @@ export function buildNotifications(
       items.push({
         id: `overdue-${o.id}`,
         type: '逾期提醒',
-        message: `${o.id} 建立超過 2 天仍未簽回，請跟催廠商`,
+        message: `${o.id} 簽核送出超過 2 天仍未簽回，請跟催廠商`,
         link: `/purchase-order/${o.id}`,
       })
     }
-    if (o.status === '草稿') {
+    // 已送簽者在管理層手上（首頁待簽清單），不再提醒生管補齊
+    if (o.status === '草稿' && draftApprovalState(o) === '未送簽') {
       items.push({
         id: `draft-${o.id}`,
         type: '新草稿待處理',

@@ -5,7 +5,7 @@ import { api } from '@/mocks/api'
 import { getCustomer } from '@/mocks/data'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { isPiOnManualHold } from '@/lib/pi'
-import { packingNoticeApprovalState } from '@/lib/workflow'
+import { draftApprovalState, packingNoticeApprovalState } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import type { DocKey } from '@/lib/permissions'
 
@@ -23,6 +23,8 @@ interface PendingItem {
 const DOC_STYLE: Record<string, { label: string; action: string }> = {
   PI: { label: 'PI 單', action: '待批准' },
   表1: { label: '表1 包裝通知單', action: '待簽核' },
+  表2: { label: '表2 訂購單', action: '待簽核' },
+  表4: { label: '表4 染整單', action: '待簽核' },
   表9: { label: '表9 異常通知單', action: '待批准' },
 }
 
@@ -44,6 +46,8 @@ export function PendingApprovals() {
   const { data: pis = [] } = useQuery({ queryKey: ['proformaInvoices'], queryFn: api.proformaInvoices })
   const { data: notices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: abnormals = [] } = useQuery({ queryKey: ['abnormalNotices'], queryFn: api.abnormalNotices })
+  const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
+  const { data: dyeOrders = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
 
   const items: PendingItem[] = []
 
@@ -74,6 +78,34 @@ export function PendingApprovals() {
         summary: getCustomer(notice.customerId)?.fullNameCN ?? notice.customerId,
         since: notice.submittedAt,
         blocked: permissions.blockedReason('表1', '簽核', notice.createdByAccountId),
+      })
+    }
+  }
+
+  // 表2／表4：生管送簽後草稿轉唯讀，等管理層簽核並送出（決策153）；職責分離以送簽者判斷
+  if (permissions.can('表2', '簽核並送出')) {
+    for (const order of purchaseOrders) {
+      if (order.status !== '草稿' || draftApprovalState(order) !== '待簽核') continue
+      items.push({
+        doc: '表2',
+        id: order.id,
+        to: `/purchase-order/${order.id}`,
+        summary: `${order.type}訂購單`,
+        since: order.submittedAt,
+        blocked: permissions.blockedReason('表2', '簽核並送出', order.submittedByAccountId),
+      })
+    }
+  }
+  if (permissions.can('表4', '簽核並送出')) {
+    for (const order of dyeOrders) {
+      if (order.status !== '草稿' || draftApprovalState(order) !== '待簽核') continue
+      items.push({
+        doc: '表4',
+        id: order.id,
+        to: `/dye-order/${order.id}`,
+        summary: order.productName,
+        since: order.submittedAt,
+        blocked: permissions.blockedReason('表4', '簽核並送出', order.submittedByAccountId),
       })
     }
   }

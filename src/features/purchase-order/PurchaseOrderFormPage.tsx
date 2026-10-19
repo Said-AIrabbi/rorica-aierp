@@ -57,7 +57,7 @@ export function PurchaseOrderFormPage() {
       createPurchaseOrder({ ...values, itemIds: visibleItems.map((item) => item.id) }),
     onSuccess: async (order) => {
       await queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
-      toast.success(`已建立 ${order.id}`)
+      toast.success(`已建立 ${order.id}（草稿），確認內容後請送簽`)
       navigate(`/purchase-order/${order.id}`)
     },
     // 資料層擋下時（如明細全清空、無建單權限）要讓使用者看到原因，否則按了沒反應
