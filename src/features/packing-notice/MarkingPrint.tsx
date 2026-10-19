@@ -73,6 +73,13 @@ function MarkCell({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: s
   // 未填寫的欄位整行不印，避免嘜頭上出現空白標題
   const lines = [
     marking.destination,
+    /**
+     * 箱/袋號：位於運送目的地與成分之間（決策147）。
+     * 以表8 填的為準（出貨當下才知道箱袋編到幾號），
+     * 表8 沒填則退回用嘜頭本身帶下來的值（PI 階段填的，決策134）。
+     * 兩者都照填寫內容原樣列印，未填則整行不印。
+     */
+    boxNo ?? marking.boxNo,
     marking.composition,
     marking.grossWeightKg ? `G.W ${formatNumber(marking.grossWeightKg, 1)} KGS` : undefined,
     marking.netWeightKg ? `N.W ${formatNumber(marking.netWeightKg, 1)} KGS` : undefined,
@@ -80,12 +87,6 @@ function MarkCell({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: s
     marking.origin,
     // R.O.C.：緊接產地之後獨立一行（決策134）。嘜頭各行本來就是置中的，故不需另外排版
     marking.hasRoc ? 'R.O.C.' : undefined,
-    /**
-     * 箱/袋號：以表8 填的為準（出貨當下才知道箱袋編到幾號），
-     * 表8 沒填則退回用嘜頭本身帶下來的值（PI 階段填的，決策134）。
-     * 兩者都照填寫內容原樣列印，未填則整行不印。
-     */
-    boxNo ?? marking.boxNo,
   ].filter((l): l is string => Boolean(l && String(l).trim()))
 
   return (
