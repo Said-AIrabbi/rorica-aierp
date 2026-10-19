@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
-import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
+import { getVendor, primaryContactName, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import {
   savePurchaseOrderDraft,
   completePurchaseOrderDraft,
@@ -402,7 +402,7 @@ export function PurchaseOrderDetailPage() {
             {order.type === '胚布' && order.hasDyeVendor && (
               <DetailField label="染整廠名稱＋廠點" value={vendorDisplayName(getVendor(order.dyeVendorId ?? '')) || '-'} />
             )}
-            <DetailField label="廠商聯絡人" value={vendor?.contactPerson} />
+            <DetailField label="廠商聯絡人" value={primaryContactName(vendor) || '-'} />
             <DetailField label="燙金" value={order.embossing} />
             <DetailField label="建立日" value={formatDate(order.createdAt)} />
             <DetailField label="簽回日" value={formatDate(order.signedAt)} />

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
 import { createSecondaryProcessingOrder } from '@/mocks/mutations'
+import { primaryContactName, primaryContactPhone } from '@/mocks/data'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
 import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import { BasisQty } from '@/components/shared/BasisQty'
@@ -53,8 +54,8 @@ export function SecondaryProcessingFormPage() {
   function selectVendor(id: string) {
     setVendorId(id)
     const vendor = vendors.find((v) => v.id === id)
-    setVendorContactPerson(vendor?.contactPerson ?? '')
-    setVendorPhone(vendor?.phone ?? '')
+    setVendorContactPerson(primaryContactName(vendor))
+    setVendorPhone(primaryContactPhone(vendor))
     setVendorAddress(vendor?.address ?? '')
   }
 

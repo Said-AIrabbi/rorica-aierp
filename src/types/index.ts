@@ -15,6 +15,7 @@ export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number]
 /**
  * 客戶聯絡資訊：一個客戶可以有多組（不同窗口、不同分公司或倉庫收件人）。
  * 陣列第一組為主要聯絡人，單據上帶出的即為這一組；主檔至少要有一組，其餘皆非必填。
+ * 廠商主檔的聯絡資訊沿用同一結構（決策151），欄位與規則與客戶一致。
  */
 export interface CustomerContact {
   /** 聯絡人姓名：每一組的必填欄位，其餘聯絡方式視實際有無填寫 */
@@ -210,8 +211,11 @@ export interface Vendor {
   address?: string
   /** 發票地址：與公司地址為獨立欄位，開票地址不一定同公司地址 */
   invoiceAddress?: string
-  contactPerson: string
-  phone: string
+  /**
+   * 聯絡資訊（決策151）：與客戶主檔相同，可多組、第一組為主要聯絡人，單據帶出的即為這一組。
+   * 取代原本的「負責人／聯絡人」與「電話」兩個單一欄位。
+   */
+  contacts: CustomerContact[]
   /** 統一編號：指廠商自己的統編（廠商編輯視窗必填欄位） */
   taxId: string
   /** 稅率：如「5%」 */

@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getCustomer, getPackingNotice, getVendor, productBranchSuffix } from '@/mocks/data'
+import { getCustomer, getPackingNotice, getVendor, primaryContactName, primaryContactPhone, productBranchSuffix } from '@/mocks/data'
 import { BasisQty } from '@/components/shared/BasisQty'
 import {
   setSecondaryProcessingStatus,
@@ -87,8 +87,8 @@ export function SecondaryProcessingDetailPage() {
     setVendorDraft((prev) => ({
       ...prev,
       vendorId,
-      vendorContactPerson: vendor?.contactPerson ?? '',
-      vendorPhone: vendor?.phone ?? '',
+      vendorContactPerson: primaryContactName(vendor),
+      vendorPhone: primaryContactPhone(vendor),
       vendorAddress: vendor?.address ?? '',
     }))
   }

@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
-import { getProduct, getVendor, vendorDisplayName } from '@/mocks/data'
+import { getProduct, getVendor, primaryContactName, vendorDisplayName } from '@/mocks/data'
 import {
   applyDyeRequestFinishedSpec,
   sendDyeRequest,
@@ -251,7 +251,7 @@ export function DyeRequestDetailPage() {
             ) : (
               <DetailField label="染整廠" value={vendor?.name} />
             )}
-            <DetailField label="染整廠聯絡人" value={vendor?.contactPerson} />
+            <DetailField label="染整廠聯絡人" value={primaryContactName(vendor) || '-'} />
             {headEditable ? (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">委託日</Label>

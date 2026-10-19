@@ -14,6 +14,7 @@ import type {
   Account,
   CompanyProfile,
   Customer,
+  CustomerContact,
   DigitalColor,
   DyeOrder,
   DyeRequest,
@@ -63,6 +64,7 @@ const CUSTOMER_NAMES = [
 
 /** 聯絡窗口的職稱範例：實務上逐一輸入，此處僅供模擬 */
 const CONTACT_TITLES = ['採購專員', '採購經理', '生產助理', '財務專員']
+const VENDOR_CONTACT_TITLES = ['業務', '業務經理', '廠長', '生管']
 
 /** 胚布規格常見的經緯紗支數寫法，供商品資料主檔「胚布規格」欄位模擬用 */
 const GREIGE_YARN_SPECS = ['75D/72F × 150D/48F', '50D/24F × 75D/36F', '30D/24F × 50D/48F', '100D/144F × 100D/144F']
@@ -208,8 +210,15 @@ export const vendors: Vendor[] = VENDOR_NAMES.map((v, i) => ({
   siteCode: v.siteCode,
   address: `台中市大里區工業路${faker.number.int({ min: 1, max: 300 })}號`,
   invoiceAddress: `台中市大里區工業路${faker.number.int({ min: 1, max: 300 })}號`,
-  contactPerson: faker.person.fullName(),
-  phone: faker.phone.number({ style: 'international' }),
+  contacts: [
+    {
+      name: faker.person.fullName(),
+      title: faker.helpers.arrayElement(VENDOR_CONTACT_TITLES),
+      email: `${faker.internet.username().toLowerCase()}@example.com`,
+      phone: faker.phone.number({ style: 'international' }),
+      mobile: faker.phone.number({ style: 'international' }),
+    },
+  ],
   taxId: faker.string.numeric(8),
   taxRate: '5%',
   paymentTerms: faker.helpers.arrayElement(['月結30天', '月結45天', '月結60天']),
@@ -836,8 +845,8 @@ export const secondaryProcessingOrders: SecondaryProcessingOrder[] = packingNoti
       effectiveAt: status === '草稿' ? undefined : createdAt.add(1, 'day').toISOString(),
       dueDate: pn.expectedDeliveryAt,
       vendorId: vendor.id,
-      vendorContactPerson: vendor.contactPerson,
-      vendorPhone: vendor.phone,
+      vendorContactPerson: primaryContactName(vendor),
+      vendorPhone: primaryContactPhone(vendor),
       vendorAddress: vendor.address,
       internalContact: faker.helpers.arrayElement(accounts.filter((a) => a.roles.includes('生管'))).name,
       note: faker.helpers.arrayElement(['', '', '加工後直接送客戶指定倉庫']),
@@ -1414,6 +1423,16 @@ function normalizeSampleResults(snapshot: SessionSnapshot): void {
   snapshot.dyeOrders?.forEach((d) => fix(d.largeSampleSubmissions))
 }
 
+/**
+ * 廠商聯絡資訊改為多組之前（決策151）存下的快照只有 contactPerson／phone 兩個欄位，
+ * 轉成一組主要聯絡人；沒填姓名者給空陣列，待主檔補齊。
+ */
+function migrateVendorContacts(vendor: Vendor): Vendor {
+  if (Array.isArray(vendor.contacts)) return vendor
+  const { contactPerson, phone, ...rest } = vendor as Vendor & { contactPerson?: string; phone?: string }
+  return { ...rest, contacts: contactPerson?.trim() ? [{ name: contactPerson, phone: phone || undefined }] : [] }
+}
+
 /** 把一份快照套回記憶體中的資料陣列。還原本機暫存與載入遠端資料共用這一段 */
 export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   normalizeSampleResults(snapshot)
@@ -1436,7 +1455,7 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   // 主檔為後續新增的快照欄位，舊快照可能沒有，缺少時沿用種子資料
   if (snapshot.products) products.splice(0, products.length, ...snapshot.products)
   if (snapshot.customers) customers.splice(0, customers.length, ...snapshot.customers)
-  if (snapshot.vendors) vendors.splice(0, vendors.length, ...snapshot.vendors)
+  if (snapshot.vendors) vendors.splice(0, vendors.length, ...snapshot.vendors.map(migrateVendorContacts))
   // 通知為後續新增的快照欄位，舊快照沒有時視為尚無通知
   if (snapshot.documentEvents) documentEvents.splice(0, documentEvents.length, ...snapshot.documentEvents)
   if (snapshot.documentEventReads) {
@@ -1502,6 +1521,17 @@ export function getVendor(id: string): Vendor | undefined {
 export function vendorDisplayName(vendor: Vendor | undefined): string {
   if (!vendor) return ''
   return vendor.siteCode ? `${vendor.name}${vendor.siteCode}` : vendor.name
+}
+
+/** 主要聯絡人（第一組）的姓名：客戶與廠商共用，單據帶出的即為這一組 */
+export function primaryContactName(master: { contacts: CustomerContact[] } | undefined): string {
+  return master?.contacts[0]?.name ?? ''
+}
+
+/** 主要聯絡人的電話：市話優先，沒有市話才用手機 */
+export function primaryContactPhone(master: { contacts: CustomerContact[] } | undefined): string {
+  const contact = master?.contacts[0]
+  return contact?.phone || contact?.mobile || ''
 }
 
 export function getProduct(id: string): Product | undefined {

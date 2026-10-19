@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { getVendor, vendorDisplayName } from '@/mocks/data'
+import { getVendor, primaryContactName, vendorDisplayName } from '@/mocks/data'
 import {
   confirmDyeOrder,
   createDyeRequest,
@@ -616,7 +616,7 @@ export function DyeOrderDetailPage() {
           <DetailGrid>
             <DetailField label="公司" value={vendor?.name} />
             <DetailField label="地址" value={vendor?.address} />
-            <DetailField label="廠商聯絡人" value={vendor?.contactPerson} />
+            <DetailField label="廠商聯絡人" value={primaryContactName(vendor) || '-'} />
             <DetailField label="皇加聯絡窗口" value={order.internalContact} />
           </DetailGrid>
         </CardContent>

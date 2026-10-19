@@ -2986,11 +2986,12 @@ export function updateVendor(id: string, input: VendorInput): Promise<Vendor> {
   if (!input.name.trim()) throw new Error('廠名為必填')
   if (input.types.length === 0) throw new Error('請至少選擇一種廠商類型')
   if (!input.taxId.trim()) throw new Error('統一編號為必填')
+  assertCustomerContacts(input.contacts)
   if (vendors.some((v) => v.id !== id && v.code.trim() === input.code.trim())) {
     throw new Error(`廠商代碼「${input.code}」已被其他廠商使用`)
   }
 
-  const updated: Vendor = { ...vendors[idx], ...input }
+  const updated: Vendor = { ...vendors[idx], ...input, contacts: input.contacts.filter((c) => c.name.trim()) }
   vendors[idx] = updated
   return delay(updated)
 }
@@ -3471,7 +3472,7 @@ function assertNotReferenced(label: string, refs: { where: string; ids: string[]
   }
 }
 
-/** 聯絡資訊：至少要有一組且填了聯絡人姓名，其餘組別與欄位皆非必填 */
+/** 聯絡資訊：至少要有一組且填了聯絡人姓名，其餘組別與欄位皆非必填。客戶與廠商主檔共用（決策151） */
 function assertCustomerContacts(contacts: CustomerContact[]): void {
   const filled = contacts.filter((c) => c.name.trim())
   if (filled.length === 0) throw new Error('請至少填寫一組聯絡資訊的聯絡人姓名')
@@ -3514,10 +3515,15 @@ export function createVendor(input: VendorInput): Promise<Vendor> {
   if (!input.name.trim()) throw new Error('廠名為必填')
   if (input.types.length === 0) throw new Error('請至少選擇一種廠商類型')
   if (!input.taxId.trim()) throw new Error('統一編號為必填')
+  assertCustomerContacts(input.contacts)
   if (vendors.some((v) => v.code.trim() === input.code.trim())) {
     throw new Error(`廠商代碼「${input.code}」已被其他廠商使用`)
   }
-  const vendor: Vendor = { ...input, id: nextMasterId('VEND', vendors) }
+  const vendor: Vendor = {
+    ...input,
+    id: nextMasterId('VEND', vendors),
+    contacts: input.contacts.filter((c) => c.name.trim()),
+  }
   vendors.unshift(vendor)
   return delay(vendor)
 }

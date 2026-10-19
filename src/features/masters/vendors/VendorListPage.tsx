@@ -7,6 +7,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { api } from '@/mocks/api'
+import { primaryContactPhone } from '@/mocks/data'
 import type { Vendor } from '@/types'
 
 export function VendorListPage() {
@@ -21,8 +22,16 @@ export function VendorListPage() {
       { id: 'types', header: '廠商類型（可複選）', accessorFn: (row) => row.types.join('、') },
       { accessorKey: 'siteCode', header: '廠點代號' },
       { accessorKey: 'address', header: '公司地址' },
-      { accessorKey: 'contactPerson', header: '負責人/聯絡人' },
-      { accessorKey: 'phone', header: '電話' },
+      {
+        id: 'contactPerson',
+        header: '連絡人',
+        // 廠商可有多組聯絡資訊，列表顯示主要聯絡人並標示另有幾組（同客戶主檔）
+        accessorFn: (row) =>
+          row.contacts.length === 0
+            ? '-'
+            : `${row.contacts[0].name}${row.contacts.length > 1 ? `（另有 ${row.contacts.length - 1} 組）` : ''}`,
+      },
+      { id: 'contactPersonPhone', header: '連絡人電話', accessorFn: (row) => primaryContactPhone(row) || '-' },
     ],
     [],
   )
