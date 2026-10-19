@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn } from '@/components/print/PrintSheet'
 import { PI_SIGNATURE_LABELS, PRINT_TITLES, printValue } from '@/lib/print'
 import { resolvePiBankAccount } from '@/lib/company'
@@ -7,6 +8,7 @@ import { PI_CURRENCY_SYMBOL, piTotalAmount } from '@/lib/pi'
 import { basisQtyText } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
 import { companyProfile, getProduct } from '@/mocks/data'
+import { MarkingThumbnail, SmallMarkingThumbnail } from '@/features/packing-notice/MarkingPrint'
 import type { ProformaInvoice, ProformaInvoiceItem } from '@/types'
 
 /**
@@ -178,34 +180,33 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
         </table>
       </PrintSection>
 
+      {/*
+        嘜頭以圖示呈現（決策145）：客戶在報價單上就看到箱子上實際會印成什麼樣子，
+        而不是一串用斜線串起來的欄位值。圖裡的每一行就是日後貼箱的內容（與表8 列印同一個元件）；
+        有加印小嘜頭者並列小嘜頭的圖。
+      */}
       <PrintSection title="嘜頭 SHIPPING MARKS">
-        <table className="pr-table">
-          <tbody>
-            {pi.markings.map((marking, i) => (
-              <tr key={i}>
-                <th style={{ width: '30mm' }}>
-                  {pi.markings.length > 1 ? `嘜頭 ${i + 1}／${pi.markings.length}` : '嘜頭'}
-                </th>
-                <td>
-                  {[
-                    marking.shape,
-                    marking.headerText?.replace(/\n/g, ' '),
-                    marking.destination,
-                    marking.composition,
-                    marking.grossWeightKg ? `G.W ${formatNumber(marking.grossWeightKg, 1)}KG` : '',
-                    marking.netWeightKg ? `N.W ${formatNumber(marking.netWeightKg, 1)}KG` : '',
-                    marking.origin,
-                    marking.hasRoc ? 'R.O.C.' : '',
-                    marking.boxNo ? `箱/袋號 ${marking.boxNo}` : '',
-                    marking.hasSmallMarking ? '加印小嘜頭' : '',
-                  ]
-                    .filter(Boolean)
-                    .join('　／　')}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="pr-mark-thumbs">
+          {pi.markings.map((marking, i) => {
+            const label = pi.markings.length > 1 ? `嘜頭 ${i + 1}／${pi.markings.length}` : '嘜頭'
+            return (
+              <Fragment key={i}>
+                <div className="pr-mark-thumb-item">
+                  <div className="pr-mark-thumb-caption">
+                    {label}　{marking.shape}
+                  </div>
+                  <MarkingThumbnail marking={marking} />
+                </div>
+                {marking.hasSmallMarking && (
+                  <div className="pr-mark-thumb-item">
+                    <div className="pr-mark-thumb-caption">{label}　小嘜頭</div>
+                    <SmallMarkingThumbnail marking={marking} />
+                  </div>
+                )}
+              </Fragment>
+            )
+          })}
+        </div>
       </PrintSection>
     </PrintSheet>
   )

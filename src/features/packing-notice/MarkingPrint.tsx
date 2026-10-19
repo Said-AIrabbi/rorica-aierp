@@ -53,6 +53,21 @@ export function MarkingPreview({
   )
 }
 
+/**
+ * 嘜頭縮圖（**列印用**，決策145）：嵌在 PI 的列印版面裡，讓客戶在報價單上就看到嘜頭實際的樣子。
+ *
+ * 與 MarkingPreview 用同一個 MarkCell——內容規則（哪些行要印、R.O.C. 放哪、箱袋號取誰）只有一份，
+ * 報價單上看到的才會跟日後貼在箱子上的一致。差別只在尺寸以 mm 計（印在紙上），不是畫面 px。
+ */
+export function MarkingThumbnail({ marking }: { marking: PackingNoticeMarking }) {
+  const isA5 = marking.shape === 'A5大小'
+  return (
+    <div className={isA5 ? 'pr-mark-thumb pr-mark-thumb-a5' : 'pr-mark-thumb'}>
+      <MarkCell marking={marking} />
+    </div>
+  )
+}
+
 function MarkCell({ marking, boxNo }: { marking: PackingNoticeMarking; boxNo?: string }) {
   const isA5 = marking.shape === 'A5大小'
   // 未填寫的欄位整行不印，避免嘜頭上出現空白標題
@@ -185,6 +200,15 @@ export function SmallMarkingPreview({
 }) {
   return (
     <div className={cn('pr-smallmark-preview', className)}>
+      <SmallMarkCell lines={smallMarkingLines(marking.smallMarkingText)} />
+    </div>
+  )
+}
+
+/** 小嘜頭縮圖（列印用，決策145）：同 MarkingThumbnail，嵌在 PI 列印版面裡 */
+export function SmallMarkingThumbnail({ marking }: { marking: PackingNoticeMarking }) {
+  return (
+    <div className="pr-smallmark-thumb">
       <SmallMarkCell lines={smallMarkingLines(marking.smallMarkingText)} />
     </div>
   )
