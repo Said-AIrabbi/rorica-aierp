@@ -147,11 +147,13 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
                     : '不加印'}
                 </td>
               </tr>
+              {/*
+                不印客戶簡稱：表頭已經印過，嘜頭有幾組就重複幾次只是佔版面。
+                拿掉後運送目的地獨佔一列——目的地常是一整串地址或港口名，正好需要這個寬度
+              */}
               <tr>
-                <th>客戶簡稱</th>
-                <td>{customer?.shortName ?? ' '}</td>
                 <th>運送目的地</th>
-                <td>{marking.destination ?? ' '}</td>
+                <td colSpan={3}>{marking.destination ?? ' '}</td>
               </tr>
               <tr>
                 <th>毛重 (Kg)</th>
