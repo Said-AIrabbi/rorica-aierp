@@ -7,6 +7,7 @@ import type {
   GoodsReceipt,
   PackingNotice,
   PurchaseOrder,
+  PurchaseOrderItem,
   SecondaryProcessingPackaging,
   ShippingOrder,
 } from '@/types'
@@ -338,4 +339,36 @@ export function smallMarkingLines(text: string | undefined): string[] {
     .map((line) => line.trim())
     .filter(Boolean)
   return [SMALL_MARKING_FIXED_LINE, ...custom]
+}
+
+/**
+ * 表2 明細對應的表1 明細 id（決策148）。
+ *
+ * 新資料直接讀 sourceItemId；本欄新增前的明細沒有它，但 id 一律是「表2 單號-表1 明細 id」，
+ * 故以 id 尾端對回來源。用尾端比對而非字串切割：表2 單號本身也含連字號，切割會切錯位置。
+ */
+export function purchaseOrderItemSourceId(item: PurchaseOrderItem, notice: PackingNotice | undefined): string | undefined {
+  if (item.sourceItemId) return item.sourceItemId
+  return notice?.items.find((n) => item.id.endsWith(`-${n.id}`))?.id
+}
+
+/**
+ * 某張表1 的各筆明細已被哪一張表2 用掉（決策148）：手動開表2 時標記「已轉換訂購單」，
+ * 避免同一批布重複下單。同一筆被多張用到時記第一張——提示的目的是「已經有了」，不是列清單。
+ */
+export function purchaseOrdersBySourceItem(
+  notice: PackingNotice | undefined,
+  orders: PurchaseOrder[],
+): Map<string, { orderId: string; status: PurchaseOrder['status'] }> {
+  const used = new Map<string, { orderId: string; status: PurchaseOrder['status'] }>()
+  if (!notice) return used
+  orders
+    .filter((o) => o.parentId === notice.id)
+    .forEach((o) => {
+      o.items.forEach((item) => {
+        const sourceId = purchaseOrderItemSourceId(item, notice)
+        if (sourceId && !used.has(sourceId)) used.set(sourceId, { orderId: o.id, status: o.status })
+      })
+    })
+  return used
 }

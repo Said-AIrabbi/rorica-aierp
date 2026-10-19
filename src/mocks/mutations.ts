@@ -635,6 +635,7 @@ function autoCreatePurchaseOrderDraft(notice: PackingNotice, outOfStockItems: Pa
     // 彩條唯讀帶入自表1 該筆明細
     colorRatios: item.colorRatios,
     note: item.note,
+    sourceItemId: item.id,
   }))
   const draft: PurchaseOrder = {
     id,
@@ -962,12 +963,18 @@ export interface PurchaseOrderInput {
   note: string
   /** 單價：訂購單專屬額外欄位，可編輯；鍵值為來源表1明細列 id */
   itemUnitPrices: Record<string, number | undefined>
+  /**
+   * 本張要做的表1 明細 id（決策148）：一張表1 可分批開多張表2，不做的品項於表單清除。
+   * 未傳時帶入表1 全部明細（維持既有行為）。
+   */
+  itemIds?: string[]
 }
 
 /**
  * 手動建立訂購單入口（供無自動觸發情境時，生管仍可直接開單）；系統於表1判斷「無庫存」時
  * 已會自動建立草稿（見 autoCreatePurchaseOrderDraft／completePurchaseOrderDraft），非此路徑。
- * 明細與表1包裝通知單完全一致，逐列（1:1）帶入，包裝單有幾筆明細訂購單就對應產生幾筆，非合併為一筆。
+ * 明細與表1包裝通知單一致，逐列（1:1）帶入、非合併為一筆；手動建單時可清除本張不做的品項（決策148），
+ * 一張表1 因此可分批開多張表2。每筆明細記下來源表1 明細 id，供下一張標記「已轉換訂購單」。
  */
 export function createPurchaseOrder(input: PurchaseOrderInput): Promise<PurchaseOrder> {
   assertCanAct(getCurrentAccount(), '表2', '建立')
@@ -975,8 +982,16 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
   if (!notice) throw new Error(`包裝通知單 ${input.parentId} 不存在`)
   const existingForParent = purchaseOrders.filter((p) => p.parentId === input.parentId).length
   const id = `${input.parentId}-P${existingForParent + 1}`
-  const items: PurchaseOrderItem[] = notice.items.map((item) => ({
+  // 只取表單上保留的品項（決策148）；順序依表1，不依傳入順序
+  const chosen = input.itemIds ? notice.items.filter((item) => input.itemIds!.includes(item.id)) : notice.items
+  if (input.itemIds) {
+    const unknown = input.itemIds.filter((itemId) => !notice.items.some((i) => i.id === itemId))
+    if (unknown.length > 0) throw new Error(`明細 ${unknown.join('、')} 不屬於包裝通知單 ${notice.id}`)
+  }
+  if (chosen.length === 0) throw new Error('訂購單至少要有一筆明細')
+  const items: PurchaseOrderItem[] = chosen.map((item) => ({
     id: `${id}-${item.id}`,
+    sourceItemId: item.id,
     customerProductName: item.customerProductName,
     roricaProductName: item.roricaProductName,
     productId: item.productId,

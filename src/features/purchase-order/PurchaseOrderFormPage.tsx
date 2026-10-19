@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, RotateCcw, Trash2 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -18,6 +19,7 @@ import { vendorDisplayName } from '@/mocks/data'
 import { createPurchaseOrder } from '@/mocks/mutations'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { lookupColorSample } from '@/lib/colors'
+import { purchaseOrdersBySourceItem } from '@/lib/workflow'
 import { ColorLookupBadge, ColorLookupLegend } from '@/components/shared/ColorLookupBadge'
 import { purchaseOrderFormSchema, type PurchaseOrderFormValues } from './schema'
 
@@ -27,6 +29,7 @@ export function PurchaseOrderFormPage() {
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
+  const { data: purchaseOrders = [] } = useQuery({ queryKey: ['purchaseOrders'], queryFn: api.purchaseOrders })
 
   const {
     register,
@@ -49,12 +52,16 @@ export function PurchaseOrderFormPage() {
   })
 
   const mutation = useMutation({
-    mutationFn: createPurchaseOrder,
+    mutationFn: (values: PurchaseOrderFormValues) =>
+      // 只送出表單上保留的品項（決策148）；被清除的不進這張訂購單，表1 本身不受影響
+      createPurchaseOrder({ ...values, itemIds: visibleItems.map((item) => item.id) }),
     onSuccess: async (order) => {
       await queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
       toast.success(`已建立 ${order.id}`)
       navigate(`/purchase-order/${order.id}`)
     },
+    // 資料層擋下時（如明細全清空、無建單權限）要讓使用者看到原因，否則按了沒反應
+    onError: (error: Error) => toast.error(error.message),
   })
 
   const parentId = watch('parentId')
@@ -63,6 +70,21 @@ export function PurchaseOrderFormPage() {
   const vendorId = watch('vendorId')
   const dyeVendorId = watch('dyeVendorId')
   const notice = packingNotices.find((n) => n.id === parentId)
+
+  /**
+   * 本張不做的品項（決策148，比照表4）：一張表1 可分批開多張表2，各張只放自己要下單的那幾筆。
+   * 清除只作用於這張表單——表1 明細與其他單據都不受影響。換一張表1 即重新帶入全部明細。
+   */
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
+  useEffect(() => setRemovedIds(new Set()), [parentId])
+  const visibleItems = notice ? notice.items.filter((item) => !removedIds.has(item.id)) : []
+  const removeItem = (itemId: string) => setRemovedIds((prev) => new Set(prev).add(itemId))
+
+  /**
+   * 已轉換訂購單的明細：同一張表1 已有其他表2 用過這筆，在此標記，避免同一批布重複下單。
+   * 只提示、不自動清除——分批出貨或補單時，同一筆再開一張是可能的，由開單的人判斷。
+   */
+  const usedBy = purchaseOrdersBySourceItem(notice, purchaseOrders)
 
   return (
     <div>
@@ -203,7 +225,17 @@ export function PurchaseOrderFormPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">明細（與表1包裝通知單1:1帶入，僅單價可編輯）</CardTitle>
+            <CardTitle className="text-base">
+              明細（與表1包裝通知單1:1帶入，僅單價可編輯）
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                一張表1 可分批開多張表2；本單不做的品項請按右側「清除」移除，不影響表1 與其他單據
+              </span>
+            </CardTitle>
+            {removedIds.size > 0 && (
+              <Button type="button" variant="outline" size="sm" className="mt-2 w-fit" onClick={() => setRemovedIds(new Set())}>
+                <RotateCcw className="mr-1 h-3.5 w-3.5" /> 還原已清除的 {removedIds.size} 筆
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="px-0">
             <div className="px-4">
@@ -226,12 +258,28 @@ export function PurchaseOrderFormPage() {
                       <TableHead className="text-right">定碼長度</TableHead>
                       <TableHead className="text-right">單價</TableHead>
                       <TableHead>備註</TableHead>
+                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {notice.items.map((item) => (
+                    {visibleItems.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.customerProductName}</TableCell>
+                        <TableCell>
+                          {item.customerProductName}
+                          {(() => {
+                            const used = usedBy.get(item.id)
+                            if (!used) return null
+                            return (
+                              <span
+                                className="mt-1 flex items-center gap-1 text-xs font-medium whitespace-nowrap text-warning"
+                                title={`已開立訂購單：${used.orderId}（${used.status}）`}
+                              >
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                已轉換訂購單 {used.orderId}（{used.status}）
+                              </span>
+                            )
+                          })()}
+                        </TableCell>
                         <TableCell>{item.roricaProductName}</TableCell>
                         <TableCell>{item.color}</TableCell>
                         <TableCell>
@@ -266,8 +314,28 @@ export function PurchaseOrderFormPage() {
                           />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{item.note || '-'}</TableCell>
+                        <TableCell>
+                          {/* 清除僅作用於本張表2：表1 明細與其他單據不受影響 */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            title="本單不做此品項（不影響表1）"
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
+                    {visibleItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={11} className="text-center text-sm text-muted-foreground">
+                          明細已全部清除，訂購單至少要有一筆；可按上方「還原」帶回
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -279,7 +347,7 @@ export function PurchaseOrderFormPage() {
           <Button type="button" variant="outline" onClick={() => navigate('/purchase-order')}>
             取消
           </Button>
-          <Button type="submit" className="bg-brand hover:bg-brand-dark" disabled={isSubmitting || mutation.isPending || !notice}>
+          <Button type="submit" className="bg-brand hover:bg-brand-dark" disabled={isSubmitting || mutation.isPending || !notice || visibleItems.length === 0}>
             {mutation.isPending ? '建立中...' : '建立訂購單'}
           </Button>
         </div>

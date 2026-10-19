@@ -614,9 +614,18 @@ export type PurchaseOrderStatus = '草稿' | '待簽回' | '已簽回' | '已逾
 /** 成品：供應商直接出貨成品，完成後直接入庫；胚布：可另勾選是否委外染整，決定完成後走直採大貨或委外加工分支 */
 export type PurchaseOrderType = '成品' | '胚布'
 
-/** 明細與表1包裝通知單完全一致，逐列（1:1）帶入，包裝單有幾筆明細訂購單就對應產生幾筆；單價為訂購單專屬可編輯欄位，其餘唯讀 */
+/**
+ * 明細內容與表1包裝通知單一致，逐列（1:1）帶入；單價為訂購單專屬可編輯欄位，其餘唯讀。
+ * 手動建單時可清除不做的品項（決策148）——一張表1 可分批開多張表2，故不一定是表1 的全部明細。
+ */
 export interface PurchaseOrderItem {
   id: string
+  /**
+   * 來源表1 明細 id（決策148）：用來標記「這筆已經開過訂購單」。
+   * 本欄新增前建立的明細沒有這個值，但它們的 id 一律是「表2 單號-表1 明細 id」，
+   * 讀取端以 purchaseOrderItemSourceId() 從 id 尾端對回來源。
+   */
+  sourceItemId?: string
   /** 彩條：唯讀，1:1 帶入自包裝單明細（最多 3 組） */
   colorRatios?: string[]
   customerProductName: string
