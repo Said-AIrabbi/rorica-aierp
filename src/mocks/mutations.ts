@@ -27,6 +27,7 @@ import {
   assertCanMaintainMaster,
   assertCanReleaseReservation,
   canDoActionByRoles,
+  canSeeFieldGroup,
   canSeeFieldGroupByRoles,
   type DocAction,
   type DocKey,
@@ -170,12 +171,36 @@ function buildItems(id: string, items: PackingNoticeItemInput[]): PackingNoticeI
     const seq = Number(/-L(\d+)$/.exec(item.id ?? '')?.[1] ?? 0)
     return seq > max ? seq : max
   }, 0)
+  items.forEach((item, i) => {
+    if (item.unitPrice != null && (!Number.isFinite(item.unitPrice) || item.unitPrice < 0)) {
+      throw new Error(`第 ${i + 1} 項的單價需為 0 以上的數字`)
+    }
+  })
   return items.map((item) => ({
     ...item,
     id: item.id ?? `${id}-L${(maxSeq += 1)}`,
     meter: Number(yardToMeter(item.yard).toFixed(1)),
     // 彩條：空字串不存，最多 3 組（客人指定1～3）
     colorRatios: (item.colorRatios ?? []).map((v) => v.trim()).filter(Boolean).slice(0, COLOR_RATIO_MAX),
+  }))
+}
+
+/**
+ * 看不到售價的帳號存檔時，保留各列原本的單價（決策142）。
+ *
+ * 讀取端已依欄位可見性把單價從他拿到的資料裡拿掉，他送回來的明細自然沒有這個欄位——
+ * 照單全收就等於把單價洗成空白，而他在畫面上根本看不到自己洗掉了什麼。
+ * 出廠預設下能改表1 的業務與管理員都看得到售價，但管理員可用個別排除拿掉某人的售價可見性，
+ * 故仍在資料層擋。依明細 id 對回原值；新增的列本來就沒有單價，維持空白。
+ */
+function keepHiddenNoticePrices(
+  current: PackingNotice,
+  items: PackingNoticeItemInput[],
+): PackingNoticeItemInput[] {
+  if (canSeeFieldGroup(getCurrentAccount(), '售價')) return items
+  return items.map((item) => ({
+    ...item,
+    unitPrice: item.id ? current.items.find((i) => i.id === item.id)?.unitPrice : undefined,
   }))
 }
 
@@ -376,7 +401,7 @@ function reserveRollsForItem(
       // 出貨數量以訂單需求量為準；整捲＋裁切時最後一捲裁剩的零碼布留庫存
       yard: item.yard,
       meter: Number(yardToMeter(item.yard).toFixed(1)),
-      unitPrice: product?.sellPrice,
+      unitPrice: noticeItemSalePrice(notice, item) ?? product?.sellPrice,
       note: item.note,
     },
   ])
@@ -774,7 +799,7 @@ function createDownstreamDraftsOnEffective(notice: PackingNotice): void {
         rollCodes: reservation?.rollCodes ?? [],
         yard: item.yard,
         meter: Number(yardToMeter(item.yard).toFixed(1)),
-        unitPrice: product?.sellPrice,
+        unitPrice: noticeItemSalePrice(notice, item) ?? product?.sellPrice,
         note: item.note,
       },
     ])
@@ -835,7 +860,7 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
     labelTypes: input.labelTypes,
     packagingType: input.packagingType,
     tolerance: input.tolerance,
-    items: buildItems(id, input.items),
+    items: buildItems(id, keepHiddenNoticePrices(packingNotices[idx], input.items)),
     itemUnit: input.itemUnit ?? packingNotices[idx].itemUnit ?? 'Yard',
     allowSplicing: input.allowSplicing ?? packingNotices[idx].allowSplicing,
     markings: input.markings,
@@ -2236,7 +2261,7 @@ export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']
           rollCodes: [label.rollCode],
           yard: label.length,
           meter: Number(yardToMeter(label.length).toFixed(1)),
-          unitPrice: product?.sellPrice,
+          unitPrice: noticeItemSalePrice(notice, sourceItem) ?? product?.sellPrice,
           note: sourceItem?.note,
         }
       })
@@ -2445,6 +2470,23 @@ function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, n
 function markingBoxNosFromNotice(notice: PackingNotice | undefined): string[] | undefined {
   const boxNos = (notice?.markings ?? []).map((m) => m.boxNo?.trim() ?? '')
   return boxNos.some(Boolean) ? boxNos : undefined
+}
+
+/**
+ * 表8 明細售價的預設值（決策142）。來源順序：
+ *   ① 表1 明細單價——自 PI 帶入或直接建立時輸入，是這筆訂單談定的價格
+ *   ② 來源 PI 單價——決策142 之前建立的表1 沒有單價欄，仍要能從 PI 對回來
+ *   ③ 商品主檔牌價——由呼叫端以 `?? product?.sellPrice` 接在最後
+ *
+ * 原本三個自動建立表8 明細的地方都**先**填主檔牌價，後面「沒填才用 PI 單價」因此永遠不成立：
+ * 只要主檔有牌價，經過 PI 的訂單到了表8 仍是牌價，不是跟客戶談定的價格。
+ */
+function noticeItemSalePrice(
+  notice: PackingNotice | undefined,
+  item: PackingNoticeItem | undefined,
+): number | undefined {
+  if (!item) return undefined
+  return item.unitPrice ?? piUnitPriceForNoticeItem(notice, item.id)
 }
 
 function piUnitPriceForNoticeItem(notice: PackingNotice | undefined, sourceItemId: string | undefined): number | undefined {
@@ -4130,6 +4172,8 @@ function piItemToPackingItem(item: ProformaInvoiceItem, noticeId: string, index:
     fixedLengthMeter: item.fixedLengthMeter,
     colorRatios: item.colorRatios,
     note: item.note,
+    // 單價隨轉換帶入（決策142）：兩邊都以每碼存放，直接沿用、不換算
+    unitPrice: item.unitPrice,
     sourcePiItemId: item.id,
   }
 }
@@ -4171,6 +4215,8 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
       itemUnit: current.itemUnit,
       markings: current.markings,
       sourcePiId: current.id,
+      // 明細單價沿用 PI 的幣別（決策142）
+      currency: current.currency,
       shippingAddress: current.shippingAddress,
       // PI 轉來的表1 一樣從「未送簽」起步（決策118）：PI 批准的是報價，不是生產指示。
       // 漏了這一欄，這張單會卡在「草稿但顯示已簽核」而永遠生效不了
@@ -4313,6 +4359,8 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
       markings: current.markings,
       shippingAddress: current.shippingAddress,
       sourcePiId: current.id,
+      // 取代版可能換了幣別；單價整批換新，幣別必須跟著換，否則數字對到錯的幣別
+      currency: current.currency,
     }
     packingNotices[nIdx] = updatedNotice
     // 明細換了，預留必須重算（決策50）；效期沿用原到期日，不因改版展延

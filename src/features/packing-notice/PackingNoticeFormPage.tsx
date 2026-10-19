@@ -34,7 +34,8 @@ import {
 } from '@/types'
 import { freezeDate, isPackingNoticeEditable } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
-import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
+import { formatNumber, meterPriceToYardPrice, meterToYard, yardPriceToMeterPrice, yardToMeter } from '@/lib/units'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { lookupColorSample } from '@/lib/colors'
 import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
 import { ColorLookupBadge, ColorLookupLegend } from '@/components/shared/ColorLookupBadge'
@@ -105,6 +106,14 @@ export function PackingNoticeFormPage() {
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const existing = isEdit ? notices.find((n) => n.id === id) : undefined
+  /**
+   * 單價屬「售價」群組（決策142）。看不到的帳號不呈現輸入框（權限規格決策52：沒有權限就不顯示），
+   * 他存檔時資料層也會保留原單價，不會因為他拿到的資料少了這個欄位而被洗掉。
+   */
+  const { canSee } = useCurrentAccount()
+  const showPrice = canSee('售價')
+  // 由 PI 轉來者沿用 PI 幣別；直接建立者視為 NTD（與商品主檔牌價同一幣別）
+  const priceCurrency = existing?.currency ?? 'NTD'
 
   const {
     register,
@@ -161,6 +170,7 @@ export function PackingNoticeFormPage() {
             processingMethod: item.processingMethod ?? '',
             processingMethodNote: item.processingMethodNote ?? '',
             note: item.note,
+            unitPrice: item.unitPrice,
           })),
           allowSplicing: existing.allowSplicing,
           markings: existing.markings,
@@ -219,9 +229,37 @@ export function PackingNoticeFormPage() {
   // 輸入過程中保留使用者原始鍵入的字串，避免換算後的小數位在打字途中被四捨五入回寫
   const [qtyDraft, setQtyDraft] = useState<Record<number, string>>({})
   const [fixedDraft, setFixedDraft] = useState<Record<number, string>>({})
+  /**
+   * 單價輸入草稿（決策142）：比照 PI 的做法（決策134 之一）——
+   * 資料一律以**每碼**存放，以米為單位時畫面顯示每米單價，存回去前換成每碼。
+   * 切換單位時一併清掉，否則輸入框會顯示上一個單位的數字。
+   */
+  const [priceDraft, setPriceDraft] = useState<Record<number, string>>({})
   const resetDrafts = () => {
     setQtyDraft({})
     setFixedDraft({})
+    setPriceDraft({})
+  }
+
+  function displayPrice(index: number): string {
+    const draft = priceDraft[index]
+    if (draft !== undefined) return draft
+    const perYard = itemValues[index]?.unitPrice
+    if (perYard == null) return ''
+    return itemUnit === 'Yard' ? String(perYard) : String(Number(yardPriceToMeterPrice(perYard).toFixed(2)))
+  }
+
+  function changePrice(index: number, raw: string) {
+    setPriceDraft((prev) => ({ ...prev, [index]: raw }))
+    const parsed = Number(raw)
+    // 清空即「未填」，不是 0 元：兩者在表8 的意義不同（0 元是贈品，未填是還沒定價）
+    if (!raw.trim() || !Number.isFinite(parsed)) {
+      setValue(`items.${index}.unitPrice`, undefined, { shouldValidate: true })
+      return
+    }
+    const perYard = itemUnit === 'Yard' ? parsed : meterPriceToYardPrice(parsed)
+    // 小數留到第 4 位：每米單價換回每碼會除不盡，截到 2 位會讓金額對不上
+    setValue(`items.${index}.unitPrice`, Number(perYard.toFixed(4)), { shouldValidate: true })
   }
 
   function displayQty(index: number): string {
@@ -524,6 +562,29 @@ export function PackingNoticeFormPage() {
                       </p>
                     ) : null}
                   </div>
+                  {showPrice && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        單價（{priceCurrency}／{itemUnit === 'Yard' ? '碼' : '米'}）
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder={existing?.sourcePiId ? '' : '非必填'}
+                        value={displayPrice(index)}
+                        onChange={(e) => changePrice(index, e.target.value)}
+                      />
+                      {/* 另一個單位的單價供核對：客戶常以另一個單位問價 */}
+                      {itemValues[index]?.unitPrice != null ? (
+                        <p className="text-xs text-muted-foreground">
+                          {itemUnit === 'Yard'
+                            ? `≈ ${formatNumber(yardPriceToMeterPrice(itemValues[index].unitPrice!), 2)} ／米`
+                            : `≈ ${formatNumber(itemValues[index].unitPrice!, 2)} ／碼`}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <Label className="text-xs">包裝方式</Label>
                     <select

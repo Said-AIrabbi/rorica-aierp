@@ -30,7 +30,7 @@ import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { ColorSwatch } from '@/components/shared/ColorSwatch'
 import { digitalColorFor } from '@/lib/digital-color'
-import { formatNumber, meterToYard } from '@/lib/units'
+import { formatNumber, meterToYard, yardPriceToMeterPrice } from '@/lib/units'
 import { effectiveReservationStatus, isExactMultipleOfStandard } from '@/lib/inventory'
 import {
   colorRatioText,
@@ -154,6 +154,8 @@ export function PackingNoticeDetailPage() {
   const customer = getCustomer(notice.customerId)
   // 建單時的數量輸入基準：畫面以此為主值呈現，另一單位標為換算值；舊資料未記錄者視為 Yard
   const itemUnit = notice.itemUnit ?? 'Yard'
+  // 明細單價的幣別（決策142）：由 PI 轉來者沿用 PI 幣別，直接建立者視為 NTD
+  const priceCurrency = notice.currency ?? 'NTD'
   const relatedPOs = purchaseOrders.filter((p) => p.parentId === notice.id)
   const relatedDyeRequests = dyeRequests.filter((d) => d.parentId === notice.id)
   const relatedDyeOrders = dyeOrders.filter((d) => d.parentId === notice.id)
@@ -380,6 +382,9 @@ export function PackingNoticeDetailPage() {
                   <TableHead>皇加品名</TableHead>
                   <TableHead>顏色</TableHead>
                   <TableHead className="text-right">商品總數 ({itemUnit})</TableHead>
+                  <TableHead className="text-right">
+                    單價 ({priceCurrency}/{itemUnit === 'Yard' ? 'Y' : 'M'})
+                  </TableHead>
                   <TableHead>色號查詢</TableHead>
                   <TableHead>包裝方式</TableHead>
                   <TableHead className="text-right">定碼長度</TableHead>
@@ -419,6 +424,24 @@ export function PackingNoticeDetailPage() {
                           ? `≈ ${formatNumber(item.meter, 1)} 米 (Meter)`
                           : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* 看不到售價的角色拿到的資料裡沒有這個欄位，一律顯示「-」（權限規格決策53） */}
+                      {item.unitPrice == null ? (
+                        '-'
+                      ) : (
+                        <>
+                          <div>
+                            {formatNumber(
+                              itemUnit === 'Yard' ? item.unitPrice : yardPriceToMeterPrice(item.unitPrice),
+                              2,
+                            )}
+                          </div>
+                          {itemUnit === 'Meter' && (
+                            <div className="text-xs text-muted-foreground">≈ {formatNumber(item.unitPrice, 2)} ／碼</div>
+                          )}
+                        </>
+                      )}
                     </TableCell>
                     <TableCell>
                       {/* 表1 階段尚未指定染整廠，故可能是「視染整廠而定」；表2 選定染整廠後才有確定結論 */}

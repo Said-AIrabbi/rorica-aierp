@@ -1181,10 +1181,13 @@ export const proformaInvoices: ProformaInvoice[] = PI_STATUS_PLAN.map((plan, i) 
           fixedLengthMeter: item.fixedLengthMeter,
           colorRatios: item.colorRatios,
           note: item.note,
+          // 單價隨 PI 帶入（決策142），每碼存放
+          unitPrice: item.unitPrice,
           // 逐列對位鍵：改版 PI 覆蓋時要能對回是哪一列（決策42）
           sourcePiItemId: item.id,
         })),
         itemUnit: pi.itemUnit,
+        currency: pi.currency,
         allowSplicing: false,
         markings,
         embossing: ['否'],

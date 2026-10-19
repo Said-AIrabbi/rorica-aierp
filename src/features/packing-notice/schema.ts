@@ -57,6 +57,11 @@ export const packingNoticeItemSchema = z
     processingMethod: z.enum(PROCESSING_METHODS).or(z.literal('')).optional(),
     processingMethodNote: z.string().optional(),
     note: z.string().optional(),
+    /**
+     * 單價（每碼，決策142）：非必填。畫面以 setValue 寫入換算後的數字，不經由 register，
+     * 故不用 coerce——coerce 會把空白輸入變成 0，「沒填」與「單價 0 元」就分不出來了。
+     */
+    unitPrice: z.number().min(0, '單價不可為負數').optional(),
   })
   .refine(
     (item) => !FIXED_ROLL_PACKING_METHODS.includes(item.packingMethod) || (item.fixedLengthMeter ?? 0) > 0,

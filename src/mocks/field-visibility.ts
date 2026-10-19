@@ -52,6 +52,10 @@ const SPECS: Record<string, Spec> = {
   abnormalNotices: {
     own: { 售價: ['refundAmount', 'deductionAmount'], 加工與委外費用: ['claimAmount'] },
   },
+  // 表1 明細單價（決策142）：與 PI 單價、表8 售價同一筆價格，同屬「售價」群
+  packingNotices: {
+    items: [{ key: 'items', map: { 售價: ['unitPrice'] } }],
+  },
   // PI 單價歸「售價」群（權限規格第五章）
   proformaInvoices: {
     items: [{ key: 'items', map: { 售價: ['unitPrice'] } }],
