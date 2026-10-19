@@ -355,12 +355,20 @@ export function PackingNoticeDetailPage() {
           <CardContent>
             <DetailGrid>
               <DetailField label="負責人" value={customer?.personInCharge} />
-              <DetailField label="負責人電話" value={customer?.personInChargePhone} />
+              {/* customer 取自 getCustomer（未經讀取端過濾），電話須自行依客戶聯絡資訊群組判斷 */}
+              <DetailField
+                label="負責人電話"
+                value={permissions.canSee('客戶聯絡資訊') ? customer?.personInChargePhone : undefined}
+              />
               {/* 客戶可有多組聯絡資訊，單據帶出主要聯絡人（第一組） */}
               <DetailField label="連絡人" value={customer?.contacts[0]?.name} />
               <DetailField
                 label="連絡人電話"
-                value={customer?.contacts[0]?.phone || customer?.contacts[0]?.mobile}
+                value={
+                  permissions.canSee('客戶聯絡資訊')
+                    ? customer?.contacts[0]?.phone || customer?.contacts[0]?.mobile
+                    : undefined
+                }
               />
               <DetailField label="付款條件" value={customer?.paymentTerms} />
               <DetailField label="交期預設天數" value={`${customer?.leadTimeDays} 天`} />

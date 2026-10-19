@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { createCustomer, deleteCustomer, masterDefaults, updateCustomer, type CustomerInput } from '@/mocks/mutations'
 import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import { ContactsEditor } from '@/components/shared/ContactsEditor'
@@ -50,6 +51,7 @@ export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { canSee } = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['customers'], queryFn: api.customers })
   // 新增與編輯共用同一份表單：路由 /masters/customers/new 即為新增模式
   const isNew = id === 'new'
@@ -238,6 +240,7 @@ export function CustomerDetailPage() {
           contacts={draft.contacts}
           onChange={(next) => set('contacts', next)}
           hint="同一個客戶可能有多個窗口（採購、倉庫收貨、財務）。"
+          showPrivate={canSee('客戶聯絡資訊')}
         />
 
         <Card>

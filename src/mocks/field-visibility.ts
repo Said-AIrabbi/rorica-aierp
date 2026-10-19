@@ -35,8 +35,9 @@ const SPECS: Record<string, Spec> = {
     items: [{ key: 'items', map: { 加工與委外費用: ['processingUnitPrice', 'unitPrice'] } }],
   },
   // 表5 二次加工單：加工費同上
+  // 表5 建單時從廠商主檔帶入的電話，屬廠商聯絡資訊（聯絡人姓名比照主檔不遮）
   secondaryProcessingOrders: {
-    own: { 加工與委外費用: ['processingFee'] },
+    own: { 加工與委外費用: ['processingFee'], 廠商聯絡資訊: ['vendorPhone'] },
     items: [{ key: 'items', map: { 加工與委外費用: ['processingFee', 'unitPrice'] } }],
   },
   // 表6 入庫單：進價；縮率與損耗屬「生產績效」
@@ -67,7 +68,14 @@ const SPECS: Record<string, Spec> = {
   // 客戶主檔的聯絡資訊（含 TAX ID 與銀行帳戶）
   customers: {
     own: { 客戶聯絡資訊: ['taxId', 'bankAccount', 'personInChargePhone', 'companyFax'] },
-    items: [{ key: 'contacts', map: { 客戶聯絡資訊: ['email', 'phone', 'mobile', 'address', 'bankAccount'] } }],
+    // 聯絡資訊逐組的欄位名是 shippingAddress（收貨地址）；早先誤寫成 address，收貨地址因此沒被遮
+    items: [{ key: 'contacts', map: { 客戶聯絡資訊: ['email', 'phone', 'mobile', 'shippingAddress', 'bankAccount'] } }],
+  },
+  // 廠商主檔的聯絡資訊（決策151 改為與客戶相同後，比照客戶遮蔽；權限規格決策58）。
+  // 公司地址不遮——表4「受託加工廠資訊」與表5 都要帶，比照客戶主檔的公司地址
+  vendors: {
+    own: { 廠商聯絡資訊: ['taxId'] },
+    items: [{ key: 'contacts', map: { 廠商聯絡資訊: ['email', 'phone', 'mobile', 'shippingAddress', 'bankAccount'] } }],
   },
 }
 

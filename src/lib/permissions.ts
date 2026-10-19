@@ -15,7 +15,7 @@ export const ACCOUNT_ROLES: AccountRole[] = ['業務', '生管', '倉管', '財�
  * 本檔的各張表是「出廠預設值」（權限規格重要前提），正式系統由管理員於介面上維護。
  */
 
-// ---------- 欄位群組（權限規格第五章，決策35：5 群擴充為 7 群） ----------
+// ---------- 欄位群組（權限規格第五章，決策35：5 群擴充為 7 群；決策58 增「廠商聯絡資訊」為 8 群） ----------
 
 export const FIELD_GROUPS = [
   '訂單基本資訊',
@@ -24,11 +24,12 @@ export const FIELD_GROUPS = [
   '加工與委外費用',
   '生產績效',
   '客戶聯絡資訊',
+  '廠商聯絡資訊',
   '帳號管理',
 ] as const
 export type FieldGroup = (typeof FIELD_GROUPS)[number]
 
-/** 各群組涵蓋的欄位（權限規格第五章「七個群組的內容」），供畫面上說明用 */
+/** 各群組涵蓋的欄位（權限規格第五章各群組的內容），供畫面上說明用 */
 export const FIELD_GROUP_CONTENT: Record<FieldGroup, string> = {
   訂單基本資訊: '客戶、皇加品名、顏色、數量、交期、包裝設定、嘜頭、捲號與條碼、實際入庫數量對照等單據主體欄位',
   售價: '對客戶的價格與金額：表8 售價與金額、商品主檔售價、表9 對客戶的退款與扣款金額、PI 單價、表1 明細單價',
@@ -36,6 +37,7 @@ export const FIELD_GROUP_CONTENT: Record<FieldGroup, string> = {
   加工與委外費用: '表4 染單的加工單價、表5 二次加工單的加工費、表9 向染整廠追討的索賠金額',
   生產績效: '表6 縮率與損耗、大貨樣退回次數等反映加工廠表現的數字',
   客戶聯絡資訊: '聯絡人、電話、地址、收貨地址、TAX ID、銀行帳戶',
+  廠商聯絡資訊: '廠商主檔各窗口的 E-MAIL、電話、手機、收貨地址、銀行帳戶與統一編號，及表5 帶入的廠商電話',
   帳號管理: '帳號的新增／停用、角色指派、權限設定與個別排除',
 }
 
@@ -43,6 +45,8 @@ export const FIELD_GROUP_CONTENT: Record<FieldGroup, string> = {
  * 角色 × 欄位群組的可見性（權限規格第五章）。
  * 三格標「待覆核」者為業務判斷，仍待皇加確認（權限規格第九章第 1 項）：
  * 業務的「加工與委外費用」「生產績效」、倉管的「生產績效」。
+ *
+ * 廠商聯絡資訊（決策58）：生管天天跟加工廠聯絡、財務要對帳付款，與管理層、管理員可見；業務與倉管不可見。
  */
 const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, boolean>> = {
   業務: {
@@ -52,6 +56,7 @@ const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, bool
     加工與委外費用: false,
     生產績效: false,
     客戶聯絡資訊: true,
+    廠商聯絡資訊: false,
     帳號管理: false,
   },
   生管: {
@@ -61,6 +66,7 @@ const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, bool
     加工與委外費用: true,
     生產績效: true,
     客戶聯絡資訊: false,
+    廠商聯絡資訊: true,
     帳號管理: false,
   },
   倉管: {
@@ -70,6 +76,7 @@ const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, bool
     加工與委外費用: false,
     生產績效: true,
     客戶聯絡資訊: false,
+    廠商聯絡資訊: false,
     帳號管理: false,
   },
   財務: {
@@ -79,6 +86,7 @@ const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, bool
     加工與委外費用: true,
     生產績效: true,
     客戶聯絡資訊: true,
+    廠商聯絡資訊: true,
     帳號管理: false,
   },
   管理層: {
@@ -88,6 +96,7 @@ const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, bool
     加工與委外費用: true,
     生產績效: true,
     客戶聯絡資訊: true,
+    廠商聯絡資訊: true,
     帳號管理: false,
   },
   管理員: {
@@ -97,6 +106,7 @@ const DEFAULT_ROLE_FIELD_VISIBILITY: Record<AccountRole, Record<FieldGroup, bool
     加工與委外費用: true,
     生產績效: true,
     客戶聯絡資訊: true,
+    廠商聯絡資訊: true,
     帳號管理: true,
   },
 }

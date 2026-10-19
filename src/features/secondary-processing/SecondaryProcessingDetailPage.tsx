@@ -255,13 +255,16 @@ export function SecondaryProcessingDetailPage() {
                     onChange={(e) => setVendorDraft((prev) => ({ ...prev, vendorContactPerson: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">廠商電話</Label>
-                  <Input
-                    value={vendorDraft.vendorPhone ?? ''}
-                    onChange={(e) => setVendorDraft((prev) => ({ ...prev, vendorPhone: e.target.value }))}
-                  />
-                </div>
+                {/* 廠商電話屬廠商聯絡資訊（決策58）：看不到的人不顯示，存檔時由資料層沿用原值或從主檔帶入 */}
+                {permissions.canSee('廠商聯絡資訊') && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">廠商電話</Label>
+                    <Input
+                      value={vendorDraft.vendorPhone ?? ''}
+                      onChange={(e) => setVendorDraft((prev) => ({ ...prev, vendorPhone: e.target.value }))}
+                    />
+                  </div>
+                )}
                 <div className="space-y-1 sm:col-span-2">
                   <Label className="text-xs">廠商地址</Label>
                   <Input

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/mocks/api'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { createVendor, deleteVendor, masterDefaults, updateVendor, type VendorInput } from '@/mocks/mutations'
 import { DeleteMasterButton } from '@/components/shared/DeleteMasterButton'
 import { ContactsEditor } from '@/components/shared/ContactsEditor'
@@ -44,6 +45,8 @@ export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { canSee } = useCurrentAccount()
+  const showPrivate = canSee('廠商聯絡資訊')
   const { data = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   // 新增與編輯共用同一份表單：路由 /masters/vendors/new 即為新增模式
   const isNew = id === 'new'
@@ -173,7 +176,16 @@ export function VendorDetailPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">統一編號</Label>
-              <Input value={draft.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="廠商自己的統編" />
+              {/* 統一編號屬廠商聯絡資訊（決策58）：看不到的人編輯既有廠商時不給輸入框，存檔沿用原值；新增時仍須填寫 */}
+              {showPrivate || isNew ? (
+                <Input
+                  value={draft.taxId ?? ''}
+                  onChange={(e) => set('taxId', e.target.value)}
+                  placeholder="廠商自己的統編"
+                />
+              ) : (
+                <Input value="-" disabled />
+              )}
             </div>
 
             <div className="space-y-1">
@@ -196,6 +208,7 @@ export function VendorDetailPage() {
           contacts={draft.contacts}
           onChange={(next) => set('contacts', next)}
           hint="同一個廠商可能有多個窗口（業務、生產、財務）。"
+          showPrivate={showPrivate}
         />
       </div>
     </div>

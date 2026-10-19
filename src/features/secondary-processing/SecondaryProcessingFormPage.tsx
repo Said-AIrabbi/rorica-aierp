@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
+import { useCurrentAccount } from '@/lib/current-account-context'
 import { createSecondaryProcessingOrder } from '@/mocks/mutations'
 import { primaryContactName, primaryContactPhone } from '@/mocks/data'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
@@ -24,6 +25,7 @@ export function SecondaryProcessingFormPage() {
 
   const { data: notices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
+  const { canSee } = useCurrentAccount()
 
   const [parentId, setParentId] = useState(searchParams.get('parentId') ?? '')
   const [vendorId, setVendorId] = useState('')
@@ -134,10 +136,13 @@ export function SecondaryProcessingFormPage() {
               <Label className="text-xs">廠商聯絡人</Label>
               <Input value={vendorContactPerson} onChange={(e) => setVendorContactPerson(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">廠商電話</Label>
-              <Input value={vendorPhone} onChange={(e) => setVendorPhone(e.target.value)} />
-            </div>
+            {/* 廠商電話屬廠商聯絡資訊（決策58）：看不到的人不顯示，建單時由資料層從主檔帶入 */}
+            {canSee('廠商聯絡資訊') && (
+              <div className="space-y-1">
+                <Label className="text-xs">廠商電話</Label>
+                <Input value={vendorPhone} onChange={(e) => setVendorPhone(e.target.value)} />
+              </div>
+            )}
             <div className="space-y-1 sm:col-span-2">
               <Label className="text-xs">廠商地址</Label>
               <Input value={vendorAddress} onChange={(e) => setVendorAddress(e.target.value)} />

@@ -86,6 +86,7 @@ import {
   proformaInvoices,
   purchaseOrders,
   resolveProduct,
+  primaryContactPhone,
   secondaryProcessingOrders,
   shippingOrders,
   splicingSuggestions,
@@ -2852,7 +2853,7 @@ export function createSecondaryProcessingOrder(input: SecondaryProcessingInput):
     dueDate: input.dueDate,
     vendorId: input.vendorId,
     vendorContactPerson: input.vendorContactPerson,
-    vendorPhone: input.vendorPhone,
+    vendorPhone: vendorPhoneFor(input.vendorId, input.vendorPhone),
     vendorAddress: input.vendorAddress,
     internalContact: input.internalContact,
     note: input.note,
@@ -2968,7 +2969,12 @@ export function updateCustomer(id: string, input: CustomerInput): Promise<Custom
   assertCustomerContacts(input.contacts)
 
   // 只留下有填聯絡人姓名的組別：畫面允許先開一列空白再填，未填者不寫入主檔
-  const updated: Customer = { ...customers[idx], ...input, contacts: input.contacts.filter((c) => c.name.trim()) }
+  const contacts = keepHiddenContactFields(
+    input.contacts.filter((c) => c.name.trim()),
+    customers[idx].contacts,
+    '客戶聯絡資訊',
+  )
+  const updated: Customer = { ...customers[idx], ...input, contacts }
   customers[idx] = updated
   return delay(updated)
 }
@@ -2985,13 +2991,20 @@ export function updateVendor(id: string, input: VendorInput): Promise<Vendor> {
   if (!input.code.trim()) throw new Error('廠商代碼為必填')
   if (!input.name.trim()) throw new Error('廠名為必填')
   if (input.types.length === 0) throw new Error('請至少選擇一種廠商類型')
-  if (!input.taxId.trim()) throw new Error('統一編號為必填')
+  // 統一編號屬廠商聯絡資訊（決策58）：看不到的人送回來的資料沒有這欄，沿用原值而非當成沒填
+  const taxId = input.taxId ?? (canSeeFieldGroup(getCurrentAccount(), '廠商聯絡資訊') ? '' : vendors[idx].taxId)
+  if (!taxId.trim()) throw new Error('統一編號為必填')
   assertCustomerContacts(input.contacts)
   if (vendors.some((v) => v.id !== id && v.code.trim() === input.code.trim())) {
     throw new Error(`廠商代碼「${input.code}」已被其他廠商使用`)
   }
 
-  const updated: Vendor = { ...vendors[idx], ...input, contacts: input.contacts.filter((c) => c.name.trim()) }
+  const contacts = keepHiddenContactFields(
+    input.contacts.filter((c) => c.name.trim()),
+    vendors[idx].contacts,
+    '廠商聯絡資訊',
+  )
+  const updated: Vendor = { ...vendors[idx], ...input, taxId, contacts }
   vendors[idx] = updated
   return delay(updated)
 }
@@ -3007,6 +3020,18 @@ export interface SecondaryProcessingVendorInput {
 }
 
 /**
+ * 表5 的廠商電話（決策58）：屬「廠商聯絡資訊」。看得到的人照填寫的存；
+ * 看不到的人畫面上沒有這欄，送回來是空的——同一家廠商沿用本單原值，換了廠商就由主檔帶主要聯絡人的電話，
+ * 否則看不到的人一存檔就把電話清掉了。
+ */
+function vendorPhoneFor(vendorId: string, typed: string | undefined, kept?: string): string | undefined {
+  if (canSeeFieldGroup(getCurrentAccount(), '廠商聯絡資訊')) return typed
+  if (typed?.trim()) return typed
+  if (kept) return kept
+  return primaryContactPhone(vendors.find((v) => v.id === vendorId)) || undefined
+}
+
+/**
  * 廠商資訊：僅草稿狀態可調整。
  * 染整完成時自動建立的二次加工單草稿沒有加工廠，須由生管於此補齊後才能發包。
  */
@@ -3018,7 +3043,16 @@ export function updateSecondaryProcessingVendor(
   const idx = secondaryProcessingOrders.findIndex((o) => o.id === id)
   if (idx === -1) throw new Error(`二次加工單 ${id} 不存在`)
   if (secondaryProcessingOrders[idx].status !== '草稿') throw new Error('僅草稿狀態可調整廠商資訊')
-  const updated: SecondaryProcessingOrder = { ...secondaryProcessingOrders[idx], ...input }
+  const current = secondaryProcessingOrders[idx]
+  const updated: SecondaryProcessingOrder = {
+    ...current,
+    ...input,
+    vendorPhone: vendorPhoneFor(
+      input.vendorId,
+      input.vendorPhone,
+      input.vendorId === current.vendorId ? current.vendorPhone : undefined,
+    ),
+  }
   secondaryProcessingOrders[idx] = updated
   return delay(updated)
 }
@@ -3472,6 +3506,35 @@ function assertNotReferenced(label: string, refs: { where: string; ids: string[]
   }
 }
 
+/** 聯絡資訊中受可見性遮蔽的欄位（field-visibility.ts 客戶與廠商兩處相同） */
+const PRIVATE_CONTACT_FIELDS = ['email', 'phone', 'mobile', 'shippingAddress', 'bankAccount'] as const
+
+/**
+ * 看不到聯絡資訊的帳號存檔時，把被遮掉的欄位從原資料補回去。
+ *
+ * 讀取端已把這些欄位拿掉，畫面送回來的聯絡資訊陣列裡就沒有它們；
+ * 直接整個陣列覆寫，等於替看不到的人把電話、銀行帳戶全部清空。
+ * 以姓名對回原本那一組（同名者依序配對），新加的組別對不到就不補。
+ */
+function keepHiddenContactFields(
+  next: CustomerContact[],
+  original: CustomerContact[],
+  group: FieldGroup,
+): CustomerContact[] {
+  if (canSeeFieldGroup(getCurrentAccount(), group)) return next
+  const used = new Set<number>()
+  return next.map((contact) => {
+    const idx = original.findIndex((o, i) => !used.has(i) && o.name.trim() === contact.name.trim())
+    if (idx === -1) return contact
+    used.add(idx)
+    const restored = { ...contact }
+    for (const field of PRIVATE_CONTACT_FIELDS) {
+      if (!restored[field] && original[idx][field]) restored[field] = original[idx][field]
+    }
+    return restored
+  })
+}
+
 /** 聯絡資訊：至少要有一組且填了聯絡人姓名，其餘組別與欄位皆非必填。客戶與廠商主檔共用（決策151） */
 function assertCustomerContacts(contacts: CustomerContact[]): void {
   const filled = contacts.filter((c) => c.name.trim())
@@ -3514,7 +3577,7 @@ export function createVendor(input: VendorInput): Promise<Vendor> {
   if (!input.code.trim()) throw new Error('廠商代碼為必填')
   if (!input.name.trim()) throw new Error('廠名為必填')
   if (input.types.length === 0) throw new Error('請至少選擇一種廠商類型')
-  if (!input.taxId.trim()) throw new Error('統一編號為必填')
+  if (!input.taxId?.trim()) throw new Error('統一編號為必填')
   assertCustomerContacts(input.contacts)
   if (vendors.some((v) => v.code.trim() === input.code.trim())) {
     throw new Error(`廠商代碼「${input.code}」已被其他廠商使用`)
