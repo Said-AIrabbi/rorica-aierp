@@ -88,8 +88,9 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
   // 建單時的數量輸入基準；舊資料未記錄者視為 Yard
   const itemUnit = notice.itemUnit ?? 'Yard'
   const meta: PrintMetaItem[] = [
-    { label: '客戶代號', value: customer?.code ?? notice.customerId },
-    { label: '客戶簡稱', value: customer?.shortName ?? ' ' },
+    // 表1 一律以客戶主檔的「客戶代碼」識別客戶，不印客戶簡稱（決策146）。
+    // 原本「客戶代號」與「客戶簡稱」各佔一欄；簡稱改成代碼後兩欄會重複，故併為一欄，名稱與主檔一致
+    { label: '客戶代碼', value: customer?.code ?? notice.customerId },
     { label: '訂單號碼（主號）', value: notice.id },
     { label: '客戶訂單號', value: notice.customerOrderNo },
     { label: '建立日期', value: formatDate(notice.createdAt) },
@@ -148,7 +149,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
                 </td>
               </tr>
               {/*
-                不印客戶簡稱：表頭已經印過，嘜頭有幾組就重複幾次只是佔版面。
+                不印客戶識別：表頭已經印過客戶代碼，嘜頭有幾組就重複幾次只是佔版面。
                 拿掉後運送目的地獨佔一列——目的地常是一整串地址或港口名，正好需要這個寬度
               */}
               <tr>

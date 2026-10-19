@@ -326,7 +326,7 @@ export function PackingNoticeDetailPage() {
           </CardHeader>
           <CardContent>
             <DetailGrid>
-              <DetailField label="客戶簡稱" value={customer?.shortName} />
+              <DetailField label="客戶代碼" value={customer?.code} />
               <DetailField label="客戶訂單號" value={notice.customerOrderNo} />
               <DetailField label="建立日" value={formatDate(notice.createdAt)} />
               <DetailField label="生效日" value={formatDate(notice.effectiveAt)} />
@@ -541,7 +541,7 @@ export function PackingNoticeDetailPage() {
                 <div className="flex-1">
               <DetailGrid>
                 <DetailField label="嘜頭形狀" value={marking.shape} />
-                <DetailField label="客戶簡稱" value={customer?.shortName} />
+                <DetailField label="客戶代碼" value={customer?.code} />
                 <DetailField label="抬頭文字" value={marking.headerText || '-'} />
                 <DetailField label="運送目的地" value={marking.destination || '-'} />
                 <DetailField label="毛重" value={marking.grossWeightKg ? `${marking.grossWeightKg} Kg` : '-'} />
