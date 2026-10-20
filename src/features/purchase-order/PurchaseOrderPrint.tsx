@@ -31,9 +31,10 @@ const buildColumns = (isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
   {
     header: '皇加品名',
     cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
-    width: isGreige ? '158mm' : '76mm',
+    width: isGreige ? '158mm' : '52mm',
   },
-  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '18mm' }]),
+  // 顏色欄由 18mm 加寬為 42mm（2026/10/20）：實際色名常帶色號與說明，品名多為短代號，寬度從品名撥過來
+  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '42mm' }]),
   { header: '數量 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '22mm' },
   ...(isGreige
     ? []
