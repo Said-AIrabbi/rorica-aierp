@@ -32,6 +32,7 @@ export function DyeRequestPrint({ request }: { request: DyeRequest }) {
       formCode={PRINT_TITLES.dyeRequest.formCode}
       title={PRINT_TITLES.dyeRequest.title}
       docNo={request.id}
+      hideHeadDocNo
       date={request.requestDate}
       meta={meta}
       signatures={VENDOR_SIGNATURE_LABELS}

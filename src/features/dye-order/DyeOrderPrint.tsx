@@ -66,6 +66,7 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
       formCode={PRINT_TITLES.dyeOrder.formCode}
       title={PRINT_TITLES.dyeOrder.title}
       docNo={order.id}
+      hideHeadDocNo
       date={order.effectiveAt ?? order.dueDate}
       meta={meta}
       signatures={VENDOR_SIGNATURE_LABELS}

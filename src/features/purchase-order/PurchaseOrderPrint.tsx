@@ -108,6 +108,7 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
       formCode={PRINT_TITLES.purchaseOrder.formCode}
       title={PRINT_TITLES.purchaseOrder.title}
       docNo={order.id}
+      hideHeadDocNo
       date={order.createdAt}
       meta={meta}
       signatures={VENDOR_SIGNATURE_LABELS}

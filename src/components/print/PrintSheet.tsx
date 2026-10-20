@@ -19,8 +19,13 @@ interface PrintSheetProps {
   formCode: string
   title: string
   docNo: string
-  /** 單據日期（列於單號下方） */
+  /** 單據日期（列於單號下方；不印單號時直接接在單據名稱下方） */
   date?: string
+  /**
+   * 不在單據名稱下方印單號（決策154，表2～表4）：這三張的表頭資訊格第一格就是單號，
+   * 頁尾也有，名稱下方再印一次是重複。省略時照舊印出。
+   */
+  hideHeadDocNo?: boolean
   meta?: PrintMetaItem[]
   children?: ReactNode
   /** 底部簽名欄標題；省略則不印簽名區 */
@@ -36,6 +41,7 @@ export function PrintSheet({
   title,
   docNo,
   date,
+  hideHeadDocNo = false,
   meta,
   children,
   signatures,
@@ -61,7 +67,7 @@ export function PrintSheet({
         <div className="pr-head-right">
           <div className="pr-head-form-code">{formCode}</div>
           <div className="pr-head-title">{title}</div>
-          <div className="pr-head-docno">{docNo}</div>
+          {!hideHeadDocNo && <div className="pr-head-docno">{docNo}</div>}
           {date && <div className="pr-head-contact">日期：{formatDate(date)}</div>}
         </div>
       </header>
