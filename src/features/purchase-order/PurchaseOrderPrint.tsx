@@ -1,10 +1,8 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
 import { PRINT_TITLES, VENDOR_SIGNATURE_LABELS } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
-import { formatNumber, sumLineAmounts } from '@/lib/units'
-import { getPackingNotice, getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
-import { basisQtyColumns } from '@/components/print/basisColumns'
-import type { QtyBasis } from '@/components/shared/BasisQty'
+import { formatNumber } from '@/lib/units'
+import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import type { PurchaseOrder, PurchaseOrderItem } from '@/types'
 import { colorRatioText } from '@/lib/workflow'
 
@@ -15,32 +13,28 @@ import { colorRatioText } from '@/lib/workflow'
  * - **客戶品名、加工方法不印**：客戶品名是皇加對客戶的稱呼，加工方法屬表5 二次加工的範疇，與供應商無關
  * - **胚布單另外不印顏色與包裝方式**：胚布是未染的坯布，顏色由後續染整決定；包裝方式屬成品交付規格
  *
- * 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈，對外單據才看得出賣方要交的是幾碼還是幾米。
+ * - **數量一律以碼（Y）印一欄，不印換算的米數；也不印金額**（決策156）：
+ *   供應商以碼計價交貨，客戶以米下單（PI／表1 的建單基準為 M）者同樣只印換算後的碼數。
+ *   兩個單位並列反而讓賣方猶豫該照哪一欄交；金額則由單價與數量自明，採購總額屬皇加內部的對帳資訊
  */
 /*
  * 欄寬以實測內容分配（2026/10/05），合計 190mm；決策155 起可用寬度為 196mm，多出的 6mm 按比例分給各欄。
+ * 決策156 拿掉「≈ (M)」與「金額」兩欄後，空出的寬度分給品名與包裝方式（成品單）、全歸品名（胚布單）。
  * 成品單與胚布單的欄位數不同（胚布不印顏色、包裝方式與彩條，決策92），
  * 故品名欄的寬度分開給：胚布單少了三欄，那些寬度全歸品名。
  *
  * 彩條移到同一項次的第二行（見 ratioSubRow）——實測單欄內容需 114mm，
  * 留在表內其他欄位會被壓到每格都換行。
  */
-const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
+const buildColumns = (isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
   {
     header: '皇加品名',
     cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
-    width: isGreige ? '104mm' : '40mm',
+    width: isGreige ? '140mm' : '58mm',
   },
   ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '18mm' }]),
-  ...basisQtyColumns<PurchaseOrderItem>({
-    unit,
-    label: '數量',
-    yard: (r) => r.yard,
-    meter: (r) => r.meter,
-    width: '22mm',
-    convertedWidth: '18mm',
-  }),
+  { header: '數量 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '22mm' },
   ...(isGreige
     ? []
     : [
@@ -52,16 +46,11 @@ const buildColumns = (unit: QtyBasis, isGreige: boolean): PrintColumn<PurchaseOr
               {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
             </>
           ),
-          width: '44mm',
+          width: '64mm',
         },
       ]),
+  // 單價本來就以碼計（每碼），與數量欄同一個單位
   { header: '單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '18mm' },
-  {
-    header: '金額',
-    cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice * r.yard, 0)),
-    align: 'right',
-    width: isGreige ? '18mm' : '20mm',
-  },
 ]
 
 /**
@@ -81,13 +70,10 @@ const ratioSubRow = (isGreige: boolean) => (item: PurchaseOrderItem) => {
 export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
   const vendor = getVendor(order.vendorId)
   const dyeVendor = order.dyeVendorId ? getVendor(order.dyeVendorId) : undefined
-  // 看不到單價的角色印出來是「-」，不是 0（決策16、29）
-  const amount = sumLineAmounts(order.items, (i) => i.unitPrice, (i) => i.yard)
-  const itemUnit: QtyBasis = getPackingNotice(order.parentId)?.itemUnit ?? 'Yard'
   // 胚布單：顏色未定、包裝屬成品規格，兩欄都不印
   // 胚布單的欄位與欄寬都不同（不印顏色、包裝方式與彩條，決策92）
   const isGreige = order.type === '胚布'
-  const columns = buildColumns(itemUnit, isGreige)
+  const columns = buildColumns(isGreige)
   const qtyIndex = columns.findIndex((c) => String(c.header).startsWith('數量'))
 
   const meta: PrintMetaItem[] = [
@@ -114,21 +100,15 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
       signatures={VENDOR_SIGNATURE_LABELS}
       footNote="本訂購單請於 2 日內簽名回傳；逾期未回傳者視同確認，不影響後續流程。"
     >
-      <PrintSection title="訂購明細" note="明細逐列對應包裝通知單；數量以客戶下單基準為主值，另一單位為換算值。">
+      <PrintSection title="訂購明細" note="明細逐列對應包裝通知單；數量與單價一律以碼（Y）計，客戶以米下單者已換算為碼。">
         <PrintTable
           columns={columns}
           rows={order.items}
           subRow={ratioSubRow(isGreige)}
           /* 合計列以欄位位置推算，不寫死 null 的個數——欄位會依單據類型增減，寫死一定會錯位 */
-          totalRow={columns.map((col, i) => {
+          totalRow={columns.map((_col, i) => {
             if (i === 0) return '合計'
-            if (i === qtyIndex) {
-              return formatNumber(order.items.reduce((s, item) => s + (itemUnit === 'Yard' ? item.yard : item.meter), 0), 1)
-            }
-            if (i === qtyIndex + 1) {
-              return formatNumber(order.items.reduce((s, item) => s + (itemUnit === 'Yard' ? item.meter : item.yard), 0), 1)
-            }
-            if (col.header === '金額') return amount ? formatNumber(amount, 0) : null
+            if (i === qtyIndex) return formatNumber(order.items.reduce((s, item) => s + item.yard, 0), 1)
             return null
           })}
         />
