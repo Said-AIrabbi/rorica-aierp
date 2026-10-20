@@ -13,13 +13,13 @@ import { colorRatioText } from '@/lib/workflow'
  * - **客戶品名、加工方法不印**：客戶品名是皇加對客戶的稱呼，加工方法屬表5 二次加工的範疇，與供應商無關
  * - **胚布單另外不印顏色與包裝方式**：胚布是未染的坯布，顏色由後續染整決定；包裝方式屬成品交付規格
  *
- * - **數量一律以碼（Y）印一欄，不印換算的米數；也不印金額**（決策156）：
- *   供應商以碼計價交貨，客戶以米下單（PI／表1 的建單基準為 M）者同樣只印換算後的碼數。
- *   兩個單位並列反而讓賣方猶豫該照哪一欄交；金額則由單價與數量自明，採購總額屬皇加內部的對帳資訊
+ * - **數量一律以碼（Y）印一欄，不印換算的米數；單價與金額都不印**（決策156）：
+ *   供應商以碼交貨，客戶以米下單（PI／表1 的建單基準為 M）者同樣只印換算後的碼數，
+ *   兩個單位並列反而讓賣方猶豫該照哪一欄交。單價與金額皇加指定不印在交給賣方的紙本上
  */
 /*
  * 欄寬以實測內容分配（2026/10/05），合計 190mm；決策155 起可用寬度為 196mm，多出的 6mm 按比例分給各欄。
- * 決策156 拿掉「≈ (M)」與「金額」兩欄後，空出的寬度分給品名與包裝方式（成品單）、全歸品名（胚布單）。
+ * 決策156 拿掉「≈ (M)」「單價」「金額」三欄後，空出的寬度分給品名與包裝方式（成品單）、全歸品名（胚布單）。
  * 成品單與胚布單的欄位數不同（胚布不印顏色、包裝方式與彩條，決策92），
  * 故品名欄的寬度分開給：胚布單少了三欄，那些寬度全歸品名。
  *
@@ -31,7 +31,7 @@ const buildColumns = (isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
   {
     header: '皇加品名',
     cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
-    width: isGreige ? '140mm' : '58mm',
+    width: isGreige ? '158mm' : '76mm',
   },
   ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '18mm' }]),
   { header: '數量 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '22mm' },
@@ -49,8 +49,6 @@ const buildColumns = (isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
           width: '64mm',
         },
       ]),
-  // 單價本來就以碼計（每碼），與數量欄同一個單位
-  { header: '單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '18mm' },
 ]
 
 /**
@@ -100,7 +98,7 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
       signatures={VENDOR_SIGNATURE_LABELS}
       footNote="本訂購單請於 2 日內簽名回傳；逾期未回傳者視同確認，不影響後續流程。"
     >
-      <PrintSection title="訂購明細" note="明細逐列對應包裝通知單；數量與單價一律以碼（Y）計，客戶以米下單者已換算為碼。">
+      <PrintSection title="訂購明細" note="明細逐列對應包裝通知單；數量一律以碼（Y）計，客戶以米下單者已換算為碼。">
         <PrintTable
           columns={columns}
           rows={order.items}
