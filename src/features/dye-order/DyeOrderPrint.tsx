@@ -12,7 +12,7 @@ import { colorRatioText } from '@/lib/workflow'
  *
  * **成分亦於 2026/10/05 一併移入第二行**：實測最長 56mm（如
  * 「57% NYLON/39% METALLIC/4% SPANDEX」），留在表內九欄的內容總寬 215mm，
- * 超出 A4 直式可用的 190mm，每一格都會換行。欄寬其餘各欄依實測內容分配，合計 190mm。
+ * 超出 A4 直式可用的 196mm（決策155 前為 190mm），每一格都會換行。欄寬其餘各欄依實測內容分配，合計 190mm，多出部分按比例分給各欄。
  */
 const columns: PrintColumn<DyeOrderItem>[] = [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },

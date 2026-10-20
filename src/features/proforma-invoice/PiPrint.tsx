@@ -43,7 +43,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
 
   /*
  * 欄寬以實測內容分配（2026/10/05）：逐欄量出種子資料裡最長的內容需要幾毫米，
- * 再把剩餘寬度分給可能變長的文字欄，合計 190mm＝A4 直式可用寬度（210 − 左右各 10mm）。
+ * 再把剩餘寬度分給可能變長的文字欄，合計 190mm；決策155 起可用寬度為 196mm（210 − 左右各 7mm），表格寬 100%，多出的 6mm 由瀏覽器按比例分給各欄。
  */
   const columns: PrintColumn<ProformaInvoiceItem>[] = [
     { header: 'PO NO.', cell: (row) => row.poNo, width: '21mm' },

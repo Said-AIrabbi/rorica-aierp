@@ -5,9 +5,10 @@
    ========================================================================== */
 
 /* A4 直式為所有紙本單據（表1～表6、表8）的預設紙張 */
+/* 邊界由 12mm／10mm 收為 8mm／7mm（決策155）：字級加大後要有地方放，可用範圍改為 196×281mm */
 @page {
   size: A4 portrait;
-  margin: 12mm 10mm;
+  margin: 8mm 7mm;
 }
 
 /*
@@ -89,17 +90,20 @@
   }
 }
 
-/* ---------- 紙張 ---------- */
+/* ---------- 紙張 ----------
+   字級（決策155，2026/10/20）：A4 單據的所有字級一律比原本大 2pt（內文 10→12pt、明細 9→11pt…），
+   原本一頁印得完的單據不得因此變成兩頁——為此收緊了部分留白，見各處註記。
+   表7 標籤、嘜頭／小嘜頭（紙張尺寸固定、字級依格子大小計算）與 PI 內的嘜頭縮圖不在此列。 */
 
 .pr-sheet {
   box-sizing: border-box;
-  width: 190mm;
+  width: 196mm;
   margin: 0 auto;
   color: #000;
   background: #fff;
   font-family: var(--font-sans);
-  font-size: 10pt;
-  line-height: 1.45;
+  font-size: 12pt;
+  line-height: 1.25;
 }
 
 .pr-sheet + .pr-sheet {
@@ -107,7 +111,7 @@
 }
 
 .pr-preview .pr-sheet {
-  padding: 12mm 10mm;
+  padding: 8mm 7mm;
   width: 210mm;
   min-height: 297mm;
   box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
@@ -147,23 +151,23 @@
   justify-content: space-between;
   gap: 12mm;
   border-bottom: 1.5pt solid #000;
-  padding-bottom: 2mm;
+  padding-bottom: 1.5mm;
 }
 
 .pr-head-company {
-  font-size: 13pt;
+  font-size: 15pt;
   font-weight: 700;
   letter-spacing: 0.5pt;
 }
 
 .pr-head-company-en {
-  font-size: 7.5pt;
+  font-size: 9.5pt;
   letter-spacing: 0.5pt;
 }
 
 .pr-head-contact {
   margin-top: 1mm;
-  font-size: 7.5pt;
+  font-size: 9.5pt;
   color: #333;
 }
 
@@ -173,20 +177,20 @@
 }
 
 .pr-head-title {
-  font-size: 16pt;
+  font-size: 18pt;
   font-weight: 700;
   letter-spacing: 3pt;
 }
 
 .pr-head-form-code {
-  font-size: 8pt;
+  font-size: 10pt;
   letter-spacing: 1pt;
 }
 
 .pr-head-docno {
   margin-top: 1mm;
   font-family: ui-monospace, "Menlo", monospace;
-  font-size: 10pt;
+  font-size: 12pt;
   font-weight: 600;
 }
 
@@ -197,14 +201,13 @@
   grid-template-columns: repeat(4, 1fr);
   border-left: 0.5pt solid #000;
   border-top: 0.5pt solid #000;
-  margin-top: 3mm;
+  margin-top: 2mm;
 }
 
 .pr-meta-cell {
   border-right: 0.5pt solid #000;
   border-bottom: 0.5pt solid #000;
-  padding: 1.2mm 2mm;
-  min-height: 8mm;
+  padding: 0.8mm 1.5mm;
 }
 
 .pr-meta-cell.pr-span-2 {
@@ -216,32 +219,32 @@
 }
 
 .pr-meta-label {
-  font-size: 7.5pt;
+  font-size: 9.5pt;
   color: #444;
 }
 
 .pr-meta-value {
-  font-size: 10pt;
-  min-height: 4.5mm;
+  font-size: 12pt;
+  min-height: 5mm;
 }
 
 /* ---------- 區塊 ---------- */
 
 .pr-section {
-  margin-top: 4mm;
+  margin-top: 3mm;
   break-inside: avoid;
 }
 
 .pr-section-title {
-  font-size: 10pt;
+  font-size: 12pt;
   font-weight: 700;
   border-left: 2.5pt solid #000;
   padding-left: 2mm;
-  margin-bottom: 1.5mm;
+  margin-bottom: 1mm;
 }
 
 .pr-section-note {
-  font-size: 7.5pt;
+  font-size: 9.5pt;
   color: #444;
   margin-top: 1mm;
 }
@@ -251,13 +254,13 @@
 .pr-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9pt;
+  font-size: 11pt;
 }
 
 .pr-table th,
 .pr-table td {
   border: 0.5pt solid #000;
-  padding: 1.2mm 1.5mm;
+  padding: 0.7mm 1.2mm;
   vertical-align: top;
 }
 
@@ -309,14 +312,14 @@
   gap: 3mm;
   border-bottom: 0.5pt solid #000;
   padding: 1.2mm 2mm;
-  font-size: 9pt;
+  font-size: 11pt;
 }
 
 /* 供染整廠或皇加人工黏貼實體布樣的留白，畫面線稿不顯示，僅列印保留版面（PRD 決策64） */
 .pr-swatch-area {
   height: 32mm;
   padding: 1.5mm 2mm;
-  font-size: 7pt;
+  font-size: 9pt;
   color: #999;
 }
 
@@ -327,24 +330,24 @@
   gap: 0;
   border-left: 0.5pt solid #000;
   border-top: 0.5pt solid #000;
-  margin-top: 6mm;
+  margin-top: 4mm;
   break-inside: avoid;
 }
 
 .pr-signature-cell {
   border-right: 0.5pt solid #000;
   border-bottom: 0.5pt solid #000;
-  padding: 1.2mm 2mm 10mm;
-  font-size: 8pt;
+  padding: 1mm 2mm 9mm;
+  font-size: 10pt;
 }
 
 /* ---------- 頁尾 ---------- */
 
 .pr-foot {
-  margin-top: 4mm;
+  margin-top: 3mm;
   border-top: 0.5pt solid #666;
   padding-top: 1.5mm;
-  font-size: 7.5pt;
+  font-size: 9.5pt;
   color: #444;
   display: flex;
   justify-content: space-between;
@@ -429,8 +432,13 @@
 /* ---------- 嘜頭（貼於出貨紙箱） ---------- */
 
 /* 嘜頭不是對外單據，不套用公司抬頭；整張 A4 就是嘜頭本身 */
+/*
+ * 尺寸固定為 190×273mm（原 A4 扣 12mm／10mm 邊界後的可用範圍）。決策155 把單據邊界縮成 8mm／7mm，
+ * 嘜頭不跟著變：格子大小一變，箱子上印出來的嘜頭尺寸就跟著變，而那是要貼在實體紙箱上的。
+ */
 .pr-mark-sheet {
-  height: 273mm; /* A4 297mm 扣掉上下各 12mm 邊界 */
+  width: 190mm;
+  height: 273mm;
 }
 
 .pr-mark-grid {
@@ -500,8 +508,10 @@
 
 /* ---------- 小嘜頭（縫於布疋上的產地／成份標） ----------
    與嘜頭同樣不套用單據抬頭；3 欄 × 8 列＝一張 A4 印滿 24 份。 */
+/* 同嘜頭：固定 190×273mm，不隨決策155 的單據邊界調整而改變 */
 .pr-smallmark-sheet {
-  height: 273mm; /* A4 297mm 扣掉上下各 12mm 邊界 */
+  width: 190mm;
+  height: 273mm;
 }
 
 .pr-smallmark-grid {
@@ -596,7 +606,7 @@
    與預覽沿用同一組 .pr-mark-* 規則，但這是要印在紙上的，尺寸以 mm、字級以 pt 計。
    字級依縮小比例換算：嘜頭一格原為 95×91mm，縮成 58mm 寬約為 0.61 倍；
    A5 原為 190×136mm，縮成 88mm 寬約為 0.46 倍；小嘜頭原為 63×34mm，縮成 42mm 約為 0.67 倍。
-   三個一般嘜頭並排 58×3＋4×2＝182mm，放得進 190mm 可用寬度。 */
+   三個一般嘜頭並排 58×3＋4×2＝182mm，放得進 196mm 可用寬度。 */
 .pr-mark-thumbs {
   display: flex;
   flex-wrap: wrap;
@@ -609,7 +619,7 @@
 }
 
 .pr-mark-thumb-caption {
-  font-size: 8pt;
+  font-size: 10pt;
   font-weight: 600;
   margin-bottom: 1mm;
 }
@@ -677,6 +687,6 @@
 .pr-table tr.pr-subrow > td {
   border-top: 0;
   padding-top: 0;
-  font-size: 8.5pt;
+  font-size: 10.5pt;
   color: #333;
 }

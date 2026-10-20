@@ -10,7 +10,7 @@ import type { ShippingOrder, ShippingOrderItem } from '@/types'
 /** 數量欄依來源表1 的輸入基準排序：主值在前，換算值標 ≈，避免對外單據看不出客戶實際下的數字 */
 /*
  * 欄寬以實測內容分配（2026/10/05）：逐欄量出種子資料裡最長的內容需要幾毫米，
- * 再把剩餘寬度分給可能變長的文字欄，合計 190mm＝A4 直式可用寬度（210 − 左右各 10mm）。
+ * 再把剩餘寬度分給可能變長的文字欄，合計 190mm；決策155 起可用寬度為 196mm（210 − 左右各 7mm），多出的 6mm 由瀏覽器按比例分給各欄。
  */
 const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<ShippingOrderItem>[] => [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
