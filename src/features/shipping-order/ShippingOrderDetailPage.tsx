@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Save, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowLeft, Plus, RotateCcw, Save, Trash2, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
@@ -13,17 +13,25 @@ import { PrintActions } from '@/components/print/PrintActions'
 import { ShippingOrderPrint } from './ShippingOrderPrint'
 import { AddNoticeItemsDialog, type AddNoticeItemLine } from './AddNoticeItemsDialog'
 import { MarkingPrint, SmallMarkingPrint } from '@/features/packing-notice/MarkingPrint'
-import { shippingBoxNosFor, shippingItemNoticeId, shippingOrderNoticeIds, smallMarkingLines } from '@/lib/workflow'
+import {
+  shippingBoxNosFor,
+  shippingItemNoticeId,
+  shippingMarkingsFor,
+  sameMarkings,
+  shippingOrderNoticeIds,
+  smallMarkingLines,
+} from '@/lib/workflow'
 import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
 import { getAccount, getCustomer } from '@/mocks/data'
-import { GOODS_RECEIPT_PURPOSES } from '@/types'
+import { GOODS_RECEIPT_PURPOSES, MARKING_SHAPES } from '@/types'
 import {
   addShippingOrderItemsFromNotices,
   completeShippingOrder,
@@ -32,13 +40,14 @@ import {
   setShippingOrderStatus,
   updateShippingOrderItems,
   updateShippingOrderHeader,
+  updateShippingOrderMarkings,
   updateShippingOrderRollCodes,
   updateShippingOrderSignatures,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
-import type { ShippingOrder, ShippingOrderItem, ShippingOrderSignatures } from '@/types'
+import type { PackingNoticeMarking, ShippingOrder, ShippingOrderItem, ShippingOrderSignatures } from '@/types'
 
 export function ShippingOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -66,6 +75,8 @@ export function ShippingOrderDetailPage() {
   // 與單頭一起按「儲存單頭資訊」寫入，未儲存則維持原狀
   const [boxNoDraft, setBoxNoDraft] = useState<Record<string, string>>({})
   const [addOpen, setAddOpen] = useState(false)
+  /** 嘜頭輸入草稿（決策164）：鍵同箱/袋號「表1單號#組別索引」，按「儲存嘜頭」才寫入 */
+  const [markingDraft, setMarkingDraft] = useState<Record<string, PackingNoticeMarking>>({})
   /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
   const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '', shippingAddress: '' })
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -88,6 +99,7 @@ export function ShippingOrderDetailPage() {
         shippingAddress: order.shippingAddress ?? '',
       })
       setBoxNoDraft({})
+      setMarkingDraft({})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id])
@@ -150,6 +162,26 @@ export function ShippingOrderDetailPage() {
     onSuccess: async () => {
       await invalidate()
       toast.success('已移除該表1 的明細，數量回到未排')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const saveMarkingsMutation = useMutation({
+    mutationFn: () =>
+      updateShippingOrderMarkings(id!, {
+        markings: Object.fromEntries(
+          sourceNotices.map((n) => [
+            n.id,
+            shippingMarkingsFor(order!, n.id, n.markings).map((m, i) => markingDraft[`${n.id}#${i}`] ?? m),
+          ]),
+        ),
+        boxNos: Object.fromEntries(sourceNotices.map((n) => [n.id, markingBoxNoPayload(n.id)])),
+      }),
+    onSuccess: async () => {
+      await invalidate()
+      setMarkingDraft({})
+      setBoxNoDraft({})
+      toast.success('嘜頭已儲存（只改本張出貨單，不回寫表1）')
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -238,9 +270,17 @@ export function ShippingOrderDetailPage() {
   const sourceNotices = noticeIds
     .map((nid) => packingNotices.find((n) => n.id === nid))
     .filter((n): n is NonNullable<typeof n> => Boolean(n))
-  const markingGroups = sourceNotices.flatMap((n) =>
-    (n.markings ?? []).map((marking, index) => ({ notice: n, marking, index, count: (n.markings ?? []).length })),
-  )
+  // 嘜頭：表8 改過的（決策164）優先，否則帶表1 的
+  const markingGroups = sourceNotices.flatMap((n) => {
+    const list = shippingMarkingsFor(order, n.id, n.markings)
+    return list.map((marking, index) => ({ notice: n, marking, index, count: list.length }))
+  })
+  const markingKey = (g: (typeof markingGroups)[number]) => `${g.notice.id}#${g.index}`
+  const draftMarking = (g: (typeof markingGroups)[number]) => markingDraft[markingKey(g)] ?? g.marking
+  const patchMarking = (g: (typeof markingGroups)[number], patch: Partial<PackingNoticeMarking>) =>
+    setMarkingDraft((prev) => ({ ...prev, [markingKey(g)]: { ...draftMarking(g), ...patch } }))
+  const markingsDirty = Object.keys(markingDraft).length > 0 || Object.keys(boxNoDraft).length > 0
+  const numOrUndef = (v: string) => (v === '' ? undefined : Number(v))
   /** 嘜頭組別的名稱：合併單加上表1 單號，否則沿用「嘜頭 N」 */
   const markingLabel = (g: (typeof markingGroups)[number], prefix: string) =>
     merged ? `${prefix} ${g.notice.id}${g.count > 1 ? `-${g.index + 1}` : ''}` : g.count > 1 ? `${prefix} ${g.index + 1}` : prefix
@@ -249,7 +289,9 @@ export function ShippingOrderDetailPage() {
     boxNoDraft[`${noticeId}#${index}`] ?? shippingBoxNosFor(order, noticeId)?.[index] ?? ''
   /** 送出時以該表1 嘜頭組數為長度，缺的補空字串，避免索引與嘜頭組別錯位 */
   const markingBoxNoPayload = (noticeId: string) =>
-    (packingNotices.find((n) => n.id === noticeId)?.markings ?? []).map((_, i) => boxNoOf(noticeId, i))
+    shippingMarkingsFor(order, noticeId, packingNotices.find((n) => n.id === noticeId)?.markings).map((_, i) =>
+      boxNoOf(noticeId, i),
+    )
   const canMerge = itemsEditable && !order.sourceAbnormalId
   // 數量以「當初下單用的單位」為主值呈現，另一單位標為換算值；沿用表1 的作法，
   // 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的
@@ -738,11 +780,15 @@ export function ShippingOrderDetailPage() {
           <CardHeader>
             <CardTitle className="text-base">
               嘜頭（帶入自表1包裝通知單{markingGroups.length > 1 ? `，共 ${markingGroups.length} 組` : ''}）
+              {itemsEditable && '　—　草稿階段各欄位皆可修改，只改本張出貨單，不回寫表1'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {markingGroups.map((g) => {
-              const { marking, index } = g
+              const { index } = g
+              const marking = draftMarking(g)
+              const original = g.notice.markings?.[index]
+              const changed = Boolean(original) && !sameMarkings([marking], [original!])
               return (
               <div key={`${g.notice.id}-${index}`} className={markingGroups.length > 1 ? 'rounded-lg border border-border p-3' : undefined}>
                 {markingGroups.length > 1 && (
@@ -763,10 +809,105 @@ export function ShippingOrderDetailPage() {
                   ) : (
                     <div className="text-sm text-ink-body">{shippingBoxNosFor(order, g.notice.id)?.[index] || '-'}</div>
                   )}
-                  {itemsEditable && (
-                    <p className="text-xs text-muted-foreground">填寫後請按單頭資訊的「儲存單頭資訊」一併儲存</p>
-                  )}
                 </div>
+                {itemsEditable ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">嘜頭形狀</Label>
+                        <select
+                          className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                          value={marking.shape}
+                          onChange={(e) => patchMarking(g, { shape: e.target.value as PackingNoticeMarking['shape'] })}
+                        >
+                          {MARKING_SHAPES.map((shape) => (
+                            <option key={shape} value={shape}>
+                              {shape}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* 客戶簡稱取自客戶主檔、嘜頭列印不印（決策144），僅供對照 */}
+                      <DetailField label="客戶簡稱（取自客戶主檔）" value={customer?.shortName} />
+                      <div className="space-y-1">
+                        <Label className="text-xs">運送目的地</Label>
+                        <Input value={marking.destination ?? ''} onChange={(e) => patchMarking(g, { destination: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">毛重(Kg)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={marking.grossWeightKg ?? ''}
+                          onChange={(e) => patchMarking(g, { grossWeightKg: numOrUndef(e.target.value) })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">淨重(Kg)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={marking.netWeightKg ?? ''}
+                          onChange={(e) => patchMarking(g, { netWeightKg: numOrUndef(e.target.value) })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">成分</Label>
+                        <Input value={marking.composition ?? ''} onChange={(e) => patchMarking(g, { composition: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">產地</Label>
+                        <Input value={marking.origin ?? ''} onChange={(e) => patchMarking(g, { origin: e.target.value })} />
+                        <label className="flex items-center gap-1.5 pt-1 text-xs text-ink-body">
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5"
+                            checked={Boolean(marking.hasRoc)}
+                            onChange={(e) => patchMarking(g, { hasRoc: e.target.checked })}
+                          />
+                          產地下方加印 R.O.C.
+                        </label>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">抬頭文字</Label>
+                      <Textarea
+                        rows={2}
+                        value={marking.headerText ?? ''}
+                        onChange={(e) => patchMarking(g, { headerText: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1.5 text-xs text-ink-body">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5"
+                          checked={marking.hasSmallMarking}
+                          onChange={(e) => patchMarking(g, { hasSmallMarking: e.target.checked })}
+                        />
+                        加印小嘜頭
+                      </label>
+                      {marking.hasSmallMarking && (
+                        <Textarea
+                          rows={3}
+                          placeholder="一行一列；第一行固定印 MADE IN TAIWAN，不必輸入"
+                          value={marking.smallMarkingText ?? ''}
+                          onChange={(e) => patchMarking(g, { smallMarkingText: e.target.value })}
+                        />
+                      )}
+                    </div>
+                    {changed && original && (
+                      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+                        已與表1 {g.notice.id} 的嘜頭不同（只影響本張出貨單）
+                        <Button type="button" variant="ghost" size="sm" onClick={() => patchMarking(g, original)}>
+                          <RotateCcw className="mr-1 h-3.5 w-3.5" /> 還原為表1 內容
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                 <DetailGrid>
                   <DetailField label="嘜頭形狀" value={marking.shape} />
                   <DetailField label="客戶簡稱" value={customer?.shortName} />
@@ -776,14 +917,32 @@ export function ShippingOrderDetailPage() {
                   <DetailField label="淨重(Kg)" value={marking.netWeightKg != null ? formatNumber(marking.netWeightKg, 1) : '-'} />
                   <DetailField label="成分" value={marking.composition || '-'} />
                   <DetailField label="產地" value={marking.origin || '-'} />
+                  <DetailField label="R.O.C." value={marking.hasRoc ? '加印' : '否'} />
                   <DetailField
                     label="小嘜頭"
                     value={marking.hasSmallMarking ? smallMarkingLines(marking.smallMarkingText).join('／') : '否'}
                   />
                 </DetailGrid>
+                )}
+                {!itemsEditable && changed && (
+                  <p className="mt-2 text-xs text-muted-foreground">本組嘜頭已於出貨單修改，與表1 {g.notice.id} 不同</p>
+                )}
               </div>
               )
             })}
+            {itemsEditable && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-brand hover:bg-brand-dark"
+                  disabled={!markingsDirty || saveMarkingsMutation.isPending}
+                  onClick={() => saveMarkingsMutation.mutate()}
+                >
+                  <Save className="mr-1 h-4 w-4" /> 儲存嘜頭
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

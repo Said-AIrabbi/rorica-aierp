@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
-import { COLOR_RATIO_MAX, PI_CURRENCIES } from '@/types'
+import { COLOR_RATIO_MAX, MARKING_SHAPES, PI_CURRENCIES } from '@/types'
 import {
   allocateWholeRolls,
   availableFabricLabels,
@@ -39,6 +39,7 @@ import {
   noticeItemScheduledYard,
   shippingItemNoticeId,
   shippingOrderNoticeIds,
+  sameMarkings,
   dyeItemNoticeId,
   dyeOrderNoticeIds,
   purchaseItemNoticeId,
@@ -3407,10 +3408,13 @@ export function removeNoticeFromShippingOrder(id: string, noticeId: string): Pro
   if (items.length === current.items.length) throw new Error(`本單沒有 ${noticeId} 的明細`)
   const otherMarkingBoxNos = { ...(current.otherMarkingBoxNos ?? {}) }
   delete otherMarkingBoxNos[noticeId]
+  const markingOverrides = { ...(current.markingOverrides ?? {}) }
+  delete markingOverrides[noticeId]
   const updated: ShippingOrder = {
     ...current,
     items,
     otherMarkingBoxNos: Object.keys(otherMarkingBoxNos).length > 0 ? otherMarkingBoxNos : undefined,
+    markingOverrides: Object.keys(markingOverrides).length > 0 ? markingOverrides : undefined,
   }
   shippingOrders[idx] = updated
   return delay(updated)
@@ -3547,6 +3551,71 @@ export function updateShippingOrderRollCodes(id: string, rollCodesByItem: string
   const updated: ShippingOrder = {
     ...current,
     items: current.items.map((item, i) => ({ ...item, rollCodes: cleaned[i] })),
+  }
+  shippingOrders[idx] = updated
+  return delay(updated)
+}
+
+export interface ShippingOrderMarkingsInput {
+  /** 鍵為表1 單號，值為該表1 整組嘜頭（索引對應嘜頭組別） */
+  markings: Record<string, PackingNoticeMarking[]>
+  /** 鍵為表1 單號，值為各組嘜頭的箱/袋號 */
+  boxNos: Record<string, string[]>
+}
+
+/**
+ * 表8 嘜頭手動修改（決策164）：草稿階段嘜頭各欄位皆可改，連同箱/袋號一起儲存。
+ *
+ * 只改這張出貨單，不回寫表1（比照收貨地址，決策133）。與表1 內容相同的組別不留覆寫，
+ * 之後表1 在凍結前修改嘜頭時，沒改過的出貨單仍跟著表1 走。
+ */
+export function updateShippingOrderMarkings(id: string, input: ShippingOrderMarkingsInput): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
+  const idx = shippingOrders.findIndex((o) => o.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const current = shippingOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可修改嘜頭')
+  const noticeIds = shippingOrderNoticeIds(current)
+
+  const overrides: Record<string, PackingNoticeMarking[]> = {}
+  Object.entries(input.markings).forEach(([noticeId, markings]) => {
+    if (!noticeIds.includes(noticeId)) throw new Error(`本單沒有 ${noticeId} 的明細`)
+    const original = packingNotices.find((n) => n.id === noticeId)?.markings ?? []
+    if (markings.length !== original.length) throw new Error(`${noticeId} 的嘜頭組數不符，請重新整理後再試`)
+    markings.forEach((m, i) => {
+      if (!MARKING_SHAPES.includes(m.shape)) throw new Error(`嘜頭 ${i + 1} 的形狀不正確`)
+      ;[m.grossWeightKg, m.netWeightKg].forEach((w) => {
+        if (w != null && !(Number.isFinite(w) && w >= 0)) throw new Error(`嘜頭 ${i + 1} 的重量需為 0 以上的數字`)
+      })
+    })
+    const clean = (m: PackingNoticeMarking): PackingNoticeMarking => ({
+      ...m,
+      headerText: m.headerText?.trim() || undefined,
+      destination: m.destination?.trim() || undefined,
+      composition: m.composition?.trim() || undefined,
+      origin: m.origin?.trim() || undefined,
+      smallMarkingText: m.smallMarkingText?.trim() || undefined,
+      hasRoc: m.hasRoc || undefined,
+    })
+    const cleaned = markings.map(clean)
+    // 與表1 一樣就不留覆寫
+    if (!sameMarkings(cleaned, original)) overrides[noticeId] = cleaned
+  })
+  // 沒送來的表1 保留原有覆寫
+  Object.entries(current.markingOverrides ?? {}).forEach(([noticeId, markings]) => {
+    if (!(noticeId in input.markings) && noticeIds.includes(noticeId)) overrides[noticeId] = markings
+  })
+
+  const keep = (v: string[] | undefined) => (v?.some((x) => x.trim()) ? v : undefined)
+  const otherBoxNos = Object.fromEntries(
+    Object.entries({ ...(current.otherMarkingBoxNos ?? {}), ...input.boxNos })
+      .filter(([noticeId, v]) => noticeId !== current.parentId && keep(v)),
+  )
+  const updated: ShippingOrder = {
+    ...current,
+    markingOverrides: Object.keys(overrides).length > 0 ? overrides : undefined,
+    markingBoxNos: current.parentId in input.boxNos ? keep(input.boxNos[current.parentId]) : current.markingBoxNos,
+    otherMarkingBoxNos: Object.keys(otherBoxNos).length > 0 ? otherBoxNos : undefined,
   }
   shippingOrders[idx] = updated
   return delay(updated)

@@ -8,6 +8,7 @@ import type {
   GoodsReceipt,
   PackingNotice,
   PackingNoticeItem,
+  PackingNoticeMarking,
   PackingNoticeTolerance,
   PurchaseOrder,
   PurchaseOrderItem,
@@ -349,6 +350,32 @@ export function shippingBoxNosFor(
   noticeId: string,
 ): string[] | undefined {
   return noticeId === order.parentId ? order.markingBoxNos : order.otherMarkingBoxNos?.[noticeId]
+}
+
+/** 某張表1 在這張表8 上的嘜頭（決策164）：表8 改過就用改過的，否則用表1 的 */
+export function shippingMarkingsFor(
+  order: Pick<ShippingOrder, 'markingOverrides'>,
+  noticeId: string,
+  noticeMarkings: PackingNoticeMarking[] | undefined,
+): PackingNoticeMarking[] {
+  return order.markingOverrides?.[noticeId] ?? noticeMarkings ?? []
+}
+
+/**
+ * 兩組嘜頭內容是否相同（決策164）：文字去頭尾空白、空字串與未填視為相同、不看欄位順序。
+ * 表8 用它判斷「是否已改得跟表1 不一樣」——畫面上的提示與資料層要不要留覆寫用同一把尺。
+ */
+export function sameMarkings(a: PackingNoticeMarking[], b: PackingNoticeMarking[]): boolean {
+  const canon = (list: PackingNoticeMarking[]) =>
+    JSON.stringify(
+      list.map((m) =>
+        Object.entries(m)
+          .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v] as const)
+          .filter(([, v]) => v !== undefined && v !== '' && v !== false)
+          .sort(([x], [y]) => x.localeCompare(y)),
+      ),
+    )
+  return canon(a) === canon(b)
 }
 
 /** 收貨地址比對用：去頭尾空白、連續空白視為一個；合併表8 要求地址相同（決策163） */

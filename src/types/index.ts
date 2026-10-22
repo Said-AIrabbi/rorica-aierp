@@ -1130,6 +1130,13 @@ export interface ShippingOrder {
    * 主表1 的仍記在 markingBoxNos，舊資料不需轉換；讀取一律經 shippingBoxNosFor()。
    */
   otherMarkingBoxNos?: Record<string, string[]>
+  /**
+   * 本張出貨單改過的嘜頭（決策164）：鍵為表1 單號，值為該表1 整組嘜頭（索引對應嘜頭組別）。
+   * 出貨當下才知道的實際重量、目的地等可在草稿改，只改這張出貨單，**不回寫表1**——
+   * 比照收貨地址（決策133）：表1 是已簽核的訂單內容，一次出貨的臨時調整不該改寫它。
+   * 沒改過的表1 不留鍵，讀取一律經 shippingMarkingsFor()，沒有就用表1 的。
+   */
+  markingOverrides?: Record<string, PackingNoticeMarking[]>
 }
 
 // ---------- 表5 二次加工單 ----------
