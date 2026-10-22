@@ -63,7 +63,8 @@ const SPECS: Record<string, Spec> = {
   },
   // 商品主檔：進價與售價分屬兩群
   products: {
-    own: { 進價: ['purchasePrice'], 售價: ['sellPrice'] },
+    // 縮率實績（決策160）屬生產績效：反映染整廠表現的數字，與表6 縮率同群
+    own: { 進價: ['purchasePrice'], 售價: ['sellPrice'], 生產績效: ['shrinkageRecords'] },
   },
   // 客戶主檔的聯絡資訊（含 TAX ID 與銀行帳戶）
   customers: {

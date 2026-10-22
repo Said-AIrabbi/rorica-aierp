@@ -76,11 +76,30 @@ export function shrinkagePctOf(item: { expectedShrinkagePct?: number }): number 
 }
 
 /**
- * 依預期縮率推算指染數量（決策159）：指染數量＝（1＋預期縮率）× 成品數量，取到小數 1 位。
+ * 依預期縮率推算指染數量：指染數量＝成品數量 ÷（1－預期縮率），取到小數 1 位。
  * 布染完會縮，要交出成品數量，投下去的胚布就得多放縮掉的那一份。
+ *
+ * 算法與表6 的實際縮率（（投胚量－入庫碼數）÷ 投胚量）一致（決策160）：
+ * 用實績平均當預期縮率，推回來的指染數量才會剛好對上。縮率須小於 100%。
  */
 export function inDyeQtyFromShrinkage(finishedQty: number, shrinkagePct: number): number {
-  return Math.round(finishedQty * (1 + shrinkagePct / 100) * 10) / 10
+  if (shrinkagePct >= 100) return finishedQty
+  return Math.round((finishedQty / (1 - shrinkagePct / 100)) * 10) / 10
+}
+
+/**
+ * 預期縮率推薦值（決策160）：同一產品＋同一染整廠的縮率實績平均，小數 1 位。
+ * 沒有實績（或看不到「生產績效」欄位群組而讀不到實績）時回傳 undefined，由呼叫端退回預設 5%。
+ */
+export function recommendedShrinkage(
+  product: { shrinkageRecords?: { dyeVendorId: string; ratePct: number }[] } | undefined,
+  dyeVendorId: string | undefined,
+): { pct: number; count: number } | undefined {
+  if (!product?.shrinkageRecords || !dyeVendorId) return undefined
+  const rates = product.shrinkageRecords.filter((r) => r.dyeVendorId === dyeVendorId).map((r) => r.ratePct)
+  if (rates.length === 0) return undefined
+  const avg = rates.reduce((sum, r) => sum + r, 0) / rates.length
+  return { pct: Math.round(avg * 10) / 10, count: rates.length }
 }
 
 /**

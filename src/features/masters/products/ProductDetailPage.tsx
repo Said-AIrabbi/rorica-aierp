@@ -24,6 +24,7 @@ import { formatDate, isColorStale } from '@/lib/dates'
 import { formatNumber, inchToCm, yardPriceToMeterPrice, yardWeightToMeterWeight } from '@/lib/units'
 import { PRODUCT_CATEGORIES, type Product } from '@/types'
 import { ProductStockCard } from './ProductStockCard'
+import { ShrinkageRecordsCard } from './ShrinkageRecordsCard'
 import { DigitalColorEditor } from '@/components/shared/DigitalColorEditor'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import type { DigitalColor } from '@/types'
@@ -87,7 +88,7 @@ export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { canMaintain } = useCurrentAccount()
+  const { canMaintain, canSee } = useCurrentAccount()
   const { data = [] } = useQuery({ queryKey: ['products'], queryFn: api.products })
   // 新增與編輯共用同一份表單：路由 /masters/products/new 即為新增模式
   const isNew = id === 'new'
@@ -463,6 +464,12 @@ export function ProductDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/*
+          縮率實績（決策160）：委外加工的表6 確認入庫時逐筆記下，不覆蓋；依染整廠分組平均，
+          即開表4 時預期縮率的推薦值。屬「生產績效」欄位群組，看不到的帳號整張卡不出現
+        */}
+        {product && canSee('生產績效') && <ShrinkageRecordsCard product={product} />}
 
         {/* 第五張卡：庫存（唯讀 UI 聚合，即時查詢布卷資料主檔）；新增中的商品尚無布卷 */}
         {product && <ProductStockCard product={product} />}

@@ -131,6 +131,25 @@ export interface ColorRecord {
   digital?: DigitalColor
 }
 
+/**
+ * 縮率實績（決策160）：委外加工的表6 入庫單確認入庫時記下一筆，每次都留、不覆蓋。
+ * 同一產品＋同一染整廠的平均，作為之後開表4 的預期縮率推薦值。
+ * 縮率＝（投胚量－入庫碼數）÷ 投胚量，與表6 畫面上的縮率同一算法。
+ */
+export interface ShrinkageRecord {
+  /** 來源表6 入庫單：同一張入庫單只記一筆 */
+  receiptId: string
+  dyeOrderId?: string
+  dyeVendorId: string
+  /** 投胚量（碼） */
+  pledgedQty: number
+  /** 入庫碼數 */
+  receivedQty: number
+  /** 實際縮率（%），小數 1 位 */
+  ratePct: number
+  recordedAt: string
+}
+
 export interface Product {
   /**
    * 記錄識別碼：即「產品編號-產品序號」（1-11-01、8-13-02），系統不另設第三組編號。
@@ -190,6 +209,8 @@ export interface Product {
   /** 進價（採購成本）／售價：以「碼」為計價單位；米價由共用係數 0.9144 換算顯示，不另存欄位 */
   costPrice?: number
   sellPrice?: number
+  /** 縮率實績（決策160）：屬「生產績效」欄位群組 */
+  shrinkageRecords?: ShrinkageRecord[]
 }
 
 /** 廠商類型：同一廠商可能身兼多重角色，故設計為複選 */
@@ -819,12 +840,16 @@ export interface DyeOrderItem {
   finishedQty: number
   /**
    * 指染數量：要投入染整的胚布量（決策159）。預設依預期縮率由成品數量推算——
-   * 指染數量＝（1＋預期縮率）× 成品數量——三個欄位皆可手動改，改了指染數量不會回推另外兩欄。
+   * 指染數量＝成品數量 ÷（1－預期縮率）（決策160 起與表6 縮率同一算法）——
+   * 三個欄位皆可手動改，改了指染數量不會回推另外兩欄。
    * 胚布到貨時仍整批覆蓋為成品數量（皇加指定，維持原做法）；
    * 染單結案時**不再歸零**（決策159 覆蓋原規則），保留當初投染了多少，供與實際入庫數量對照縮率。
    */
   inDyeQty: number
-  /** 預期縮率（%，決策159）：預設 5；未記錄者（本欄位新增前的舊單）視為 5 */
+  /**
+   * 預期縮率（%，決策159）：預設取同一產品＋同一染整廠的縮率實績平均（決策160），沒有實績時為 5；
+   * 未記錄者（本欄位新增前的舊單）視為 5
+   */
   expectedShrinkagePct?: number
 }
 

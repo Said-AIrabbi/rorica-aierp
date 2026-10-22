@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -17,9 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
 import { createDyeOrder } from '@/mocks/mutations'
-import { getVendor, resolveProduct } from '@/mocks/data'
+import { getVendor, resolveProduct, vendorDisplayName } from '@/mocks/data'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { defaultRollYard, rollYardUpperLimit, DEFAULT_SHRINKAGE_PCT, inDyeQtyFromShrinkage } from '@/lib/workflow'
+import { defaultRollYard, rollYardUpperLimit, DEFAULT_SHRINKAGE_PCT, inDyeQtyFromShrinkage, recommendedShrinkage } from '@/lib/workflow'
 import { dyeOrderFormSchema, type DyeOrderFormValues } from './schema'
 
 export function DyeOrderFormPage() {
@@ -35,6 +35,7 @@ export function DyeOrderFormPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<DyeOrderFormValues>({
@@ -134,7 +135,7 @@ export function DyeOrderFormPage() {
           finishedSpec: product?.finishedSpec ?? '',
           unitPrice: undefined,
           finishedQty: item.yard,
-          // 預期縮率預設 5%，指染數量依此推算（決策159）
+          // 預期縮率先帶 5%，選定染整廠後由下方的推薦值接手（決策159、160）
           expectedShrinkagePct: DEFAULT_SHRINKAGE_PCT,
           inDyeQty: inDyeQtyFromShrinkage(item.yard, DEFAULT_SHRINKAGE_PCT),
         }
@@ -146,8 +147,32 @@ export function DyeOrderFormPage() {
     const po = purchaseOrders.find((p) => p.parentId === notice.id && p.hasDyeVendor)
     setValue('dueDate', dayjs(po?.dueDate ?? dayjs().add(14, 'day')).format('YYYY-MM-DD'))
     if (po?.vendorId) setValue('vendorId', po.vendorId, { shouldValidate: true })
+    // 明細重新帶入時縮率是 5%：讓下方的推薦值重新接手
+    autoShrinkRef.current = DEFAULT_SHRINKAGE_PCT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notice?.id, products.length])
+
+  /**
+   * 預期縮率推薦值（決策160）：同一產品＋同一染整廠的縮率實績平均，沒有實績用 5%。
+   * 產品或染整廠一變就重新推薦，但**只改還停在上一個推薦值的列**——使用者手動改過的縮率不蓋掉。
+   * 實績取自讀取端回傳的商品資料：看不到「生產績效」的帳號讀不到實績，一律 5%。
+   */
+  const productId = watch('productId')
+  const productName = watch('productName')
+  const dyeProduct = products.find((p) => p.id === productId) ?? products.find((p) => p.productName === productName)
+  const shrinkRecommendation = recommendedShrinkage(dyeProduct, vendorId)
+  const recommendedPct = shrinkRecommendation?.pct ?? DEFAULT_SHRINKAGE_PCT
+  const autoShrinkRef = useRef(DEFAULT_SHRINKAGE_PCT)
+  useEffect(() => {
+    const previous = autoShrinkRef.current
+    autoShrinkRef.current = recommendedPct
+    getValues('items').forEach((item, index) => {
+      if (Number(item.expectedShrinkagePct) !== previous) return
+      setValue(`items.${index}.expectedShrinkagePct`, recommendedPct)
+      setValue(`items.${index}.inDyeQty`, inDyeQtyFromShrinkage(Number(item.finishedQty), recommendedPct))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommendedPct, notice?.id])
 
   const mutation = useMutation({
     mutationFn: (values: DyeOrderFormValues) =>
@@ -244,6 +269,17 @@ export function DyeOrderFormPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0">
+            {notice && (
+              <p className="mb-2 px-4 text-xs text-muted-foreground">
+                預期縮率：
+                {shrinkRecommendation
+                  ? `依「${dyeProduct?.productName ?? productName}」在${vendorDisplayName(vendors.find((v) => v.id === vendorId))}的 ${shrinkRecommendation.count} 筆縮率實績平均，建議 ${formatNumber(shrinkRecommendation.pct, 1)}%`
+                  : vendorId
+                    ? '這個產品在這家染整廠還沒有縮率實績，先用預設 5%'
+                    : '選定委外加工廠後依縮率實績推薦，未選前先用預設 5%'}
+                ；指染數量＝成品數量 ÷（1－預期縮率），三欄皆可手動修改。
+              </p>
+            )}
             {!notice ? (
               <p className="px-4 text-sm text-muted-foreground">請先選擇來源包裝通知單以帶入明細。</p>
             ) : (

@@ -19,7 +19,7 @@ export const dyeOrderItemSchema = z.object({
   // 指染數量：建單時可先手動填寫（部分胚布已到廠即可投染），未填則為 0，日後由「胚布到貨」整批轉入
   inDyeQty: z.coerce.number().min(0, '指染數量需大於等於 0').optional(),
   /** 預期縮率（%，決策159）：預設 5，改了會重算指染數量 */
-  expectedShrinkagePct: z.coerce.number().min(0, '預期縮率需大於等於 0').optional(),
+  expectedShrinkagePct: z.coerce.number().min(0, '預期縮率需大於等於 0').max(99.9, '預期縮率須小於 100%').optional(),
 })
 
 export const dyeOrderFormSchema = z.object({

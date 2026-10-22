@@ -23,7 +23,9 @@ import {
   DEFAULT_SHRINKAGE_PCT,
   defaultRollYard,
   draftApprovalState,
+  goodsReceiptShrinkageRate,
   inDyeQtyFromShrinkage,
+  recommendedShrinkage,
   ABNORMAL_CLAIM_MONTHS,
   effectivePurchaseOrderStatus,
   isPackingNoticeFullyShipped,
@@ -72,6 +74,7 @@ import type {
   PackingNoticeMarking,
   PiCurrency,
   Product,
+  ShrinkageRecord,
   ProformaInvoice,
   ProformaInvoiceItem,
   PurchaseOrder,
@@ -1477,7 +1480,7 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
           unitPrice: item.unitPrice,
           // 成品數量＝該列應產出量；指染數量依預設縮率推算（決策159）
           finishedQty: item.yard,
-          ...shrinkageFields(item.yard),
+          ...shrinkageFields(item.yard, undefined, undefined, { product, dyeVendorId }),
         }
       })
       dyeOrders.unshift({
@@ -1862,11 +1865,17 @@ export interface DyeOrderInput {
 
 /** 建立染整單草稿：生管可直接開單，不需等待表3或色號判斷完成，此時尚未觸發委外加工 */
 /**
- * 表4 明細的預期縮率與指染數量（決策159）：縮率未填用預設 5%，指染數量未填依縮率由成品數量推算。
- * 有填就照填的——三個欄位皆可手動改。
+ * 表4 明細的預期縮率與指染數量（決策159、160）：縮率未填時取同一產品＋同一染整廠的實績平均，
+ * 沒有實績用預設 5%；指染數量未填依縮率由成品數量推算。有填就照填的——三個欄位皆可手動改。
  */
-function shrinkageFields(finishedQty: number, shrinkagePct?: number, inDyeQty?: number) {
-  const pct = shrinkagePct ?? DEFAULT_SHRINKAGE_PCT
+function shrinkageFields(
+  finishedQty: number,
+  shrinkagePct?: number,
+  inDyeQty?: number,
+  recommend?: { product?: Product; dyeVendorId?: string },
+) {
+  const pct =
+    shrinkagePct ?? recommendedShrinkage(recommend?.product, recommend?.dyeVendorId)?.pct ?? DEFAULT_SHRINKAGE_PCT
   return { expectedShrinkagePct: pct, inDyeQty: inDyeQty ?? inDyeQtyFromShrinkage(finishedQty, pct) }
 }
 
@@ -1908,7 +1917,10 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
       finishedSpec: item.finishedSpec,
       unitPrice: item.unitPrice,
       finishedQty: item.finishedQty,
-      ...shrinkageFields(item.finishedQty, item.expectedShrinkagePct, item.inDyeQty),
+      ...shrinkageFields(item.finishedQty, item.expectedShrinkagePct, item.inDyeQty, {
+        product: resolveProduct(input.productId, input.productName),
+        dyeVendorId: input.vendorId,
+      }),
     }
   })
   const order: DyeOrder = {
@@ -1999,6 +2011,9 @@ export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrd
     }
     if (input.expectedShrinkagePct != null && (!Number.isFinite(input.expectedShrinkagePct) || input.expectedShrinkagePct < 0)) {
       throw new Error('預期縮率不可為負數')
+    }
+    if (input.expectedShrinkagePct != null && input.expectedShrinkagePct >= 100) {
+      throw new Error('預期縮率須小於 100%')
     }
   }
 
@@ -2209,8 +2224,9 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '不通
     return delay(rejected)
   }
 
-  // 投胚量：無 OCR 廠商單據標示值時，取染單各列「使用胚布」的成品數量合計作為投胚基準
-  const pledgedQty = current.items.reduce((sum, item) => sum + item.finishedQty, 0)
+  // 投胚量：無 OCR 廠商單據標示值時，取染單各列的指染數量合計（決策160）——
+  // 指染數量自決策159 起就是「投入染整的胚布量」；舊單沒有指染數量（為 0）的列退回成品數量
+  const pledgedQty = current.items.reduce((sum, item) => sum + (item.inDyeQty || item.finishedQty), 0)
   const updated: DyeOrder = {
     ...current,
     largeSampleSubmissions: submissions,
@@ -2405,6 +2421,30 @@ function buildFabricLabelsForReceipt(receipt: GoodsReceipt): { label: FabricLabe
  * 故一律以單號解析，不可用「主號＋已完成」抓第一張，否則會貼到錯的染單。
  * 舊資料沒有關聯單號時，才退回以主號比對已完成的染單。
  */
+/**
+ * 縮率實績（決策160）：委外加工的入庫單確認入庫時，把這次的實際縮率記到商品主檔。
+ * 每次都記一筆、不覆蓋；同一張入庫單只記一次（重複確認不會重複記）。
+ * 沒有投胚量算不出縮率時不記——寧可少一筆，也不要記一個錯的數字拉偏平均。
+ */
+function recordShrinkage(receipt: GoodsReceipt, dyeOrder: DyeOrder): void {
+  const rate = goodsReceiptShrinkageRate(receipt)
+  if (rate === null || !receipt.pledgedQty) return
+  const product = resolveProduct(dyeOrder.productId, dyeOrder.productName)
+  if (!product) return
+  const pIdx = products.findIndex((p) => p.id === product.id)
+  if (pIdx === -1 || products[pIdx].shrinkageRecords?.some((r) => r.receiptId === receipt.id)) return
+  const record: ShrinkageRecord = {
+    receiptId: receipt.id,
+    dyeOrderId: dyeOrder.id,
+    dyeVendorId: dyeOrder.vendorId,
+    pledgedQty: receipt.pledgedQty,
+    receivedQty: receipt.rolls.reduce((sum, r) => sum + r.length, 0),
+    ratePct: Math.round(rate * 1000) / 10,
+    recordedAt: dayjs().toISOString(),
+  }
+  products[pIdx] = { ...products[pIdx], shrinkageRecords: [...(products[pIdx].shrinkageRecords ?? []), record] }
+}
+
 function resolveDyeOrderIndexForReceipt(receipt: GoodsReceipt): number {
   if (receipt.relatedDocType === '染單' && receipt.relatedDocId) {
     return dyeOrders.findIndex((d) => d.id === receipt.relatedDocId)
@@ -2508,6 +2548,7 @@ export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']
         ...dyeOrders[dyeOrderIdx],
         actualReceiptComparisons: [...(dyeOrders[dyeOrderIdx].actualReceiptComparisons ?? []), comparison],
       }
+      recordShrinkage(updated, dyeOrders[dyeOrderIdx])
     }
   }
 

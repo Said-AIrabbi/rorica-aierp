@@ -1278,6 +1278,43 @@ function backfillShippingCurrencies(): void {
 backfillShippingCurrencies()
 
 /**
+ * 縮率實績（決策160）：種子裡已確認入庫的委外加工入庫單，比照實際流程補成商品主檔的縮率實績，
+ * 開表4 時才有推薦值可看。只讀現成數字，不呼叫 faker，不推動亂數序列。
+ */
+function seedShrinkageRecords(): void {
+  goodsReceipts.forEach((receipt) => {
+    if (receipt.status !== '已完成' || receipt.source !== '委外加工' || !receipt.pledgedQty) return
+    const dye =
+      receipt.relatedDocType === '染單'
+        ? dyeOrders.find((d) => d.id === receipt.relatedDocId)
+        : dyeOrders.find((d) => d.parentId === receipt.parentId && d.status === '已完成')
+    if (!dye) return
+    const received = receipt.rolls.reduce((sum, r) => sum + r.length, 0)
+    if (received === 0) return
+    const pIdx = products.findIndex(
+      (p) => p.id === dye.productId || (!dye.productId && p.productName === dye.productName),
+    )
+    if (pIdx === -1 || products[pIdx].shrinkageRecords?.some((r) => r.receiptId === receipt.id)) return
+    products[pIdx] = {
+      ...products[pIdx],
+      shrinkageRecords: [
+        ...(products[pIdx].shrinkageRecords ?? []),
+        {
+          receiptId: receipt.id,
+          dyeOrderId: dye.id,
+          dyeVendorId: dye.vendorId,
+          pledgedQty: receipt.pledgedQty,
+          receivedQty: received,
+          ratePct: Math.round(((receipt.pledgedQty - received) / receipt.pledgedQty) * 1000) / 10,
+          recordedAt: receipt.receiptDate,
+        },
+      ],
+    }
+  })
+}
+seedShrinkageRecords()
+
+/**
  * 生管主管（決策153、權限規格決策59）：「生管＋管理層」兩個角色掛在同一個帳號上，
  * 再以個別排除收回不屬於他的部分——結果是只能簽核表2／表4 的管理層。
  *
