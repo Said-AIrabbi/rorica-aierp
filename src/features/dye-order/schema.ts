@@ -4,6 +4,8 @@ export const dyeOrderItemSchema = z.object({
   /** 來源表1 明細 id：供「已建單」判斷用，畫面不顯示 */
   sourceItemId: z.string().optional(),
   color: z.string().min(1, '請輸入顏色'),
+  /** 廠商品名（決策158）：開放文字輸入、非必填 */
+  vendorProductName: z.string().optional(),
   sampleCode: z.string().optional(),
   /** 勾選「無色號」：跳過歷史色號查詢，亦不自動觸發表3 */
   noSampleCode: z.boolean().optional(),

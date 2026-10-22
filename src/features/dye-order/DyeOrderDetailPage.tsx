@@ -51,7 +51,9 @@ export function DyeOrderDetailPage() {
    * 明細草稿：加工單價與指染數量（決策125）。以字串存，因為輸入到一半的「」與「0」
    * 是兩件事——存成數字時清空會立刻變 0，使用者看到的是自己沒打的數字。
    */
-  const [itemDraft, setItemDraft] = useState<Record<string, { unitPrice: string; inDyeQty: string }>>({})
+  const [itemDraft, setItemDraft] = useState<
+    Record<string, { unitPrice: string; inDyeQty: string; vendorProductName: string }>
+  >({})
   /** 單頭草稿：僅草稿且未送簽時可改，送簽後回復唯讀（決策153） */
   const [headDraft, setHeadDraft] = useState({
     dueDate: '',
@@ -68,7 +70,11 @@ export function DyeOrderDetailPage() {
         Object.fromEntries(
           order.items.map((i) => [
             i.id,
-            { unitPrice: i.unitPrice != null ? String(i.unitPrice) : '', inDyeQty: i.inDyeQty ? String(i.inDyeQty) : '' },
+            {
+              unitPrice: i.unitPrice != null ? String(i.unitPrice) : '',
+              inDyeQty: i.inDyeQty ? String(i.inDyeQty) : '',
+              vendorProductName: i.vendorProductName ?? '',
+            },
           ]),
         ),
       )
@@ -186,13 +192,14 @@ export function DyeOrderDetailPage() {
             {
               unitPrice: d.unitPrice.trim() === '' ? undefined : Number(d.unitPrice),
               inDyeQty: d.inDyeQty.trim() === '' ? undefined : Number(d.inDyeQty),
+              vendorProductName: d.vendorProductName,
             },
           ]),
         ),
       ),
     onSuccess: async () => {
       await invalidateAll()
-      toast.success(`${id} 加工單價與指染數量已儲存`)
+      toast.success(`${id} 明細已儲存（廠商品名、加工單價、指染數量）`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -262,7 +269,8 @@ export function DyeOrderDetailPage() {
     if (!d) return false
     return (
       d.unitPrice !== (i.unitPrice != null ? String(i.unitPrice) : '') ||
-      d.inDyeQty !== (i.inDyeQty ? String(i.inDyeQty) : '')
+      d.inDyeQty !== (i.inDyeQty ? String(i.inDyeQty) : '') ||
+      d.vendorProductName !== (i.vendorProductName ?? '')
     )
   })
   // 單卷碼數上限：依來源表1該筆明細的定碼長度與生產數量容許誤差動態計算
@@ -472,6 +480,7 @@ export function DyeOrderDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>顏色</TableHead>
+                  <TableHead>廠商品名</TableHead>
                   <TableHead>色樣編號</TableHead>
                   <TableHead>對色標準</TableHead>
                   <TableHead className="text-right">單卷碼數</TableHead>
@@ -488,6 +497,24 @@ export function DyeOrderDetailPage() {
                 {order.items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="whitespace-nowrap">{item.color}</TableCell>
+                    {/* 廠商品名（決策158）：與加工單價同樣只在草稿可改，同一顆儲存鍵 */}
+                    <TableCell>
+                      {itemsEditable ? (
+                        <Input
+                          className="w-36"
+                          placeholder="非必填"
+                          value={itemDraft[item.id]?.vendorProductName ?? ''}
+                          onChange={(e) =>
+                            setItemDraft((prev) => ({
+                              ...prev,
+                              [item.id]: { ...prev[item.id], vendorProductName: e.target.value },
+                            }))
+                          }
+                        />
+                      ) : (
+                        item.vendorProductName || '-'
+                      )}
+                    </TableCell>
                     <TableCell>
                       {sampleCodeEditable ? (
                         <div className="flex items-center gap-1">
@@ -607,7 +634,7 @@ export function DyeOrderDetailPage() {
                   onClick={() => saveItemsMutation.mutate()}
                 >
                   <Save className="mr-1 h-4 w-4" />
-                  {saveItemsMutation.isPending ? '儲存中...' : '儲存加工單價與指染數量'}
+                  {saveItemsMutation.isPending ? '儲存中...' : '儲存明細（廠商品名、加工單價、指染數量）'}
                 </Button>
               )}
               {sampleCodeEditable && (

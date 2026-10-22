@@ -117,6 +117,7 @@ export function DyeOrderFormPage() {
           // 來源表1 明細 id：供「已建單」標記與分批建單判斷
           sourceItemId: item.id,
           color: item.color,
+          vendorProductName: '',
           sampleCode: '',
           noSampleCode: false,
           colorMatchStandard: '',
@@ -245,6 +246,7 @@ export function DyeOrderFormPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>顏色</TableHead>
+                      <TableHead>廠商品名</TableHead>
                       <TableHead>色樣編號</TableHead>
                       <TableHead>對色標準</TableHead>
                       <TableHead>單卷碼數</TableHead>
@@ -275,6 +277,9 @@ export function DyeOrderFormPage() {
                               </span>
                             )
                           })()}
+                        </TableCell>
+                        <TableCell>
+                          <Input className="w-36" placeholder="非必填" {...register(`items.${index}.vendorProductName`)} />
                         </TableCell>
                         <TableCell>
                           <Input

@@ -73,6 +73,8 @@ export function PurchaseOrderDetailPage() {
   const [draftNote, setDraftNote] = useState('')
   /** 明細單價：訂購單專屬的可編輯欄位，草稿階段隨單頭一起儲存 */
   const [draftUnitPrices, setDraftUnitPrices] = useState<Record<string, string>>({})
+  /** 明細廠商品名（決策158）：與單價同一時機編輯、同一顆儲存鍵 */
+  const [draftVendorNames, setDraftVendorNames] = useState<Record<string, string>>({})
 
   // 草稿欄位一律由單據現值帶入：草稿可以分多次補齊，重新進頁面要看到上次存的內容
   useEffect(() => {
@@ -86,6 +88,7 @@ export function PurchaseOrderDetailPage() {
       setDraftUnitPrices(
         Object.fromEntries(order.items.map((i) => [i.id, i.unitPrice != null ? String(i.unitPrice) : ''])),
       )
+      setDraftVendorNames(Object.fromEntries(order.items.map((i) => [i.id, i.vendorProductName ?? ''])))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id])
@@ -155,6 +158,7 @@ export function PurchaseOrderDetailPage() {
         dueDate: draftDueDate,
         note: draftNote,
         itemUnitPrices: draftPricePayload(),
+        itemVendorProductNames: draftVendorNames,
       }),
     onSuccess: async (updated) => {
       await invalidateAll()
@@ -173,6 +177,7 @@ export function PurchaseOrderDetailPage() {
         dueDate: draftDueDate,
         note: draftNote,
         itemUnitPrices: draftPricePayload(),
+        itemVendorProductNames: draftVendorNames,
       }),
     onSuccess: async (updated) => {
       await invalidateAll()
@@ -507,6 +512,7 @@ export function PurchaseOrderDetailPage() {
                 <TableRow>
                   <TableHead>客戶品名</TableHead>
                   <TableHead>皇加品名</TableHead>
+                  <TableHead>廠商品名</TableHead>
                   <TableHead>顏色</TableHead>
                   <TableHead className="text-right">數量 ({itemUnit})</TableHead>
                   <TableHead>色號查詢</TableHead>
@@ -526,6 +532,19 @@ export function PurchaseOrderDetailPage() {
                       {item.roricaProductName}
                       {/* 同品名有多個規格分支時附上分支序號，讓明細看得出指的是哪一個 */}
                       <span className="text-muted-foreground">{productBranchSuffix(item.productId)}</span>
+                    </TableCell>
+                    {/* 廠商品名（決策158）：與單價同樣在草稿時可改，隨「儲存草稿」一起寫入 */}
+                    <TableCell>
+                      {order.status === '草稿' && canEditDraft ? (
+                        <Input
+                          className="w-36"
+                          placeholder="非必填"
+                          value={draftVendorNames[item.id] ?? ''}
+                          onChange={(e) => setDraftVendorNames((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      ) : (
+                        item.vendorProductName || '-'
+                      )}
                     </TableCell>
                     <TableCell>{item.color}</TableCell>
                     <TableCell className="text-right">

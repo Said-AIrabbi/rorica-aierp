@@ -976,6 +976,8 @@ export interface PurchaseOrderInput {
   note: string
   /** 單價：訂購單專屬額外欄位，可編輯；鍵值為來源表1明細列 id */
   itemUnitPrices: Record<string, number | undefined>
+  /** 廠商品名（決策158）：開放文字輸入；鍵值為來源表1明細列 id */
+  itemVendorProductNames?: Record<string, string | undefined>
   /**
    * 本張要做的表1 明細 id（決策148）：一張表1 可分批開多張表2，不做的品項於表單清除。
    * 未傳時帶入表1 全部明細（維持既有行為）。
@@ -1018,6 +1020,7 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
     // 彩條唯讀帶入自表1 該筆明細
     colorRatios: item.colorRatios,
     unitPrice: input.itemUnitPrices[item.id],
+    vendorProductName: cleanText(input.itemVendorProductNames?.[item.id]),
     note: item.note,
   }))
   const order: PurchaseOrder = {
@@ -1049,6 +1052,26 @@ export interface PurchaseOrderDraftCompletionInput {
   dueDate: string
   note: string
   itemUnitPrices: Record<string, number | undefined>
+  /** 廠商品名（決策158）：鍵值為表2 明細列 id；未傳的列維持原值 */
+  itemVendorProductNames?: Record<string, string | undefined>
+}
+
+/** 自由文字欄位：只有空白視為沒填 */
+function cleanText(value: string | undefined): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+/** 表2 草稿存檔共用：單價與廠商品名逐列套上，未傳的列維持原值 */
+function applyPurchaseOrderItemDrafts(items: PurchaseOrderItem[], input: PurchaseOrderDraftCompletionInput) {
+  return items.map((item) => ({
+    ...item,
+    unitPrice: input.itemUnitPrices[item.id] ?? item.unitPrice,
+    vendorProductName:
+      input.itemVendorProductNames && item.id in input.itemVendorProductNames
+        ? cleanText(input.itemVendorProductNames[item.id])
+        : item.vendorProductName,
+  }))
 }
 
 /**
@@ -1074,7 +1097,7 @@ export function completePurchaseOrderDraft(id: string, input: PurchaseOrderDraft
     dyeVendorId: input.type === '胚布' && input.hasDyeVendor ? input.dyeVendorId : undefined,
     dueDate: input.dueDate,
     note: input.note,
-    items: current.items.map((item) => ({ ...item, unitPrice: input.itemUnitPrices[item.id] ?? item.unitPrice })),
+    items: applyPurchaseOrderItemDrafts(current.items, input),
     approvalState: '待簽核',
     submittedAt: dayjs().toISOString(),
     submittedByAccountId: account.id,
@@ -1182,7 +1205,7 @@ export function savePurchaseOrderDraft(id: string, input: PurchaseOrderDraftComp
     dyeVendorId: input.type === '胚布' && input.hasDyeVendor ? input.dyeVendorId : undefined,
     dueDate: input.dueDate,
     note: input.note,
-    items: current.items.map((item) => ({ ...item, unitPrice: input.itemUnitPrices[item.id] ?? item.unitPrice })),
+    items: applyPurchaseOrderItemDrafts(current.items, input),
   }
   purchaseOrders[idx] = updated
   return delay(updated)
@@ -1801,6 +1824,8 @@ export interface DyeOrderItemInput {
   /** 來源表1 明細 id：分批建單時用於標記哪些品項已開過染單 */
   sourceItemId?: string
   color: string
+  /** 廠商品名（決策158）：開放文字輸入、非必填 */
+  vendorProductName?: string
   sampleCode?: string
   /** 勾選「無色號」：明確表示此列尚無色號，跳過歷史色號查詢，亦不自動觸發表3 */
   noSampleCode?: boolean
@@ -1858,6 +1883,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
       // 彩條唯讀：一律回頭取來源表1 明細的值，不接受畫面傳入
       colorRatios: notice.items.find((ni) => ni.id === item.sourceItemId)?.colorRatios,
       color: item.color,
+      vendorProductName: cleanText(item.vendorProductName),
       sampleCode: resolved.sampleCode,
       sampleCodeLastUsedAt: resolved.lastUsedAt,
       dyeRequestId: resolved.dyeRequestId,
@@ -1931,6 +1957,8 @@ export interface DyeOrderItemDraftInput {
   /** 留空（undefined）代表清除單價，回到「未談定」 */
   unitPrice?: number
   inDyeQty?: number
+  /** 廠商品名（決策158）：有傳這個鍵才更新，空白即清除 */
+  vendorProductName?: string
 }
 
 export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrderItemDraftInput>): Promise<DyeOrder> {
@@ -1961,6 +1989,7 @@ export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrd
         unitPrice: input.unitPrice,
         // 指染數量沒有「未填」這個狀態（三段式庫存要拿它去加總），留空即 0
         inDyeQty: input.inDyeQty ?? 0,
+        vendorProductName: 'vendorProductName' in input ? cleanText(input.vendorProductName) : item.vendorProductName,
       }
     }),
   }

@@ -250,6 +250,7 @@ export function PurchaseOrderFormPage() {
                     <TableRow>
                       <TableHead>客戶品名</TableHead>
                       <TableHead>皇加品名</TableHead>
+                      <TableHead>廠商品名</TableHead>
                       <TableHead>顏色</TableHead>
                       <TableHead>色號查詢</TableHead>
                       <TableHead className="text-right">Yard</TableHead>
@@ -281,6 +282,9 @@ export function PurchaseOrderFormPage() {
                           })()}
                         </TableCell>
                         <TableCell>{item.roricaProductName}</TableCell>
+                        <TableCell>
+                          <Input className="w-36" placeholder="非必填" {...register(`itemVendorProductNames.${item.id}`)} />
+                        </TableCell>
                         <TableCell>{item.color}</TableCell>
                         <TableCell>
                           {/* 選定染整廠後即為完整四鍵查詢：這裡就能看出這批顏色要不要打色 */}

@@ -10,6 +10,8 @@ export const purchaseOrderFormSchema = z.object({
   dueDate: z.string().min(1, '請輸入交期'),
   note: z.string(),
   itemUnitPrices: z.record(z.string(), z.coerce.number().min(0).optional()),
+  /** 廠商品名（決策158）：開放文字輸入、非必填；鍵值為來源表1明細列 id */
+  itemVendorProductNames: z.record(z.string(), z.string().optional()).optional(),
 })
   .refine((v) => !(v.type === '胚布' && v.hasDyeVendor) || Boolean(v.dyeVendorId), {
     message: '請選擇染整廠（名稱＋廠點）',

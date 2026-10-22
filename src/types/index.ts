@@ -639,6 +639,11 @@ export interface PurchaseOrderItem {
   colorRatios?: string[]
   customerProductName: string
   roricaProductName: string
+  /**
+   * 廠商品名（決策158）：廠商對這個品項的稱呼，開放文字輸入、非必填。
+   * 皇加品名是皇加自己的代號，廠商不一定認得；下單或對帳時要用對方的叫法才對得上
+   */
+  vendorProductName?: string
   /** 產品編號：唯讀，帶入自包裝單，指向明細選定的產品分支 */
   productId?: string
   color: string
@@ -781,6 +786,11 @@ export interface DyeOrderItem {
    */
   sourceItemId?: string
   color: string
+  /**
+   * 廠商品名（決策158）：廠商對這個品項的稱呼，開放文字輸入、非必填。
+   * 皇加品名是皇加自己的代號，廠商不一定認得；下單或對帳時要用對方的叫法才對得上
+   */
+  vendorProductName?: string
   /** 色樣編號：可留空（不受表3卡控），查得到歷史色號則自動帶入，結案前皆可修改 */
   sampleCode?: string
   /**
