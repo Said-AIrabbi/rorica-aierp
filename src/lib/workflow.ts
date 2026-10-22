@@ -90,6 +90,9 @@ export function inDyeQtyFromShrinkage(finishedQty: number, shrinkagePct: number)
 /**
  * 預期縮率推薦值（決策160）：同一產品＋同一染整廠的縮率實績平均，小數 1 位。
  * 沒有實績（或看不到「生產績效」欄位群組而讀不到實績）時回傳 undefined，由呼叫端退回預設 5%。
+ *
+ * **預設 5% 不計入平均**（皇加指定）：5% 只是還沒有任何單據時的起始值，有了實績就只看實績。
+ * 第一筆實績進來後，推薦值就是那一筆本身，不會被 5% 往回拉。
  */
 export function recommendedShrinkage(
   product: { shrinkageRecords?: { dyeVendorId: string; ratePct: number }[] } | undefined,
