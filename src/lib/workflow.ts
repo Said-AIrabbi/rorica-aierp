@@ -295,6 +295,29 @@ export function receiptNoticeItems(
   return docs.packingNotices.find((n) => n.id === receipt.parentId)?.items ?? []
 }
 
+/**
+ * 入庫單關聯的所有表1（決策163）：看它的關聯上游單據——合併的表2／表4 開出的入庫單裝著好幾張表1 的貨，
+ * 只看入庫單自己的主表1 會讓其他來源表1 看不到它。查不到上游時只算主表1。
+ */
+export function receiptNoticeIds(
+  receipt: Pick<GoodsReceipt, 'parentId' | 'relatedDocType' | 'relatedDocId'>,
+  docs: {
+    purchaseOrders: Pick<PurchaseOrder, 'id' | 'parentId' | 'items'>[]
+    dyeOrders: Pick<DyeOrder, 'id' | 'parentId' | 'items'>[]
+  },
+): string[] {
+  let upstream: string[] = []
+  if (receipt.relatedDocType === '染單') {
+    const d = docs.dyeOrders.find((x) => x.id === receipt.relatedDocId)
+    upstream = d ? dyeOrderNoticeIds(d) : []
+  } else if (receipt.relatedDocType === '成品訂單' || receipt.relatedDocType === '胚布訂單') {
+    const p = docs.purchaseOrders.find((x) => x.id === receipt.relatedDocId)
+    upstream = p ? purchaseOrderNoticeIds(p) : []
+  }
+  // 表5 二次加工單一張只對一張表1，即入庫單的主表1
+  return [...new Set([receipt.parentId, ...upstream])]
+}
+
 /** 表4 明細的來源表1（決策163）：舊資料沒記錄者視為單頭的主表1 */
 export function dyeItemNoticeId(order: Pick<DyeOrder, 'parentId'>, item: { sourceNoticeId?: string }): string {
   return item.sourceNoticeId ?? order.parentId

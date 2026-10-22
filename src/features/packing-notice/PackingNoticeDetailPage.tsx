@@ -43,6 +43,7 @@ import {
   noticeItemShippedYard,
   dyeOrderNoticeIds,
   purchaseOrderNoticeIds,
+  receiptNoticeIds,
   shippingOrderNoticeIds,
   tolerancePct,
 } from '@/lib/workflow'
@@ -181,7 +182,10 @@ export function PackingNoticeDetailPage() {
   const relatedPOs = purchaseOrders.filter((p) => purchaseOrderNoticeIds(p).includes(notice.id))
   const relatedDyeRequests = dyeRequests.filter((d) => d.parentId === notice.id)
   const relatedDyeOrders = dyeOrders.filter((d) => dyeOrderNoticeIds(d).includes(notice.id))
-  const relatedReceipts = goodsReceipts.filter((r) => r.parentId === notice.id)
+  // 合併的表2／表4 開出的入庫單（決策163）：依關聯上游單據判斷，每張來源表1 都看得到
+  const relatedReceipts = goodsReceipts.filter((r) =>
+    receiptNoticeIds(r, { purchaseOrders, dyeOrders }).includes(notice.id),
+  )
   const relatedSecondary = secondaryProcessingOrders.filter((o) => o.parentId === notice.id)
   // 合併出貨單（決策163）：明細有任何一列出這張表1 就算相關，不只看主表1
   const relatedShipping = shippingOrders.filter((s) => shippingOrderNoticeIds(s).includes(notice.id))
@@ -889,16 +893,36 @@ export function PackingNoticeDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <RelatedGroup title="表2 訂購單" items={relatedPOs.map((p) => ({ id: p.id, status: p.status }))} to="/purchase-order" />
+            <RelatedGroup
+              title="表2 訂購單"
+              items={relatedPOs.map((p) => ({ id: p.id, status: p.status, mergedWith: purchaseOrderNoticeIds(p).filter((nid) => nid !== notice.id) }))}
+              to="/purchase-order"
+            />
             <RelatedGroup title="表3 打色通知單" items={relatedDyeRequests.map((d) => ({ id: d.id, status: d.status }))} to="/dye-request" />
-            <RelatedGroup title="表4 染整單" items={relatedDyeOrders.map((d) => ({ id: d.id, status: d.status }))} to="/dye-order" />
+            <RelatedGroup
+              title="表4 染整單"
+              items={relatedDyeOrders.map((d) => ({ id: d.id, status: d.status, mergedWith: dyeOrderNoticeIds(d).filter((nid) => nid !== notice.id) }))}
+              to="/dye-order"
+            />
             <RelatedGroup
               title="表5 二次加工單"
               items={relatedSecondary.map((o) => ({ id: o.id, status: o.status }))}
               to="/secondary-processing"
             />
-            <RelatedGroup title="表6 入庫單" items={relatedReceipts.map((r) => ({ id: r.id, status: r.status }))} to="/goods-receipt" />
-            <RelatedGroup title="表8 出貨單" items={relatedShipping.map((s) => ({ id: s.id, status: s.status }))} to="/shipping-order" />
+            <RelatedGroup
+              title="表6 入庫單"
+              items={relatedReceipts.map((r) => ({
+                id: r.id,
+                status: r.status,
+                mergedWith: receiptNoticeIds(r, { purchaseOrders, dyeOrders }).filter((nid) => nid !== notice.id),
+              }))}
+              to="/goods-receipt"
+            />
+            <RelatedGroup
+              title="表8 出貨單"
+              items={relatedShipping.map((s) => ({ id: s.id, status: s.status, mergedWith: shippingOrderNoticeIds(s).filter((nid) => nid !== notice.id) }))}
+              to="/shipping-order"
+            />
           </div>
         </CardContent>
       </Card>
@@ -925,7 +949,19 @@ export function PackingNoticeDetailPage() {
   )
 }
 
-function RelatedGroup({ title, items, to }: { title: string; items: { id: string; status: string }[]; to: string }) {
+/**
+ * 相關單據清單。合併單（決策163）在單號旁標「合併」，滑過去顯示一起合併的其他表1——
+ * 只看單號看不出這張單還裝著別張表1 的貨。
+ */
+function RelatedGroup({
+  title,
+  items,
+  to,
+}: {
+  title: string
+  items: { id: string; status: string; mergedWith?: string[] }[]
+  to: string
+}) {
   return (
     <div className="rounded-lg border border-border p-3">
       <div className="text-xs font-semibold text-muted-foreground">{title}</div>
@@ -934,8 +970,18 @@ function RelatedGroup({ title, items, to }: { title: string; items: { id: string
       ) : (
         <div className="mt-2 space-y-1.5">
           {items.map((item) => (
-            <Link key={item.id} to={`${to}/${item.id}`} className="flex items-center justify-between text-sm hover:text-brand-dark">
-              <span>{item.id}</span>
+            <Link key={item.id} to={`${to}/${item.id}`} className="flex items-center justify-between gap-2 text-sm hover:text-brand-dark">
+              <span className="inline-flex items-center gap-1.5">
+                {item.id}
+                {item.mergedWith && item.mergedWith.length > 0 && (
+                  <span
+                    className="rounded border border-accent-blue/40 px-1 text-[11px] leading-4 text-accent-blue"
+                    title={`與 ${item.mergedWith.join('、')} 合併`}
+                  >
+                    合併
+                  </span>
+                )}
+              </span>
               <StatusBadge status={item.status} />
             </Link>
           ))}
