@@ -4,7 +4,7 @@ import { isRemoteStorage, scheduleRemoteSave } from '@/prototype-storage'
 import dayjs from 'dayjs'
 import { yardToMeter, yardWeightToMeterWeight } from '@/lib/units'
 import { reservationExpiresAt } from '@/lib/inventory'
-import { buildSecondaryProcessingPackaging, defaultRollYard } from '@/lib/workflow'
+import { buildSecondaryProcessingPackaging, defaultRollYard, inDyeQtyFromShrinkage } from '@/lib/workflow'
 import { PI_PAYMENT_TERM_TEMPLATES, piQuoteValidUntil } from '@/lib/pi'
 import { hexToCmyk, labToHex } from '@/lib/digital-color'
 import { PRODUCT_CATALOG } from './product-catalog'
@@ -602,9 +602,9 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
       fabricSpec: product?.greigeSpec ?? '',
       finishedSpec: product?.finishedSpec ?? '',
       unitPrice: faker.number.float({ min: 15, max: 45, fractionDigits: 1 }),
-      // 兩段式：成品數量為該列應產出量（固定不變）；指染數量只在胚布到廠、尚未結案期間有值
+      // 成品數量為該列應產出量；指染數量是為了達到它而抓的容許值，依預設縮率推算（決策159、161）
       finishedQty: totalQty,
-      inDyeQty: status === '生效' && greigeArrived ? totalQty : 0,
+      inDyeQty: inDyeQtyFromShrinkage(totalQty, 5),
       expectedShrinkagePct: 5,
     }
   })

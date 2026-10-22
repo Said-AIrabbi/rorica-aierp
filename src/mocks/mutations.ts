@@ -26,6 +26,7 @@ import {
   goodsReceiptShrinkageRate,
   inDyeQtyFromShrinkage,
   recommendedShrinkage,
+  shrinkagePctOf,
   ABNORMAL_CLAIM_MONTHS,
   effectivePurchaseOrderStatus,
   isPackingNoticeFullyShipped,
@@ -2181,15 +2182,19 @@ function applyGreigeArrivalToDyeOrder(idx: number, arrivedAt: string): void {
   dyeOrders[idx] = {
     ...current,
     greigeArrivedAt: current.greigeArrivedAt ?? arrivedAt,
-    items: current.items.map((item) => ({
-      ...item,
-      // 手動已填指染數量者不重複累加，一律以該列應產出量為準
-      inDyeQty: item.finishedQty,
-    })),
+    /**
+     * 指染數量不再覆蓋為成品數量（決策161，覆蓋決策159 的到貨規則）：
+     * 成品數量是扣掉縮率之後的實際數字，指染數量是為了達到成品數量而抓的容許值，兩者本來就不同；
+     * 到貨就把指染改成成品，等於把多抓的縮率份量抹掉，投胚量與縮率實績也跟著失真。
+     * 只有還沒有指染數量的列（本欄位改意義前的舊單）依預期縮率補上
+     */
+    items: current.items.map((item) =>
+      item.inDyeQty > 0 ? item : { ...item, inDyeQty: inDyeQtyFromShrinkage(item.finishedQty, shrinkagePctOf(item)) },
+    ),
   }
 }
 
-/** 胚布入庫結案時，連動同一張表1底下所有尚未結案的染單登記指染數量 */
+/** 胚布入庫結案時，連動同一張表1底下所有尚未結案的染單登記胚布到貨（指染數量照舊，決策161） */
 function applyGreigeArrivalToParent(parentId: string, arrivedAt: string): void {
   dyeOrders.forEach((order, idx) => {
     if (order.parentId !== parentId) return
@@ -3014,9 +3019,16 @@ export function updateProduct(id: string, input: ProductInput): Promise<Product>
   if (idx === -1) throw new Error(`商品 ${id} 不存在`)
   if (!input.productName.trim()) throw new Error('皇加品名為必填')
 
+  /**
+   * 看不到的價格沿用原值：讀取端已把它拿掉，畫面送回來是 undefined，直接覆寫就會替看不到的人把價格清空。
+   * 生管維護商品主檔卻看不到售價，正是這個情形
+   */
+  const account = getCurrentAccount()
   const updated: Product = {
     ...products[idx],
     ...input,
+    sellPrice: canSeeFieldGroup(account, '售價') ? input.sellPrice : products[idx].sellPrice,
+    costPrice: canSeeFieldGroup(account, '進價') ? input.costPrice : products[idx].costPrice,
     // 米重為唯讀衍生欄位，一律由碼重重新換算，不接受畫面傳入值
     weightMY: Number(yardWeightToMeterWeight(input.weightGY).toFixed(2)),
   }

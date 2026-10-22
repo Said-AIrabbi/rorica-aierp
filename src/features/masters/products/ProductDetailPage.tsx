@@ -274,11 +274,14 @@ export function ProductDetailPage() {
               <div className="space-y-1">
                 <Label className="text-xs">售價（每碼）</Label>
                 <div className="flex items-center gap-1.5">
+                  {/* 看不到售價的帳號不給輸入框：資料本來就沒傳到前端，存檔時由資料層沿用原值 */}
                   <Input
                     type="number"
                     step="0.1"
                     min="0"
                     className="w-28"
+                    disabled={!canSee('售價')}
+                    placeholder={canSee('售價') ? undefined : '-'}
                     value={draft.sellPrice ?? ''}
                     onChange={(e) => set('sellPrice', e.target.value === '' ? undefined : num(e.target.value))}
                   />
@@ -295,6 +298,8 @@ export function ProductDetailPage() {
                     step="0.1"
                     min="0"
                     className="w-28"
+                    disabled={!canSee('進價')}
+                    placeholder={canSee('進價') ? undefined : '-'}
                     value={draft.costPrice ?? ''}
                     onChange={(e) => set('costPrice', e.target.value === '' ? undefined : num(e.target.value))}
                   />
