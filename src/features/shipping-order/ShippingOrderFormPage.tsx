@@ -159,7 +159,8 @@ export function ShippingOrderFormPage() {
                 <Label>用途</Label>
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  {...register('purpose')}
+                  // 「請選擇」是空字串，要轉成未填——否則 enum 驗證不過，表單送不出去又沒有任何提示
+                  {...register('purpose', { setValueAs: (v) => (v === '' ? undefined : v) })}
                 >
                   <option value="">請選擇</option>
                   {GOODS_RECEIPT_PURPOSES.map((p) => (

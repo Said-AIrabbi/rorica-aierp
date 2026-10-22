@@ -59,7 +59,7 @@ export function AddNoticeItemsToPurchaseDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>從其他表1 加入明細（合併訂購）</DialogTitle>
           <DialogDescription>

@@ -86,12 +86,13 @@ export function AddNoticeItemsDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
+      {/* 不自動聚焦第一個欄位：聚焦本身不該改變任何數量 */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>從其他表1 加入明細（合併出貨）</DialogTitle>
           <DialogDescription>
             只列出已生效、同客戶、同幣別、收貨地址與本單相同的包裝通知單。數量預設為剩餘未排量；
-            填得更多時，差額會從其他出貨單草稿移過來（原草稿扣掉、移空則刪除）。
+            按「帶入」可填入剩餘未排量；填得更多時，差額會從其他出貨單草稿移過來（原草稿扣掉、移空則刪除）。
           </DialogDescription>
         </DialogHeader>
 
@@ -131,22 +132,30 @@ export function AddNoticeItemsDialog({
                             <TableCell className="text-right">{formatNumber(remaining, 0)}</TableCell>
                             <TableCell className="text-right">{movable > 0 ? formatNumber(movable, 0) : '-'}</TableCell>
                             <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                min="0"
-                                step="1"
-                                className="ml-auto w-24 text-right"
-                                placeholder={remaining > 0 ? String(remaining) : '0'}
-                                title={`含容許誤差最多可排 ${formatNumber(cap, 0)}Y`}
-                                value={qtyDraft[key] ?? ''}
-                                onChange={(e) => setQtyDraft((prev) => ({ ...prev, [key]: e.target.value }))}
-                                onFocus={() => {
-                                  // 第一次點進來就帶剩餘未排量，不必自己算
-                                  if (qtyDraft[key] === undefined && remaining > 0) {
-                                    setQtyDraft((prev) => ({ ...prev, [key]: String(remaining) }))
-                                  }
-                                }}
-                              />
+                              <div className="flex items-center justify-end gap-1">
+                                {/* 帶入剩餘未排量要明確按下才做——聚焦或捲動經過都不該改數量 */}
+                                {remaining > 0 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() => setQtyDraft((prev) => ({ ...prev, [key]: String(remaining) }))}
+                                  >
+                                    帶入
+                                  </Button>
+                                )}
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  className="w-24 text-right"
+                                  placeholder="0"
+                                  title={`含容許誤差最多可排 ${formatNumber(cap, 0)}Y`}
+                                  value={qtyDraft[key] ?? ''}
+                                  onChange={(e) => setQtyDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                                />
+                              </div>
                             </TableCell>
                           </TableRow>
                         )

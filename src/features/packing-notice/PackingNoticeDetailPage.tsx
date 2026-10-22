@@ -31,7 +31,7 @@ import { lookupColorSample } from '@/lib/colors'
 import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { ColorSwatch } from '@/components/shared/ColorSwatch'
 import { digitalColorFor } from '@/lib/digital-color'
-import { formatNumber, meterToYard, yardPriceToMeterPrice } from '@/lib/units'
+import { formatNumber, meterToYard, yardPriceToMeterPrice, yardToMeter } from '@/lib/units'
 import { effectiveReservationStatus, isExactMultipleOfStandard } from '@/lib/inventory'
 import {
   colorRatioText,
@@ -493,13 +493,18 @@ export function PackingNoticeDetailPage() {
                           ? `≈ ${formatNumber(item.meter, 1)} 米 (Meter)`
                           : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
                       </div>
-                      {/* 出貨進度（決策163）：已出貨＝已完成表8 的量；未排＝還沒排上任何表8 的量 */}
-                      {notice.status !== '草稿' && (
-                        <div className="text-xs text-muted-foreground">
-                          已出 {formatNumber(noticeItemShippedYard(notice.id, item, shippingOrders), 0)}Y／未排{' '}
-                          {formatNumber(noticeItemRemainingYard(notice.id, item, shippingOrders), 0)}Y
-                        </div>
-                      )}
+                      {/* 出貨進度（決策163）：已出貨＝已完成表8 的量；未排＝還沒排上任何表8 的量。單位跟著本單的數量基準 */}
+                      {notice.status !== '草稿' &&
+                        (() => {
+                          const basis = (yard: number) =>
+                            itemUnit === 'Yard' ? `${formatNumber(yard, 0)}Y` : `${formatNumber(yardToMeter(yard), 1)}M`
+                          return (
+                            <div className="text-xs text-muted-foreground">
+                              已出 {basis(noticeItemShippedYard(notice.id, item, shippingOrders))}／未排{' '}
+                              {basis(noticeItemRemainingYard(notice.id, item, shippingOrders))}
+                            </div>
+                          )
+                        })()}
                     </TableCell>
                     <TableCell className="text-right">
                       {/* 看不到售價的角色拿到的資料裡沒有這個欄位，一律顯示「-」（權限規格決策53） */}
