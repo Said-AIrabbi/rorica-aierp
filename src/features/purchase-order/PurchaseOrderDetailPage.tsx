@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Lock, Save, Send } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Lock, Plus, Save, Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
@@ -10,6 +10,7 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { PurchaseOrderPrint } from './PurchaseOrderPrint'
+import { AddNoticeItemsToPurchaseDialog } from './AddNoticeItemsToPurchaseDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
 import { getVendor, primaryContactName, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import {
+  addPurchaseOrderItemsFromNotices,
+  removeNoticeFromPurchaseOrder,
   savePurchaseOrderDraft,
   approvePurchaseOrder,
   completePurchaseOrderDraft,
@@ -42,6 +45,10 @@ import { colorRatioText,
   isPurchaseOrderOverdue,
   isPurchaseOrderReadyToTriggerFulfillment,
   PURCHASE_ORDER_OVERDUE_DAYS,
+  purchaseItemNoticeId,
+  purchaseOrderDyeOrders,
+  purchaseOrderNoticeIds,
+  purchaseOrderReceipts,
 } from '@/lib/workflow'
 import type { PurchaseOrder } from '@/types'
 import { useCurrentAccount } from '@/lib/current-account-context'
@@ -64,6 +71,7 @@ export function PurchaseOrderDetailPage() {
   // 數量以來源表1 的建單基準為主值呈現，另一單位標為換算值；舊資料未記錄者視為 Yard
   const itemUnit = sourceNotice?.itemUnit ?? 'Yard'
   const [rejectReason, setRejectReason] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
   const [draftType, setDraftType] = useState<PurchaseOrder['type']>('胚布')
   const [draftHasDyeVendor, setDraftHasDyeVendor] = useState(false)
   const [draftVendorId, setDraftVendorId] = useState('')
@@ -90,8 +98,33 @@ export function PurchaseOrderDetailPage() {
       )
       setDraftVendorNames(Object.fromEntries(order.items.map((i) => [i.id, i.vendorProductName ?? ''])))
     }
+    // 明細列數改變（合併加入或移除表1，決策163）時也要重設，新列才有輸入欄位
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id])
+  }, [order?.id, order?.items.length])
+
+  /** 合併訂購（決策163）：被移空的草稿會刪除，提示使用者是哪幾張 */
+  const addItemsMutation = useMutation({
+    mutationFn: (itemIds: string[]) => addPurchaseOrderItemsFromNotices(id!, itemIds),
+    onSuccess: async ({ removedDraftIds }) => {
+      await queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
+      setAddOpen(false)
+      toast.success(
+        removedDraftIds.length > 0
+          ? `已加入明細；${removedDraftIds.join('、')} 的明細已全數移入本單，該草稿已刪除`
+          : '已加入明細',
+      )
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const removeNoticeMutation = useMutation({
+    mutationFn: (noticeId: string) => removeNoticeFromPurchaseOrder(id!, noticeId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
+      toast.success('已移除該表1 的明細，可另開訂購單或併到別張')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   const draftPricePayload = () =>
     Object.fromEntries(
@@ -235,10 +268,15 @@ export function PurchaseOrderDetailPage() {
   const canWithdraw = permissions.can('表2', '撤回草稿')
   const displayStatus = effectivePurchaseOrderStatus(order)
   const readyToTrigger = isPurchaseOrderReadyToTriggerFulfillment(order, goodsReceipts, dyeOrders)
-  const linkedDyeOrders = order.hasDyeVendor ? dyeOrders.filter((d) => d.parentId === order.parentId) : []
-  const linkedGoodsReceipt = goodsReceipts.find(
-    (r) => r.parentId === order.parentId && r.source === (order.type === '成品' ? '直採大貨-成品' : '直採大貨-胚布'),
-  )
+  // 下游單據以單號對應（決策163）：同一張表1 可能分給好幾張表2，不能用主表1 去找
+  const linkedDyeOrders = order.hasDyeVendor ? purchaseOrderDyeOrders(order, dyeOrders) : []
+  const linkedGoodsReceipt = purchaseOrderReceipts(order, goodsReceipts)[0]
+  const noticeIds = purchaseOrderNoticeIds(order)
+  const merged = noticeIds.length > 1
+  const canMerge = draftOpen && canEditDraft
+  /** 歷史色號以客戶為鍵：合併單各列用自己表1 的客戶 */
+  const customerOfItem = (item: (typeof order.items)[number]) =>
+    packingNotices.find((n) => n.id === purchaseItemNoticeId(order, item))?.customerId
 
   return (
     <div>
@@ -252,9 +290,15 @@ export function PurchaseOrderDetailPage() {
         description={
           <>
             來源包裝通知單：
-            <Link to={`/packing-notice/${order.parentId}`} className="text-brand-dark underline">
-              {order.parentId}
-            </Link>
+            {noticeIds.map((nid, i) => (
+              <span key={nid}>
+                {i > 0 && '、'}
+                <Link to={`/packing-notice/${nid}`} className="text-brand-dark underline">
+                  {nid}
+                </Link>
+              </span>
+            ))}
+            {merged && '（合併訂購，第一張為主表1）'}
           </>
         }
         actions={
@@ -301,6 +345,18 @@ export function PurchaseOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表2" />
+
+      {canMerge && (
+        <AddNoticeItemsToPurchaseDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          order={order}
+          packingNotices={packingNotices}
+          purchaseOrders={data}
+          pending={addItemsMutation.isPending}
+          onConfirm={(itemIds) => addItemsMutation.mutate(itemIds)}
+        />
+      )}
 
       <WithdrawalNotes entries={order.withdrawals} />
 
@@ -504,12 +560,45 @@ export function PurchaseOrderDetailPage() {
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">明細（{order.items.length} 項）</CardTitle>
+          {canMerge && (
+            <div className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> 從其他表1 加入明細
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="px-0">
+          {merged && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 px-4 text-xs text-muted-foreground">
+              合併訂購：
+              {noticeIds.map((nid) => (
+                <span key={nid} className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-ink-body">
+                  {nid}
+                  {nid === order.parentId ? (
+                    <span className="text-muted-foreground">（主）</span>
+                  ) : (
+                    canMerge && (
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        title={`移除 ${nid} 的明細`}
+                        disabled={removeNoticeMutation.isPending}
+                        onClick={() => removeNoticeMutation.mutate(nid)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table className="min-w-[44rem]">
               <TableHeader>
                 <TableRow>
+                  {merged && <TableHead>來源表1</TableHead>}
                   <TableHead>客戶品名</TableHead>
                   <TableHead>皇加品名</TableHead>
                   <TableHead>廠商品名</TableHead>
@@ -527,6 +616,7 @@ export function PurchaseOrderDetailPage() {
               <TableBody>
                 {order.items.map((item) => (
                   <TableRow key={item.id}>
+                    {merged && <TableCell className="whitespace-nowrap">{purchaseItemNoticeId(order, item)}</TableCell>}
                     <TableCell>{item.customerProductName}</TableCell>
                     <TableCell>
                       {item.roricaProductName}
@@ -556,7 +646,7 @@ export function PurchaseOrderDetailPage() {
                         showMessage={false}
                         result={lookupColorSample({
                           products,
-                          customerId: sourceNotice?.customerId,
+                          customerId: customerOfItem(item),
                           productId: item.productId,
                           productName: item.roricaProductName,
                           color: item.color,

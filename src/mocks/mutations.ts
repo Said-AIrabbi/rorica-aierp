@@ -39,6 +39,12 @@ import {
   noticeItemScheduledYard,
   shippingItemNoticeId,
   shippingOrderNoticeIds,
+  purchaseItemNoticeId,
+  purchaseOrderDyeOrders,
+  purchaseOrderItemSourceId,
+  purchaseOrderNoticeIds,
+  purchaseOrderReceipts,
+  receiptNoticeItems,
   packingNoticeApprovalState,
   packingNoticeLocks,
   pendingAbnormalHandlings,
@@ -663,6 +669,7 @@ function autoCreatePurchaseOrderDraft(notice: PackingNotice, outOfStockItems: Pa
     colorRatios: item.colorRatios,
     note: item.note,
     sourceItemId: item.id,
+    sourceNoticeId: notice.id,
   }))
   const draft: PurchaseOrder = {
     id,
@@ -1040,8 +1047,7 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
   assertCanAct(getCurrentAccount(), '表2', '建立')
   const notice = packingNotices.find((n) => n.id === input.parentId)
   if (!notice) throw new Error(`包裝通知單 ${input.parentId} 不存在`)
-  const existingForParent = purchaseOrders.filter((p) => p.parentId === input.parentId).length
-  const id = `${input.parentId}-P${existingForParent + 1}`
+  const id = nextPurchaseOrderId(input.parentId)
   // 只取表單上保留的品項（決策148）；順序依表1，不依傳入順序
   const chosen = input.itemIds ? notice.items.filter((item) => input.itemIds!.includes(item.id)) : notice.items
   if (input.itemIds) {
@@ -1052,6 +1058,7 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
   const items: PurchaseOrderItem[] = chosen.map((item) => ({
     id: `${id}-${item.id}`,
     sourceItemId: item.id,
+    sourceNoticeId: notice.id,
     customerProductName: item.customerProductName,
     roricaProductName: item.roricaProductName,
     productId: item.productId,
@@ -1087,6 +1094,145 @@ export function createPurchaseOrder(input: PurchaseOrderInput): Promise<Purchase
   }
   purchaseOrders.unshift(order)
   return delay(order)
+}
+
+/**
+ * 表2 單號（決策163）：`主表1-P{n}`，n 取該主表1 現有最大序號＋1——
+ * 合併時被移空的草稿會刪除，用張數＋1 會撞到既有單號。
+ */
+function nextPurchaseOrderId(parentId: string): string {
+  const prefix = `${parentId}-P`
+  const maxSeq = purchaseOrders.reduce((max, p) => {
+    if (!p.id.startsWith(prefix)) return max
+    const n = Number(p.id.slice(prefix.length))
+    return Number.isInteger(n) && n > max ? n : max
+  }, 0)
+  return `${prefix}${maxSeq + 1}`
+}
+
+/** 表1 明細 id 全系統唯一（`表1單號-L{n}`），由 id 找回它屬於哪張表1 */
+function locateNoticeItem(itemId: string | undefined): { notice: PackingNotice; item: PackingNoticeItem } | undefined {
+  if (!itemId) return undefined
+  for (const notice of packingNotices) {
+    const item = notice.items.find((i) => i.id === itemId)
+    if (item) return { notice, item }
+  }
+  return undefined
+}
+
+/** 由表1 明細組出一列表2 明細（欄位與表1 一致，單價與廠商品名留空待生管填） */
+function purchaseLineFromNotice(orderId: string, notice: PackingNotice, item: PackingNoticeItem): PurchaseOrderItem {
+  return {
+    id: `${orderId}-${item.id}`,
+    sourceItemId: item.id,
+    sourceNoticeId: notice.id,
+    customerProductName: item.customerProductName,
+    roricaProductName: item.roricaProductName,
+    productId: item.productId,
+    color: item.color,
+    yard: item.yard,
+    meter: item.meter,
+    packingMethod: item.packingMethod,
+    fixedLengthMeter: item.fixedLengthMeter,
+    processingMethod: item.processingMethod,
+    processingMethodNote: item.processingMethodNote,
+    colorRatios: item.colorRatios,
+    note: item.note,
+  }
+}
+
+/** 合併單的燙金：各表1 不同時以「／」並列，相同則只寫一次 */
+function mergedEmbossing(noticeIds: string[]): string | undefined {
+  const values = [
+    ...new Set(
+      noticeIds
+        .map((id) => packingNotices.find((n) => n.id === id))
+        .map((n) => (n ? embossingDisplay(n.embossing) : undefined))
+        .filter((v): v is string => Boolean(v && v.trim())),
+    ),
+  ]
+  return values.length > 0 ? values.join('／') : undefined
+}
+
+/** 表2 草稿是否還在生管手上（未送簽）：只有這種草稿可以被移出或移入明細 */
+const isOpenPurchaseDraft = (o: PurchaseOrder) => o.status === '草稿' && draftApprovalState(o) === '未送簽'
+
+/**
+ * 表2 草稿加入其他表1 的明細（決策163）：同一家廠商的貨合成一張訂購單。
+ *
+ * 表2 的明細與表1 一列對一列、不拆數量，所以合併就是把整列搬過來：
+ * 該列若還在別張「未送簽」的表2 草稿上（例如表1 生效時自動建立的草稿），就從那張移過來，移空的草稿刪除；
+ * 已送簽、已簽核送出的表2 上的列不能動——那張單已經在管理層或廠商手上。
+ * 廠商、類型、染整廠是單頭欄位，加進來的列一律照本單，不另做比對。
+ */
+export function addPurchaseOrderItemsFromNotices(
+  id: string,
+  itemIds: string[],
+): Promise<{ order: PurchaseOrder; removedDraftIds: string[] }> {
+  assertCanAct(getCurrentAccount(), '表2', '編輯草稿')
+  const current = purchaseOrders.find((p) => p.id === id)
+  if (!current) throw new Error(`訂購單 ${id} 不存在`)
+  if (!isOpenPurchaseDraft(current)) throw new Error('僅未送簽的草稿可加入明細')
+  if (itemIds.length === 0) throw new Error('請至少勾選一筆明細')
+
+  const located = [...new Set(itemIds)].map((itemId) => {
+    const found = locateNoticeItem(itemId)
+    if (!found) throw new Error(`查無表1 明細 ${itemId}`)
+    if (found.notice.status !== '生效') throw new Error(`${found.notice.id} 尚未生效或已結案，不可加入訂購單`)
+    const holder = purchaseOrders.find((p) =>
+      p.items.some((i) => purchaseItemNoticeId(p, i) === found.notice.id && purchaseOrderItemSourceId(i, found.notice) === itemId),
+    )
+    if (holder?.id === id) throw new Error(`${found.item.roricaProductName}／${found.item.color} 已在本單`)
+    if (holder && !isOpenPurchaseDraft(holder)) {
+      throw new Error(`${found.notice.id} 的 ${found.item.roricaProductName}／${found.item.color} 已在訂購單 ${holder.id}（已送簽或已送出），不可移動`)
+    }
+    return { ...found, holderId: holder?.id }
+  })
+
+  // 從其他未送簽草稿移出
+  const removed: string[] = []
+  const holders = new Set(located.map((l) => l.holderId).filter((v): v is string => Boolean(v)))
+  holders.forEach((holderId) => {
+    const idx = purchaseOrders.findIndex((p) => p.id === holderId)
+    const moving = new Set(located.filter((l) => l.holderId === holderId).map((l) => l.item.id))
+    const holder = purchaseOrders[idx]
+    const sourceOf = (i: PurchaseOrderItem) =>
+      purchaseOrderItemSourceId(i, packingNotices.find((n) => n.id === purchaseItemNoticeId(holder, i))) ?? ''
+    const items = holder.items.filter((i) => !moving.has(sourceOf(i)))
+    if (items.length === 0) {
+      purchaseOrders.splice(idx, 1)
+      removed.push(holderId)
+    } else {
+      purchaseOrders[idx] = { ...holder, items }
+    }
+  })
+
+  const idx = purchaseOrders.findIndex((p) => p.id === id)
+  const order = purchaseOrders[idx]
+  const items = [...order.items, ...located.map((l) => purchaseLineFromNotice(order.id, l.notice, l.item))]
+  const updated: PurchaseOrder = { ...order, items }
+  updated.embossing = mergedEmbossing(purchaseOrderNoticeIds(updated)) ?? order.embossing
+  purchaseOrders[idx] = updated
+  return delay({ order: updated, removedDraftIds: removed })
+}
+
+/**
+ * 從表2 草稿移除某張合併進來的表1（決策163）：該表1 的明細全部拿掉，回到「尚未開訂購單」，
+ * 生管可以再開一張或併到別張。主表1 不可移除——單號取自它。
+ */
+export function removeNoticeFromPurchaseOrder(id: string, noticeId: string): Promise<PurchaseOrder> {
+  assertCanAct(getCurrentAccount(), '表2', '編輯草稿')
+  const idx = purchaseOrders.findIndex((p) => p.id === id)
+  if (idx === -1) throw new Error(`訂購單 ${id} 不存在`)
+  const current = purchaseOrders[idx]
+  if (!isOpenPurchaseDraft(current)) throw new Error('僅未送簽的草稿可調整明細')
+  if (noticeId === current.parentId) throw new Error('主表1 不可移除——單號取自它')
+  const items = current.items.filter((i) => purchaseItemNoticeId(current, i) !== noticeId)
+  if (items.length === current.items.length) throw new Error(`本單沒有 ${noticeId} 的明細`)
+  const updated: PurchaseOrder = { ...current, items }
+  updated.embossing = mergedEmbossing(purchaseOrderNoticeIds(updated)) ?? current.embossing
+  purchaseOrders[idx] = updated
+  return delay(updated)
 }
 
 export interface PurchaseOrderDraftCompletionInput {
@@ -1428,6 +1574,20 @@ function resolveDyeOrderItemSampleCode(
  * 表3打色通知單的子序號：主號貫穿下以 -C{n}（Color card）自成一組流水號。
  * 不與染單共用 -D，否則同一張表1底下的打色通知單與染整單會出現相同單號。
  */
+/**
+ * 表4 單號：`主表1-D{n}`，n 取該主表1 現有最大序號＋1（決策163）——
+ * 合併的表4 主表1 不一定是這張，用張數＋1 會撞號。
+ */
+function nextDyeOrderId(parentId: string): string {
+  const prefix = `${parentId}-D`
+  const maxSeq = dyeOrders.reduce((max, d) => {
+    if (!d.id.startsWith(prefix)) return max
+    const n = Number(d.id.slice(prefix.length))
+    return Number.isInteger(n) && n > max ? n : max
+  }, 0)
+  return `${prefix}${maxSeq + 1}`
+}
+
 function nextDyeRequestId(parentId: string): string {
   return `${parentId}-C${dyeRequests.filter((d) => d.parentId === parentId).length + 1}`
 }
@@ -1470,10 +1630,9 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
   }
 
   if (order.type === '胚布' && order.hasDyeVendor) {
-    if (dyeOrders.some((d) => d.parentId === order.parentId)) {
+    if (purchaseOrderDyeOrders(order, dyeOrders).length > 0) {
       throw new Error('已建立染整單，無需重複觸發')
     }
-    const notice = packingNotices.find((n) => n.id === order.parentId)
     // 受託加工廠為訂購單指定的「染整廠」；未填時才退回賣方（同一家廠商兼供應與染整的情況）
     const dyeVendorId = order.dyeVendorId || order.vendorId
     // 依產品分支分組：同品名不同規格分支是不同商品，不可併在同一張染單
@@ -1484,17 +1643,23 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
       list.push(item)
       groups.set(key, list)
     })
-    let seq = dyeOrders.filter((d) => d.parentId === order.parentId).length
+    /**
+     * 合併的表2（決策163）開出的表4 依產品分組後仍可能跨多張表1——同一產品＋同一染整廠本來就該一起投染。
+     * 表4 的主表1 取該組第一列的來源，各列記自己的來源表1；並記下來源表2 單號，到貨與結案都靠它對應。
+     */
     groups.forEach((groupItems) => {
-      seq += 1
-      const dyeOrderId = `${order.parentId}-D${seq}`
+      const parentId = purchaseItemNoticeId(order, groupItems[0])
+      const dyeOrderId = nextDyeOrderId(parentId)
       const productName = groupItems[0].roricaProductName
       const productId = groupItems[0].productId
       // 成分／胚布規格／成品規格依明細的產品分支自動帶入（唯讀）
       const product = resolveProduct(productId, productName)
       const items: DyeOrderItem[] = groupItems.map((item, i) => {
+        const itemNoticeId = purchaseItemNoticeId(order, item)
+        const notice = packingNotices.find((n) => n.id === itemNoticeId)
+        // 歷史色號以客戶為鍵：合併單各列可能是不同客戶，各用自己表1 的客戶查
         const resolved = resolveDyeOrderItemSampleCode(
-          order.parentId,
+          itemNoticeId,
           notice?.customerId ?? '',
           item.productId,
           productName,
@@ -1504,10 +1669,11 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
         return {
           id: `${dyeOrderId}-L${i + 1}`,
           colorRatios: item.colorRatios,
-          // 表2 明細與表1 為 1:1，但依產品分支重新分組後順序已變，故以欄位回頭對出來源明細
-          sourceItemId: notice?.items.find(
-            (ni) => ni.productId === item.productId && ni.color === item.color && ni.yard === item.yard,
-          )?.id,
+          // 來源表1 明細：新資料直接讀；舊資料沒有時以欄位回頭對出來
+          sourceItemId:
+            purchaseOrderItemSourceId(item, notice) ??
+            notice?.items.find((ni) => ni.productId === item.productId && ni.color === item.color && ni.yard === item.yard)?.id,
+          sourceNoticeId: itemNoticeId,
           color: item.color,
           sampleCode: resolved.sampleCode,
           sampleCodeLastUsedAt: resolved.lastUsedAt,
@@ -1525,7 +1691,8 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
       })
       dyeOrders.unshift({
         id: dyeOrderId,
-        parentId: order.parentId,
+        parentId,
+        purchaseOrderId: order.id,
         status: '草稿',
         dueDate: order.dueDate,
         productName,
@@ -1539,7 +1706,8 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
     return delay(order)
   }
 
-  if (goodsReceipts.some((r) => r.parentId === order.parentId && r.source === goodsReceiptSourceForPurchaseOrder(order.type))) {
+  // 以關聯單號判斷是否已開過——同一張表1 分批開了兩張表2 時，第二張也要能開自己的入庫單
+  if (purchaseOrderReceipts(order, goodsReceipts).length > 0) {
     throw new Error('已建立入庫單，無需重複觸發')
   }
   createGoodsReceiptDraft(order.parentId, goodsReceiptSourceForPurchaseOrder(order.type), {
@@ -2204,7 +2372,9 @@ export function approveDyeOrder(id: string): Promise<DyeOrder> {
 
   // 染單晚於入庫單建立時（胚布已先買進來放庫存的「有胚」情境），
   // 轉生效當下依關聯胚布訂單的到貨日補登指染數量，不必再等下一張入庫單
-  const arrivedPO = purchaseOrders.find((po) => po.parentId === updated.parentId && po.type === '胚布' && po.greigeArrivedAt)
+  const arrivedPO = updated.purchaseOrderId
+    ? purchaseOrders.find((po) => po.id === updated.purchaseOrderId && po.greigeArrivedAt)
+    : purchaseOrders.find((po) => po.parentId === updated.parentId && po.type === '胚布' && po.greigeArrivedAt)
   if (arrivedPO?.greigeArrivedAt) applyGreigeArrivalToDyeOrder(idx, arrivedPO.greigeArrivedAt)
 
   return delay(dyeOrders[idx])
@@ -2233,10 +2403,13 @@ function applyGreigeArrivalToDyeOrder(idx: number, arrivedAt: string): void {
   }
 }
 
-/** 胚布入庫結案時，連動同一張表1底下所有尚未結案的染單登記胚布到貨（指染數量照舊，決策161） */
-function applyGreigeArrivalToParent(parentId: string, arrivedAt: string): void {
+/**
+ * 胚布入庫結案時，連動這張胚布表2 對應的染單登記胚布到貨（指染數量照舊，決策161）。
+ * 決策163 起以染單記的來源表2 單號對應；舊資料沒有單號時才退回「同一張主表1」。
+ */
+function applyGreigeArrivalForPurchaseOrder(po: PurchaseOrder, arrivedAt: string): void {
   dyeOrders.forEach((order, idx) => {
-    if (order.parentId !== parentId) return
+    if (order.purchaseOrderId ? order.purchaseOrderId !== po.id : order.parentId !== po.parentId) return
     if (order.status === '草稿') return
     applyGreigeArrivalToDyeOrder(idx, arrivedAt)
   })
@@ -2325,9 +2498,14 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '不通
     )
   }
 
-  // 胚布訂單－送染整：被動監聽關聯的表4染單狀態變為「已完成」，回頭結案表2訂購單（非訂購單自身動作）
-  const poIdx = purchaseOrders.findIndex((p) => p.parentId === updated.parentId && p.type === '胚布' && p.hasDyeVendor)
-  if (poIdx !== -1) {
+  /**
+   * 胚布訂單－送染整：被動監聽關聯的表4染單狀態變為「已完成」，回頭結案表2訂購單（非訂購單自身動作）。
+   * 一張表2 依產品可能開出好幾張表4，**全部**完成才結案表2（決策163，原本第一張完成就結案）。
+   */
+  const poIdx = updated.purchaseOrderId
+    ? purchaseOrders.findIndex((p) => p.id === updated.purchaseOrderId)
+    : purchaseOrders.findIndex((p) => p.parentId === updated.parentId && p.type === '胚布' && p.hasDyeVendor)
+  if (poIdx !== -1 && purchaseOrderDyeOrders(purchaseOrders[poIdx], dyeOrders).every((d) => d.status === '已完成')) {
     purchaseOrders[poIdx] = { ...purchaseOrders[poIdx], status: '已完成' }
   }
 
@@ -2404,10 +2582,9 @@ function assignRollsToNoticeItems(receipt: GoodsReceipt, items: PackingNoticeIte
   })
 }
 
-/** 依入庫單所屬包裝通知單明細，推算每卷布卷應對應的品名／顏色／幅寬與規格分支 */
+/** 依入庫單關聯上游的表1 明細，推算每卷布卷應對應的品名／顏色／規格分支 */
 function buildFabricLabelsForReceipt(receipt: GoodsReceipt): { label: FabricLabel; sourceItemId?: string }[] {
-  const notice = packingNotices.find((n) => n.id === receipt.parentId)
-  const items = notice?.items ?? []
+  const items = receiptNoticeItems(receipt, { packingNotices, purchaseOrders, dyeOrders, secondaryProcessingOrders })
   const assigned = assignRollsToNoticeItems(receipt, items)
   /**
    * 條碼流水號在同一「胚布編號」下全域接續，不直接沿用廠商單據上的卷號——
@@ -2549,25 +2726,36 @@ export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']
     const built = buildFabricLabelsForReceipt(updated)
     fabricLabels.unshift(...built.map((b) => b.label))
 
-    const notice = packingNotices.find((n) => n.id === updated.parentId)
-    if (notice) {
-      const shippingItems: ShippingOrderItem[] = built.map(({ label, sourceItemId }) => {
-        const sourceItem = notice.items.find((i) => i.id === sourceItemId)
-        const product = resolveProduct(label.productId ?? sourceItem?.productId, label.productName)
-        return {
-          sourceItemId,
-          customerProductName: sourceItem?.customerProductName,
-          roricaProductName: label.productName,
-          color: label.color,
-          rollCodes: [label.rollCode],
-          yard: label.length,
-          meter: Number(yardToMeter(label.length).toFixed(1)),
-          unitPrice: defaultShippingPrice(notice, sourceItem, product),
-          note: sourceItem?.note,
-        }
+    /**
+     * 布卷併入表8 草稿：依每卷對應的表1 明細，分別併入**各自表1** 的出貨單草稿（決策163）——
+     * 合併的表2／表4 入庫的貨屬於好幾張表1，不能全丟進主表1 那張。對不到明細的卷才歸主表1。
+     */
+    const byNotice = new Map<string, ShippingOrderItem[]>()
+    built.forEach(({ label, sourceItemId }) => {
+      const located = locateNoticeItem(sourceItemId)
+      const notice = located?.notice ?? packingNotices.find((n) => n.id === updated.parentId)
+      if (!notice) return
+      const sourceItem = located?.item
+      const product = resolveProduct(label.productId ?? sourceItem?.productId, label.productName)
+      const list = byNotice.get(notice.id) ?? []
+      list.push({
+        sourceItemId,
+        sourceNoticeId: notice.id,
+        customerProductName: sourceItem?.customerProductName,
+        roricaProductName: label.productName,
+        color: label.color,
+        rollCodes: [label.rollCode],
+        yard: label.length,
+        meter: Number(yardToMeter(label.length).toFixed(1)),
+        unitPrice: defaultShippingPrice(notice, sourceItem, product),
+        note: sourceItem?.note,
       })
-      autoCreateOrAppendShippingOrder(updated.parentId, notice.customerId, shippingItems)
-    }
+      byNotice.set(notice.id, list)
+    })
+    byNotice.forEach((items, noticeId) => {
+      const notice = packingNotices.find((n) => n.id === noticeId)!
+      autoCreateOrAppendShippingOrder(noticeId, notice.customerId, items)
+    })
   }
 
   if (status === '已完成' && updated.source === '委外加工') {
@@ -2614,8 +2802,8 @@ export function setGoodsReceiptStatus(id: string, status: GoodsReceipt['status']
         // 胚布訂單：入庫結案即代表該批胚布已到貨，可投入染整
         greigeArrivedAt: type === '胚布' ? (purchaseOrders[poIdx].greigeArrivedAt ?? arrivedAt) : purchaseOrders[poIdx].greigeArrivedAt,
       }
-      // 胚布到貨連動：同一張表1底下已起單的染單，於此時登記指染數量
-      if (type === '胚布') applyGreigeArrivalToParent(updated.parentId, arrivedAt)
+      // 胚布到貨連動：這張表2 對應的染單登記到貨（決策163 起以來源表2 單號對應）
+      if (type === '胚布') applyGreigeArrivalForPurchaseOrder(purchaseOrders[poIdx], arrivedAt)
     }
   }
 

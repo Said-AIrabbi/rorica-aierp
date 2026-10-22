@@ -30,7 +30,7 @@ import {
 import { formatDate } from '@/lib/dates'
 import { formatNumber, formatPercent, yardToMeter } from '@/lib/units'
 import { cn } from '@/lib/utils'
-import { goodsReceiptShrinkageRate } from '@/lib/workflow'
+import { goodsReceiptShrinkageRate, receiptNoticeItems } from '@/lib/workflow'
 import { GOODS_RECEIPT_PURPOSES, type GoodsReceipt, type GoodsReceiptRoll } from '@/types'
 
 const CONFIDENCE_CLASS: Record<string, string> = {
@@ -56,8 +56,13 @@ export function GoodsReceiptDetailPage() {
     queryFn: api.secondaryProcessingOrders,
   })
   const receipt = data.find((r) => r.id === id)
-  /** 來源表1明細：每一卷入庫布卷都對應其中一列，決定條碼標籤的品名／顏色／規格分支 */
-  const sourceItems = packingNotices.find((n) => n.id === receipt?.parentId)?.items ?? []
+  /**
+   * 來源表1明細：每一卷入庫布卷都對應其中一列，決定條碼標籤的品名／顏色／規格分支。
+   * 取關聯上游單據（表2／表4／表5）上的明細（決策163）——合併單會跨多張表1，分批單只有其中幾列
+   */
+  const sourceItems = receipt
+    ? receiptNoticeItems(receipt, { packingNotices, purchaseOrders, dyeOrders, secondaryProcessingOrders })
+    : []
   // 客戶當初下單的單位：本表兩欄皆為實際量測值，故不合併，只標示哪一欄是基準
   const itemUnit = packingNotices.find((n) => n.id === receipt?.parentId)?.itemUnit ?? 'Yard'
 

@@ -661,6 +661,11 @@ export interface PurchaseOrderItem {
    * 讀取端以 purchaseOrderItemSourceId() 從 id 尾端對回來源。
    */
   sourceItemId?: string
+  /**
+   * 來源表1 單號（決策163）：一張表2 可合併多張表1 的明細，每一列記住自己來自哪張表1。
+   * 未記錄者視為單頭的主表1（parentId），讀取一律經 purchaseItemNoticeId()。
+   */
+  sourceNoticeId?: string
   /** 彩條：唯讀，1:1 帶入自包裝單明細（最多 3 組） */
   colorRatios?: string[]
   customerProductName: string
@@ -690,6 +695,10 @@ export interface PurchaseOrder {
   id: string
   /** 撤回草稿的歷次紀錄（決策132）：原因必填、歷次不覆蓋、不設次數上限 */
   withdrawals?: DocumentWithdrawal[]
+  /**
+   * 主表1（決策163）：單號取自它（`主表1-P{n}`）。合併多張表1 時其餘表1 由各明細的 sourceNoticeId 記錄，
+   * 「關聯哪些表1」一律經 purchaseOrderNoticeIds() 推算。
+   */
   parentId: string
   type: PurchaseOrderType
   /** 是否委外染整：僅「胚布」類型適用；勾選後完成訂購單將觸發表3打色通知單，走委外加工路徑而非直接入庫 */
@@ -811,6 +820,11 @@ export interface DyeOrderItem {
    * 故記住這一列是表1 的哪一筆明細，才能在下一次建單時提示該品項已建單。
    */
   sourceItemId?: string
+  /**
+   * 來源表1 單號（決策163）：一張表4 可合併多張表1（限同一產品＋同一染整廠），每一列記住自己來自哪張表1。
+   * 未記錄者視為單頭的主表1（parentId），讀取一律經 dyeItemNoticeId()。
+   */
+  sourceNoticeId?: string
   color: string
   /**
    * 廠商品名（決策158）：廠商對這個品項的稱呼，開放文字輸入、非必填。
@@ -862,7 +876,16 @@ export interface DyeOrder {
   id: string
   /** 撤回生效的歷次紀錄（決策132）；胚布到貨後即不可撤回 */
   withdrawals?: DocumentWithdrawal[]
+  /**
+   * 主表1（決策163）：單號取自它（`主表1-D{n}`）。合併多張表1 時其餘表1 由各明細的 sourceNoticeId 記錄。
+   */
   parentId: string
+  /**
+   * 來源表2 胚布訂單單號（決策163）：由表2 簽回後建立者才有值。胚布到貨、表2 結案都以此單號對應，
+   * 不再以「同一張表1」去找——表2 合併多張表1 之後，同一張表1 可能對到好幾張表2。
+   * 舊資料沒有此欄時才退回以主表1 比對。
+   */
+  purchaseOrderId?: string
   status: DyeOrderStatus
   /**
    * 簽核旗標（決策153）：比照表1——狀態機不新增狀態，簽核以草稿上的這個旗標呈現。

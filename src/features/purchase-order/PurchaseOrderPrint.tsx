@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import type { PurchaseOrder, PurchaseOrderItem } from '@/types'
-import { colorRatioText } from '@/lib/workflow'
+import { colorRatioText, purchaseOrderNoticeIds } from '@/lib/workflow'
 
 /**
  * 訂購明細欄位。
@@ -83,7 +83,8 @@ export function PurchaseOrderPrint({ order }: { order: PurchaseOrder }) {
 
   const meta: PrintMetaItem[] = [
     { label: '訂購單號', value: order.id },
-    { label: '來源包裝通知單', value: order.parentId },
+    // 合併訂購（決策163）列出全部來源表1；明細不另加欄
+    { label: '來源包裝通知單', value: purchaseOrderNoticeIds(order).join('、') },
     // 類型、狀態、數量輸入基準不列印：皆為皇加內部的採購分類與流程追蹤資訊
     { label: '日期', value: formatDate(order.createdAt) },
     { label: '賣方', value: vendorDisplayName(vendor) },

@@ -41,6 +41,7 @@ import {
   isPackingNoticeFullyShipped,
   noticeItemRemainingYard,
   noticeItemShippedYard,
+  purchaseOrderNoticeIds,
   shippingOrderNoticeIds,
   tolerancePct,
 } from '@/lib/workflow'
@@ -175,7 +176,8 @@ export function PackingNoticeDetailPage() {
   const itemUnit = notice.itemUnit ?? 'Yard'
   // 明細單價的幣別（決策142）：由 PI 轉來者沿用 PI 幣別，直接建立者視為 NTD
   const priceCurrency = notice.currency ?? 'NTD'
-  const relatedPOs = purchaseOrders.filter((p) => p.parentId === notice.id)
+  // 合併單（決策163）：明細有任何一列來自本單就算相關
+  const relatedPOs = purchaseOrders.filter((p) => purchaseOrderNoticeIds(p).includes(notice.id))
   const relatedDyeRequests = dyeRequests.filter((d) => d.parentId === notice.id)
   const relatedDyeOrders = dyeOrders.filter((d) => d.parentId === notice.id)
   const relatedReceipts = goodsReceipts.filter((r) => r.parentId === notice.id)

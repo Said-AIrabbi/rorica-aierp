@@ -11,6 +11,7 @@ import type {
   PackingNoticeTolerance,
   PurchaseOrder,
   PurchaseOrderItem,
+  SecondaryProcessingOrder,
   SecondaryProcessingPackaging,
   ShippingOrder,
   ShippingOrderItem,
@@ -212,22 +213,96 @@ export function effectivePurchaseOrderStatus(
 export function isPurchaseOrderReadyToTriggerFulfillment(
   order: Pick<
     PurchaseOrder,
-    'status' | 'createdAt' | 'signedAt' | 'approvedAt' | 'type' | 'hasDyeVendor' | 'largeSampleConfirmedAt' | 'parentId'
+    'id' | 'status' | 'createdAt' | 'signedAt' | 'approvedAt' | 'type' | 'hasDyeVendor' | 'largeSampleConfirmedAt' | 'parentId'
   >,
-  goodsReceipts: Pick<GoodsReceipt, 'parentId' | 'source'>[],
-  dyeOrders: Pick<DyeOrder, 'parentId'>[],
+  goodsReceipts: Pick<GoodsReceipt, 'parentId' | 'source' | 'relatedDocId'>[],
+  dyeOrders: Pick<DyeOrder, 'parentId' | 'purchaseOrderId'>[],
 ): boolean {
   const effective = effectivePurchaseOrderStatus(order)
   const signedOrOverdue = effective === '已簽回' || effective === '已逾期'
   if (!signedOrOverdue) return false
-  if (order.type === '成品') {
-    if (!order.largeSampleConfirmedAt) return false
-    return !goodsReceipts.some((r) => r.parentId === order.parentId && r.source === '直採大貨-成品')
+  if (order.type === '成品' && !order.largeSampleConfirmedAt) return false
+  if (order.type === '胚布' && order.hasDyeVendor) return purchaseOrderDyeOrders(order, dyeOrders).length === 0
+  return purchaseOrderReceipts(order, goodsReceipts).length === 0
+}
+
+/**
+ * 這張表2 開出來的表4（決策163）：以表4 記的來源表2 單號對應。
+ * 舊資料沒有記單號時才退回「同一張主表1」——那是表2 還不能合併時的對法。
+ */
+export function purchaseOrderDyeOrders<T extends Pick<DyeOrder, 'parentId' | 'purchaseOrderId'>>(
+  order: Pick<PurchaseOrder, 'id' | 'parentId'>,
+  dyeOrders: T[],
+): T[] {
+  return dyeOrders.filter((d) => (d.purchaseOrderId ? d.purchaseOrderId === order.id : d.parentId === order.parentId))
+}
+
+/** 這張表2 開出來的表6（決策163）：以入庫單記的關聯單號對應，舊資料才退回主表1＋來源類型 */
+export function purchaseOrderReceipts<T extends Pick<GoodsReceipt, 'parentId' | 'source' | 'relatedDocId'>>(
+  order: Pick<PurchaseOrder, 'id' | 'parentId' | 'type'>,
+  goodsReceipts: T[],
+): T[] {
+  const source = order.type === '成品' ? '直採大貨-成品' : '直採大貨-胚布'
+  return goodsReceipts.filter((r) =>
+    r.relatedDocId ? r.relatedDocId === order.id : r.parentId === order.parentId && r.source === source,
+  )
+}
+
+/** 表2 明細的來源表1（決策163）：舊資料沒記錄者視為單頭的主表1 */
+export function purchaseItemNoticeId(
+  order: Pick<PurchaseOrder, 'parentId'>,
+  item: Pick<PurchaseOrderItem, 'sourceNoticeId'>,
+): string {
+  return item.sourceNoticeId ?? order.parentId
+}
+
+/** 這張表2 關聯的所有表1，主表1 排第一 */
+export function purchaseOrderNoticeIds(order: Pick<PurchaseOrder, 'parentId' | 'items'>): string[] {
+  return [...new Set([order.parentId, ...order.items.map((i) => purchaseItemNoticeId(order, i))])]
+}
+
+/**
+ * 入庫單的布卷可以對應哪些表1 明細（決策163）：看關聯的上游單據有哪些明細，不再只看主表1——
+ * 合併的表2／表4 一張單裝著好幾張表1 的貨，分批開的則只裝其中幾列。
+ * 上游查不到明細來源（舊資料）時，才退回主表1 的全部明細。畫面上挑「這卷是哪一列」與資料層產生條碼共用本函式。
+ */
+export function receiptNoticeItems(
+  receipt: Pick<GoodsReceipt, 'parentId' | 'relatedDocType' | 'relatedDocId'>,
+  docs: {
+    packingNotices: PackingNotice[]
+    purchaseOrders: PurchaseOrder[]
+    dyeOrders: Pick<DyeOrder, 'id' | 'items'>[]
+    secondaryProcessingOrders: Pick<SecondaryProcessingOrder, 'id' | 'items'>[]
+  },
+): PackingNoticeItem[] {
+  let sourceIds: (string | undefined)[] = []
+  if (receipt.relatedDocType === '染單') {
+    sourceIds = docs.dyeOrders.find((d) => d.id === receipt.relatedDocId)?.items.map((i) => i.sourceItemId) ?? []
+  } else if (receipt.relatedDocType === '二次加工單') {
+    sourceIds = docs.secondaryProcessingOrders.find((o) => o.id === receipt.relatedDocId)?.items.map((i) => i.sourceItemId) ?? []
+  } else if (receipt.relatedDocType) {
+    const po = docs.purchaseOrders.find((p) => p.id === receipt.relatedDocId)
+    sourceIds =
+      po?.items.map((i) =>
+        purchaseOrderItemSourceId(i, docs.packingNotices.find((n) => n.id === purchaseItemNoticeId(po, i))),
+      ) ?? []
   }
-  if (order.hasDyeVendor) {
-    return !dyeOrders.some((d) => d.parentId === order.parentId)
-  }
-  return !goodsReceipts.some((r) => r.parentId === order.parentId && r.source === '直採大貨-胚布')
+  const allItems = docs.packingNotices.flatMap((n) => n.items)
+  const items = [...new Set(sourceIds.filter((v): v is string => Boolean(v)))]
+    .map((itemId) => allItems.find((i) => i.id === itemId))
+    .filter((v): v is PackingNoticeItem => Boolean(v))
+  if (items.length > 0) return items
+  return docs.packingNotices.find((n) => n.id === receipt.parentId)?.items ?? []
+}
+
+/** 表4 明細的來源表1（決策163）：舊資料沒記錄者視為單頭的主表1 */
+export function dyeItemNoticeId(order: Pick<DyeOrder, 'parentId'>, item: { sourceNoticeId?: string }): string {
+  return item.sourceNoticeId ?? order.parentId
+}
+
+/** 這張表4 關聯的所有表1，主表1 排第一 */
+export function dyeOrderNoticeIds(order: Pick<DyeOrder, 'parentId' | 'items'>): string[] {
+  return [...new Set([order.parentId, ...order.items.map((i) => dyeItemNoticeId(order, i))])]
 }
 
 // ---------- 表8 與表1 的對應（決策163：一張表8 可合併多張表1，一張表1 可分多張表8 出） ----------
@@ -539,13 +614,13 @@ export function purchaseOrdersBySourceItem(
 ): Map<string, { orderId: string; status: PurchaseOrder['status'] }> {
   const used = new Map<string, { orderId: string; status: PurchaseOrder['status'] }>()
   if (!notice) return used
-  orders
-    .filter((o) => o.parentId === notice.id)
-    .forEach((o) => {
-      o.items.forEach((item) => {
-        const sourceId = purchaseOrderItemSourceId(item, notice)
-        if (sourceId && !used.has(sourceId)) used.set(sourceId, { orderId: o.id, status: o.status })
-      })
+  // 合併單（決策163）的主表1 可能是別張，故逐列看來源，不只看主表1
+  orders.forEach((o) => {
+    o.items.forEach((item) => {
+      if (purchaseItemNoticeId(o, item) !== notice.id) return
+      const sourceId = purchaseOrderItemSourceId(item, notice)
+      if (sourceId && !used.has(sourceId)) used.set(sourceId, { orderId: o.id, status: o.status })
     })
+  })
   return used
 }
