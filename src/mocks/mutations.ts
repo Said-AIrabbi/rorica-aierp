@@ -39,6 +39,8 @@ import {
   noticeItemScheduledYard,
   shippingItemNoticeId,
   shippingOrderNoticeIds,
+  dyeItemNoticeId,
+  dyeOrderNoticeIds,
   purchaseItemNoticeId,
   purchaseOrderDyeOrders,
   purchaseOrderItemSourceId,
@@ -1472,14 +1474,17 @@ function createGoodsReceiptDraft(
 
 /**
  * 染整完成時自動建立表5二次加工單草稿：加工廠與加工單價留白待生管補齊。
- * 若該張表1已有二次加工單（含人工建立的），則不重複建立。
+ * 已經在某張二次加工單（含人工建立的）上的明細不重複建立（決策163 起逐列判斷）——
+ * 同一張表1 的明細可能分在兩張染單，第二張結案時它自己的加工品項仍要開出來。
  */
-function autoCreateSecondaryProcessingDraft(parentId: string, sourceItems: PackingNoticeItem[], dyeOrderId: string): void {
-  if (secondaryProcessingOrders.some((o) => o.parentId === parentId)) return
+function autoCreateSecondaryProcessingDraft(parentId: string, candidates: PackingNoticeItem[], dyeOrderId: string): void {
   const notice = packingNotices.find((n) => n.id === parentId)
+  const sourceItems = candidates.filter(
+    (item) => !secondaryProcessingOrders.some((o) => o.items.some((i) => i.sourceItemId === item.id)),
+  )
   if (!notice || sourceItems.length === 0) return
 
-  const id = `${parentId}-X1`
+  const id = nextSecondaryProcessingId(parentId)
   secondaryProcessingOrders.unshift({
     id,
     parentId,
@@ -1507,6 +1512,17 @@ function autoCreateSecondaryProcessingDraft(parentId: string, sourceItems: Packi
     })),
     packaging: buildSecondaryProcessingPackaging(notice),
   })
+}
+
+/** 表5 單號：`表1單號-X{n}`，n 取最大序號＋1（決策163：同一張表1 可能由不同染單各開一張） */
+function nextSecondaryProcessingId(parentId: string): string {
+  const prefix = `${parentId}-X`
+  const maxSeq = secondaryProcessingOrders.reduce((max, o) => {
+    if (!o.id.startsWith(prefix)) return max
+    const n = Number(o.id.slice(prefix.length))
+    return Number.isInteger(n) && n > max ? n : max
+  }, 0)
+  return `${prefix}${maxSeq + 1}`
 }
 
 /** 直採大貨的來源分類：依訂購單類型（成品／胚布）對應入庫單觸發來源，僅未委外染整路徑適用 */
@@ -2091,8 +2107,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
   assertCanAct(getCurrentAccount(), '表4', '建立')
   const notice = packingNotices.find((n) => n.id === input.parentId)
   if (!notice) throw new Error(`包裝通知單 ${input.parentId} 不存在`)
-  const existingForParent = dyeOrders.filter((d) => d.parentId === input.parentId).length
-  const id = `${input.parentId}-D${existingForParent + 1}`
+  const id = nextDyeOrderId(input.parentId)
   const items: DyeOrderItem[] = input.items.map((item, i) => {
     // 勾選「無色號」或已手動指定色樣編號時，皆不再查詢歷史色號（亦不觸發表3）
     const resolved = item.noSampleCode
@@ -2110,6 +2125,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
     return {
       id: `${id}-L${i + 1}`,
       sourceItemId: item.sourceItemId,
+      sourceNoticeId: input.parentId,
       // 彩條唯讀：一律回頭取來源表1 明細的值，不接受畫面傳入
       colorRatios: notice.items.find((ni) => ni.id === item.sourceItemId)?.colorRatios,
       color: item.color,
@@ -2119,7 +2135,9 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
       dyeRequestId: resolved.dyeRequestId,
       colorMatchStandard: item.colorMatchStandard,
       // 單卷碼數：畫面未填時取表1對應明細的定碼長度換算碼數
-      rollYard: item.rollYard ?? defaultRollYard(notice.items[i]?.fixedLengthMeter) ?? undefined,
+      // 以來源明細 id 對回表1，不用索引——畫面上分批建單時明細不一定是表1 的前幾列
+      rollYard:
+        item.rollYard ?? defaultRollYard(notice.items.find((ni) => ni.id === item.sourceItemId)?.fixedLengthMeter) ?? undefined,
       fabricMaterial: item.fabricMaterial,
       fabricSpec: item.fabricSpec,
       finishedSpec: item.finishedSpec,
@@ -2149,6 +2167,115 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
   }
   dyeOrders.unshift(order)
   return delay(order)
+}
+
+/** 表4 草稿是否還在生管手上（未送簽）：只有這種草稿可以被移出或移入明細 */
+const isOpenDyeDraft = (o: DyeOrder) => o.status === '草稿' && draftApprovalState(o) === '未送簽'
+
+/** 表1 明細是否就是這張表4 的產品：有產品編號就比編號（同品名不同規格分支是不同商品），否則比品名 */
+function isSameDyeProduct(order: Pick<DyeOrder, 'productId' | 'productName'>, item: PackingNoticeItem): boolean {
+  return order.productId && item.productId ? order.productId === item.productId : order.productName === item.roricaProductName
+}
+
+/**
+ * 表4 草稿加入其他表1 的明細（決策163）：同一產品＋同一染整廠的布一起投染。
+ *
+ * 只收同一產品（染整廠是單頭欄位，加進來的列一律照本單）；不同產品不合併。
+ * 表4 明細與表1 一列對一列，整列搬過來：還在別張「未送簽」表4 草稿上的列從那張移過來，移空的草稿刪除；
+ * 已送簽、已生效的表4 上的列不能動。色號依該列自己表1 的客戶查（歷史色號以客戶為鍵）。
+ */
+export function addDyeOrderItemsFromNotices(
+  id: string,
+  itemIds: string[],
+): Promise<{ order: DyeOrder; removedDraftIds: string[] }> {
+  assertCanAct(getCurrentAccount(), '表4', '編輯草稿')
+  const current = dyeOrders.find((d) => d.id === id)
+  if (!current) throw new Error(`染整單 ${id} 不存在`)
+  if (!isOpenDyeDraft(current)) throw new Error('僅未送簽的草稿可加入明細')
+  if (itemIds.length === 0) throw new Error('請至少勾選一筆明細')
+
+  const located = [...new Set(itemIds)].map((itemId) => {
+    const found = locateNoticeItem(itemId)
+    if (!found) throw new Error(`查無表1 明細 ${itemId}`)
+    if (found.notice.status !== '生效') throw new Error(`${found.notice.id} 尚未生效或已結案，不可加入染整單`)
+    if (!isSameDyeProduct(current, found.item)) {
+      throw new Error(`${found.notice.id} 的 ${found.item.roricaProductName} 與本單產品不同，不同產品不可合併在同一張染整單`)
+    }
+    const holder = dyeOrders.find((d) => d.items.some((i) => i.sourceItemId === itemId))
+    if (holder?.id === id) throw new Error(`${found.item.roricaProductName}／${found.item.color} 已在本單`)
+    if (holder && !isOpenDyeDraft(holder)) {
+      throw new Error(`${found.notice.id} 的 ${found.item.color} 已在染整單 ${holder.id}（已送簽或已生效），不可移動`)
+    }
+    return { ...found, holderId: holder?.id }
+  })
+
+  const removed: string[] = []
+  new Set(located.map((l) => l.holderId).filter((v): v is string => Boolean(v))).forEach((holderId) => {
+    const idx = dyeOrders.findIndex((d) => d.id === holderId)
+    const moving = new Set(located.filter((l) => l.holderId === holderId).map((l) => l.item.id))
+    const items = dyeOrders[idx].items.filter((i) => !moving.has(i.sourceItemId ?? ''))
+    if (items.length === 0) {
+      dyeOrders.splice(idx, 1)
+      removed.push(holderId)
+    } else {
+      dyeOrders[idx] = { ...dyeOrders[idx], items }
+    }
+  })
+
+  const idx = dyeOrders.findIndex((d) => d.id === id)
+  const order = dyeOrders[idx]
+  const product = resolveProduct(order.productId, order.productName)
+  let seq = order.items.reduce((max, i) => {
+    const n = Number(i.id.slice(i.id.lastIndexOf('-L') + 2))
+    return Number.isInteger(n) && n > max ? n : max
+  }, 0)
+  const newItems: DyeOrderItem[] = located.map(({ notice, item }) => {
+    const resolved = resolveDyeOrderItemSampleCode(
+      notice.id,
+      notice.customerId,
+      order.productId,
+      order.productName,
+      item.color,
+      order.vendorId,
+    )
+    seq += 1
+    return {
+      id: `${order.id}-L${seq}`,
+      sourceItemId: item.id,
+      sourceNoticeId: notice.id,
+      colorRatios: item.colorRatios,
+      color: item.color,
+      sampleCode: resolved.sampleCode,
+      sampleCodeLastUsedAt: resolved.lastUsedAt,
+      dyeRequestId: resolved.dyeRequestId,
+      rollYard: defaultRollYard(item.fixedLengthMeter) ?? undefined,
+      fabricMaterial: product?.material,
+      fabricSpec: product?.greigeSpec,
+      finishedSpec: product?.finishedSpec,
+      finishedQty: item.yard,
+      ...shrinkageFields(item.yard, undefined, undefined, { product, dyeVendorId: order.vendorId }),
+    }
+  })
+  const updated: DyeOrder = { ...order, items: [...order.items, ...newItems] }
+  updated.embossing = mergedEmbossing(dyeOrderNoticeIds(updated)) ?? order.embossing
+  dyeOrders[idx] = updated
+  return delay({ order: updated, removedDraftIds: removed })
+}
+
+/** 從表4 草稿移除某張合併進來的表1（決策163）；主表1 不可移除——單號取自它 */
+export function removeNoticeFromDyeOrder(id: string, noticeId: string): Promise<DyeOrder> {
+  assertCanAct(getCurrentAccount(), '表4', '編輯草稿')
+  const idx = dyeOrders.findIndex((d) => d.id === id)
+  if (idx === -1) throw new Error(`染整單 ${id} 不存在`)
+  const current = dyeOrders[idx]
+  if (!isOpenDyeDraft(current)) throw new Error('僅未送簽的草稿可調整明細')
+  if (noticeId === current.parentId) throw new Error('主表1 不可移除——單號取自它')
+  const items = current.items.filter((i) => dyeItemNoticeId(current, i) !== noticeId)
+  if (items.length === current.items.length) throw new Error(`本單沒有 ${noticeId} 的明細`)
+  const updated: DyeOrder = { ...current, items }
+  updated.embossing = mergedEmbossing(dyeOrderNoticeIds(updated)) ?? current.embossing
+  dyeOrders[idx] = updated
+  return delay(updated)
 }
 
 /**
@@ -2460,14 +2587,13 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '不通
    * 沒有加工方法的品項則維持原本做法，直接建立表6入庫單草稿。
    * 一張染單同時含兩種品項時兩張單都會建立，各自帶各自的品項與投胚量。
    */
-  const notice = packingNotices.find((n) => n.id === updated.parentId)
-  const noticeItems = notice?.items ?? []
   /**
-   * 判斷染單各列是否需要二次加工：以「產品分支（查無則品名）＋顏色」對回表1明細，
-   * 不用索引位置——染單是依產品分支分組建立的，索引與表1明細順序不一定一致。
+   * 判斷染單各列是否需要二次加工：以來源表1 明細 id 對回（合併單各列來自不同表1，決策163）；
+   * 舊資料沒有來源 id 時，退回在主表1 以「產品分支（查無則品名）＋顏色」比對，不用索引位置。
    */
   const sourceItemOf = (item: DyeOrderItem) =>
-    noticeItems.find(
+    locateNoticeItem(item.sourceItemId)?.item ??
+    (packingNotices.find((n) => n.id === dyeItemNoticeId(updated, item))?.items ?? []).find(
       (n) =>
         n.color === item.color &&
         (updated.productId && n.productId ? n.productId === updated.productId : n.roricaProductName === updated.productName),
@@ -2485,9 +2611,16 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '不通
     .map((item) => sourceItemOf(item))
     .filter((item): item is PackingNoticeItem => Boolean(item?.processingMethod))
 
-  if (processingSourceItems.length > 0) {
-    autoCreateSecondaryProcessingDraft(updated.parentId, processingSourceItems, updated.id)
-  }
+  /**
+   * 二次加工單依來源表1 各開一張（決策163）：加工廠要照客戶的包裝要求作業，包裝設定是跟著表1 走的，
+   * 合併的染單結案時不能把兩張表1 的貨開在同一張表5。
+   */
+  const processingByNotice = new Map<string, PackingNoticeItem[]>()
+  processingSourceItems.forEach((item) => {
+    const noticeId = locateNoticeItem(item.id)?.notice.id ?? updated.parentId
+    processingByNotice.set(noticeId, [...(processingByNotice.get(noticeId) ?? []), item])
+  })
+  processingByNotice.forEach((items, noticeId) => autoCreateSecondaryProcessingDraft(noticeId, items, updated.id))
 
   if (processingSourceItems.length === 0 || plainPledgedQty > 0) {
     createGoodsReceiptDraft(
@@ -3642,8 +3775,7 @@ export function createSecondaryProcessingOrder(input: SecondaryProcessingInput):
   const sourceItems = notice.items.filter((item) => input.sourceItemIds.includes(item.id))
   if (sourceItems.length === 0) throw new Error('請至少選擇一筆加工明細')
 
-  const existingForParent = secondaryProcessingOrders.filter((o) => o.parentId === notice.id).length
-  const id = `${notice.id}-X${existingForParent + 1}`
+  const id = nextSecondaryProcessingId(notice.id)
 
   const order: SecondaryProcessingOrder = {
     id,
@@ -3886,16 +4018,23 @@ export interface AbnormalNoticeInput {
  */
 function resolveAbnormalTrace(
   parentId: string | undefined,
+  sourceItemId?: string,
 ): Pick<AbnormalNotice, 'productionCode' | 'dyeOrderId' | 'purchaseOrderId'> {
   if (!parentId) return {}
-  const dyeOrder = dyeOrders.find((d) => d.parentId === parentId)
+  // 合併單（決策163）：先以出貨明細的來源表1 明細找到染它的那張表4，找不到才看表1 底下任一張
+  const dyeOrder =
+    (sourceItemId ? dyeOrders.find((d) => d.items.some((i) => i.sourceItemId === sourceItemId)) : undefined) ??
+    dyeOrders.find((d) => dyeOrderNoticeIds(d).includes(parentId))
   if (dyeOrder) {
     return {
       productionCode: `J${dayjs(dyeOrder.effectiveAt ?? dyeOrder.dueDate).format('YYMMDD')}C`,
       dyeOrderId: dyeOrder.id,
     }
   }
-  return { purchaseOrderId: purchaseOrders.find((po) => po.parentId === parentId)?.id }
+  const purchaseOrder =
+    (sourceItemId ? purchaseOrders.find((po) => po.items.some((i) => i.sourceItemId === sourceItemId)) : undefined) ??
+    purchaseOrders.find((po) => purchaseOrderNoticeIds(po).includes(parentId))
+  return { purchaseOrderId: purchaseOrder?.id }
 }
 
 /** 表9主號：AB-YYYYMMDD-NNN，依受理當下日期產生，不繼承原出貨單的主號子序號 */
@@ -3947,7 +4086,7 @@ export function createAbnormalNotice(input: AbnormalNoticeInput): Promise<Abnorm
     createdByAccountId: (accounts.find((a) => a.roles.includes('業務')) ?? accounts[0]).id,
     customerId: input.customerId ?? source?.customerId,
     // 合併出貨單的各列來自不同表1（決策163），追溯取這一列自己的來源
-    ...resolveAbnormalTrace(source && item ? shippingItemNoticeId(source, item) : source?.parentId),
+    ...resolveAbnormalTrace(source && item ? shippingItemNoticeId(source, item) : source?.parentId, item?.sourceItemId),
     shippingOrderId: source?.id,
     shipDate: source?.shipDate,
     productName: item?.roricaProductName ?? '',

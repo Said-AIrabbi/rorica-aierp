@@ -19,7 +19,14 @@ import { api } from '@/mocks/api'
 import { createDyeOrder } from '@/mocks/mutations'
 import { getVendor, resolveProduct, vendorDisplayName } from '@/mocks/data'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { defaultRollYard, rollYardUpperLimit, DEFAULT_SHRINKAGE_PCT, inDyeQtyFromShrinkage, recommendedShrinkage } from '@/lib/workflow'
+import {
+  defaultRollYard,
+  rollYardUpperLimit,
+  DEFAULT_SHRINKAGE_PCT,
+  inDyeQtyFromShrinkage,
+  purchaseOrderNoticeIds,
+  recommendedShrinkage,
+} from '@/lib/workflow'
 import { dyeOrderFormSchema, type DyeOrderFormValues } from './schema'
 
 export function DyeOrderFormPage() {
@@ -70,7 +77,9 @@ export function DyeOrderFormPage() {
   const totalInDyeQty = sumOf('inDyeQty')
   const notice = packingNotices.find((n) => n.id === parentId)
   // 有訂購單時，受託加工廠依訂購單選定的加工廠自動帶入且唯讀；「有胚」無訂購單情境才人工選擇
-  const relatedPO = notice ? purchaseOrders.find((p) => p.parentId === notice.id && p.hasDyeVendor) : undefined
+  const relatedPO = notice
+    ? purchaseOrders.find((p) => p.hasDyeVendor && purchaseOrderNoticeIds(p).includes(notice.id))
+    : undefined
   const vendorLocked = Boolean(relatedPO?.vendorId)
   const dyeVendors = vendors.filter((v) => v.types.includes('染整廠'))
   // 對色標準：以既有染單曾用過的值作為模糊搜尋來源，亦可自由輸入新值
@@ -90,15 +99,14 @@ export function DyeOrderFormPage() {
    */
   const usedSourceItems = new Map<string, { orderId: string; status: string }>()
   const usedColors = new Map<string, { orderId: string; status: string }>()
-  dyeOrders
-    .filter((d) => d.parentId === parentId)
-    .forEach((d) => {
-      d.items.forEach((i) => {
-        const mark = { orderId: d.id, status: d.status }
-        if (i.sourceItemId) usedSourceItems.set(i.sourceItemId, mark)
-        else usedColors.set(i.color, mark)
-      })
+  // 表1 明細 id 全系統唯一，看全部表4——合併單（決策163）的主表1 可能是別張；顏色比對只用在本表1 的舊資料
+  dyeOrders.forEach((d) => {
+    d.items.forEach((i) => {
+      const mark = { orderId: d.id, status: d.status }
+      if (i.sourceItemId) usedSourceItems.set(i.sourceItemId, mark)
+      else if (d.parentId === parentId) usedColors.set(i.color, mark)
     })
+  })
   const usedBy = (item: { sourceItemId?: string; color: string }) =>
     (item.sourceItemId ? usedSourceItems.get(item.sourceItemId) : undefined) ?? usedColors.get(item.color)
   /** 已完成的染單不是「正在染整中」，用詞跟著狀態走 */
@@ -144,7 +152,7 @@ export function DyeOrderFormPage() {
     setValue('productName', notice.items[0]?.roricaProductName ?? '')
     // 產品編號：歷史色號查詢與規格帶入皆優先以產品分支解析
     setValue('productId', notice.items[0]?.productId)
-    const po = purchaseOrders.find((p) => p.parentId === notice.id && p.hasDyeVendor)
+    const po = purchaseOrders.find((p) => p.hasDyeVendor && purchaseOrderNoticeIds(p).includes(notice.id))
     setValue('dueDate', dayjs(po?.dueDate ?? dayjs().add(14, 'day')).format('YYYY-MM-DD'))
     if (po?.vendorId) setValue('vendorId', po.vendorId, { shouldValidate: true })
     // 明細重新帶入時縮率是 5%：讓下方的推薦值重新接手

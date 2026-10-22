@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Save, Send } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Plus, Save, Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { WithdrawDraftButton, WithdrawalNotes } from '@/components/shared/WithdrawDraft'
@@ -12,6 +12,7 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { DyeOrderPrint } from './DyeOrderPrint'
+import { AddNoticeItemsToDyeDialog } from './AddNoticeItemsToDyeDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -21,8 +22,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { api } from '@/mocks/api'
 import { getVendor, primaryContactName, vendorDisplayName } from '@/mocks/data'
 import {
+  addDyeOrderItemsFromNotices,
   approveDyeOrder,
   createDyeRequest,
+  removeNoticeFromDyeOrder,
   rejectDyeOrder,
   submitDyeOrderForApproval,
   submitDyeOrderLargeSample,
@@ -33,7 +36,15 @@ import {
 } from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { colorRatioText, draftApprovalState, rollYardUpperLimit, inDyeQtyFromShrinkage, shrinkagePctOf } from '@/lib/workflow'
+import {
+  colorRatioText,
+  draftApprovalState,
+  dyeItemNoticeId,
+  dyeOrderNoticeIds,
+  rollYardUpperLimit,
+  inDyeQtyFromShrinkage,
+  shrinkagePctOf,
+} from '@/lib/workflow'
 
 export function DyeOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -43,6 +54,35 @@ export function DyeOrderDetailPage() {
   const { data = [] } = useQuery({ queryKey: ['dyeOrders'], queryFn: api.dyeOrders })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
+  const [addOpen, setAddOpen] = useState(false)
+
+  /** 合併投染（決策163）：被移空的草稿會刪除，提示使用者是哪幾張 */
+  const addItemsMutation = useMutation({
+    mutationFn: (itemIds: string[]) => addDyeOrderItemsFromNotices(id!, itemIds),
+    onSuccess: async ({ removedDraftIds }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dyeOrders'] }),
+        // 新加入的顏色若查無色號會自動開表3
+        queryClient.invalidateQueries({ queryKey: ['dyeRequests'] }),
+      ])
+      setAddOpen(false)
+      toast.success(
+        removedDraftIds.length > 0
+          ? `已加入明細；${removedDraftIds.join('、')} 的明細已全數移入本單，該草稿已刪除`
+          : '已加入明細',
+      )
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const removeNoticeMutation = useMutation({
+    mutationFn: (noticeId: string) => removeNoticeFromDyeOrder(id!, noticeId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['dyeOrders'] })
+      toast.success('已移除該表1 的明細，可另開染整單或併到別張')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
   const order = data.find((d) => d.id === id)
   const [rejectReason, setRejectReason] = useState('')
   // 色樣編號在染單結案前皆可修改，不限於表3回填的時機
@@ -303,11 +343,16 @@ export function DyeOrderDetailPage() {
       d.shrinkagePct !== String(shrinkagePctOf(i))
     )
   })
-  // 單卷碼數上限：依來源表1該筆明細的定碼長度與生產數量容許誤差動態計算
-  const notice = packingNotices.find((n) => n.id === order.parentId)
+  // 合併投染（決策163）：關聯的表1 由明細推算
+  const noticeIds = dyeOrderNoticeIds(order)
+  const merged = noticeIds.length > 1
+  const canMerge = itemsEditable
+  // 單卷碼數上限：依來源表1該筆明細的定碼長度與生產數量容許誤差動態計算（各列用自己的表1）
   const rollLimits = order.items
     .map((item) => {
-      const source = notice?.items.find((n) => n.color === item.color)
+      const notice = packingNotices.find((n) => n.id === dyeItemNoticeId(order, item))
+      const source =
+        notice?.items.find((n) => n.id === item.sourceItemId) ?? notice?.items.find((n) => n.color === item.color)
       return notice ? rollYardUpperLimit(source?.fixedLengthMeter, notice.tolerance) : null
     })
     .filter((v): v is number => v != null)
@@ -325,9 +370,15 @@ export function DyeOrderDetailPage() {
         description={
           <>
             來源包裝通知單：
-            <Link to={`/packing-notice/${order.parentId}`} className="text-brand-dark underline">
-              {order.parentId}
-            </Link>
+            {noticeIds.map((nid, i) => (
+              <span key={nid}>
+                {i > 0 && '、'}
+                <Link to={`/packing-notice/${nid}`} className="text-brand-dark underline">
+                  {nid}
+                </Link>
+              </span>
+            ))}
+            {merged && '（合併投染，第一張為主表1）'}
           </>
         }
         actions={
@@ -370,6 +421,18 @@ export function DyeOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表4" />
+
+      {canMerge && (
+        <AddNoticeItemsToDyeDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          order={order}
+          packingNotices={packingNotices}
+          dyeOrders={data}
+          pending={addItemsMutation.isPending}
+          onConfirm={(itemIds) => addItemsMutation.mutate(itemIds)}
+        />
+      )}
 
       <WithdrawalNotes entries={order.withdrawals} />
 
@@ -503,12 +566,45 @@ export function DyeOrderDetailPage() {
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">明細（三段式庫存追蹤逐列累計）</CardTitle>
+          {canMerge && (
+            <div className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> 從其他表1 加入明細
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="px-0">
+          {merged && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 px-4 text-xs text-muted-foreground">
+              合併投染：
+              {noticeIds.map((nid) => (
+                <span key={nid} className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-ink-body">
+                  {nid}
+                  {nid === order.parentId ? (
+                    <span className="text-muted-foreground">（主）</span>
+                  ) : (
+                    canMerge && (
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        title={`移除 ${nid} 的明細`}
+                        disabled={removeNoticeMutation.isPending}
+                        onClick={() => removeNoticeMutation.mutate(nid)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table className="min-w-[44rem]">
               <TableHeader>
                 <TableRow>
+                  {merged && <TableHead>來源表1</TableHead>}
                   <TableHead>顏色</TableHead>
                   <TableHead>廠商品名</TableHead>
                   <TableHead>色樣編號</TableHead>
@@ -527,6 +623,7 @@ export function DyeOrderDetailPage() {
               <TableBody>
                 {order.items.map((item) => (
                   <TableRow key={item.id}>
+                    {merged && <TableCell className="whitespace-nowrap">{dyeItemNoticeId(order, item)}</TableCell>}
                     <TableCell className="whitespace-nowrap">{item.color}</TableCell>
                     {/* 廠商品名（決策158）：與加工單價同樣只在草稿可改，同一顆儲存鍵 */}
                     <TableCell>
@@ -717,7 +814,7 @@ export function DyeOrderDetailPage() {
             <p className="mb-2 text-sm font-medium text-ink">
               單卷不可超過 {rollLimit} Y
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                （依表1定碼長度換算成碼後，加計生產數量容許誤差 {notice?.tolerance.mode} 上限）
+                （依表1定碼長度換算成碼後，加計生產數量容許誤差 {packingNotices.find((n) => n.id === order.parentId)?.tolerance.mode} 上限）
               </span>
             </p>
           )}

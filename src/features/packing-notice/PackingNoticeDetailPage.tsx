@@ -41,6 +41,7 @@ import {
   isPackingNoticeFullyShipped,
   noticeItemRemainingYard,
   noticeItemShippedYard,
+  dyeOrderNoticeIds,
   purchaseOrderNoticeIds,
   shippingOrderNoticeIds,
   tolerancePct,
@@ -179,7 +180,7 @@ export function PackingNoticeDetailPage() {
   // 合併單（決策163）：明細有任何一列來自本單就算相關
   const relatedPOs = purchaseOrders.filter((p) => purchaseOrderNoticeIds(p).includes(notice.id))
   const relatedDyeRequests = dyeRequests.filter((d) => d.parentId === notice.id)
-  const relatedDyeOrders = dyeOrders.filter((d) => d.parentId === notice.id)
+  const relatedDyeOrders = dyeOrders.filter((d) => dyeOrderNoticeIds(d).includes(notice.id))
   const relatedReceipts = goodsReceipts.filter((r) => r.parentId === notice.id)
   const relatedSecondary = secondaryProcessingOrders.filter((o) => o.parentId === notice.id)
   // 合併出貨單（決策163）：明細有任何一列出這張表1 就算相關，不只看主表1

@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import type { DyeOrder, DyeOrderItem } from '@/types'
-import { colorRatioText } from '@/lib/workflow'
+import { colorRatioText, dyeOrderNoticeIds } from '@/lib/workflow'
 
 /**
  * 胚布規格與成品規格字串長（如「100% POLY 75D/72F × 150D/48F」），
@@ -58,7 +58,8 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
   // 對收單的染整廠沒有作業意義（地址是他們自己的、狀態與到貨日是皇加系統內的追蹤）
   const meta: PrintMetaItem[] = [
     { label: '染單編號', value: order.id },
-    { label: '訂單編號（表1）', value: order.parentId },
+    // 合併投染（決策163）列出全部來源表1
+    { label: '訂單編號（表1）', value: dyeOrderNoticeIds(order).join('、') },
     { label: '品名', value: `${order.productName}${productBranchSuffix(order.productId)}`, span: 2 },
     { label: '交期', value: formatDate(order.dueDate) },
     { label: '委託加工廠', value: vendorDisplayName(vendor), span: 2 },
