@@ -39,6 +39,11 @@ const specSubRow = (item: DyeOrderItem) => {
   return parts.length > 0 ? parts.join('　／　') : null
 }
 
+/** 各明細填過的廠商品名，去重後依明細順序列出 */
+function vendorProductNames(order: DyeOrder): string {
+  return [...new Set(order.items.map((i) => i.vendorProductName?.trim()).filter(Boolean))].join('、')
+}
+
 /**
  * 表4 染單－委託加工通知單列印版面：送染整廠的對外單據。
  * 依 PRD 版面順序，明細區塊在上、使用胚布區塊在下；
@@ -59,6 +64,9 @@ export function DyeOrderPrint({ order }: { order: DyeOrder }) {
     { label: '單位', value: order.unit },
     { label: '出貨檢樣', value: order.shippingSampleQty ? `${order.shippingSampleQty} Y` : ' ' },
     { label: '燙金', value: order.embossing },
+    // 廠商品名（決策158）：表4 的品名在單頭，廠商品名也印在單頭。逐列記錄，一張染單通常只有一個品名，
+    // 偶有不同列各填各的就全部列出。跨兩格放在最後一列，補滿原本空著的兩格，單頭不會多一列
+    { label: '廠商品名', value: vendorProductNames(order) || ' ', span: 2 },
   ]
 
   return (

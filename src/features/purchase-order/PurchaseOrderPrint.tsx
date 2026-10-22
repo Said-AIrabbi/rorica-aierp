@@ -31,10 +31,16 @@ const buildColumns = (isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
   {
     header: '皇加品名',
     cell: (r) => `${r.roricaProductName}${productBranchSuffix(r.productId)}`,
-    width: isGreige ? '158mm' : '52mm',
+    width: isGreige ? '100mm' : '40mm',
   },
-  // 顏色欄由 18mm 加寬為 42mm（2026/10/20）：實際色名常帶色號與說明，品名多為短代號，寬度從品名撥過來
-  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '42mm' }]),
+  // 廠商品名（決策158）：放在皇加品名與顏色之間，廠商對照自己的叫法才認得是哪一項；寬度由品名與包裝方式撥出
+  {
+    header: '廠商品名',
+    cell: (r: PurchaseOrderItem) => r.vendorProductName ?? ' ',
+    width: isGreige ? '58mm' : '36mm',
+  },
+  // 顏色欄由 18mm 加寬（2026/10/20）：實際色名常帶色號與說明；決策158 加入廠商品名後為 36mm
+  ...(isGreige ? [] : [{ header: '顏色', cell: (r: PurchaseOrderItem) => r.color, width: '36mm' }]),
   { header: '數量 (Y)', cell: (r) => formatNumber(r.yard, 1), align: 'right', width: '22mm' },
   ...(isGreige
     ? []
@@ -47,7 +53,7 @@ const buildColumns = (isGreige: boolean): PrintColumn<PurchaseOrderItem>[] => [
               {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
             </>
           ),
-          width: '64mm',
+          width: '46mm',
         },
       ]),
 ]
