@@ -5,6 +5,7 @@ import {
   allocateWholeRolls,
   availableFabricLabels,
   checkCustomSplicing,
+  effectiveReservationStatus,
   isRollReserved,
   reservationExpiresAt,
   suggestSplicingCombination,
@@ -2868,6 +2869,48 @@ export function updateShippingOrderHeader(id: string, input: ShippingOrderHeader
   return delay(updated)
 }
 
+/**
+ * 表8 填入布疋條碼（決策162）：業務建草稿時不必知道會出哪幾捲，「已建立」後由倉管挑實際出貨的布卷。
+ *
+ * `rollCodesByItem` 依明細列序對應，長度須與明細相同；可分次填、可留空，
+ * 必填檢查放在確認出貨完成（completeShippingOrder），不在這裡——倉管可能分批理貨。
+ * 條碼須為現存、尚可出貨的布卷，且未被其他表1 的有效預留占用。
+ */
+export function updateShippingOrderRollCodes(id: string, rollCodesByItem: string[][]): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '填入布疋條碼')
+  const idx = shippingOrders.findIndex((s) => s.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const current = shippingOrders[idx]
+  if (current.status !== '已建立') throw new Error('僅「已建立」的出貨單可填入布疋條碼')
+  if (rollCodesByItem.length !== current.items.length) throw new Error('布疋條碼與明細列數不符，請重新整理後再試')
+
+  const cleaned = rollCodesByItem.map((codes) => [...new Set(codes.map((c) => c.trim()).filter(Boolean))])
+  const all = cleaned.flat()
+  const dup = all.filter((c, i) => all.indexOf(c) !== i)
+  if (dup.length > 0) throw new Error(`布卷 ${[...new Set(dup)].join('、')} 重複填在多列明細`)
+  all.forEach((code) => {
+    const label = fabricLabels.find((l) => l.rollCode === code)
+    if (!label) throw new Error(`查無布卷條碼 ${code}`)
+    if (label.status === '已完成' || label.status === '已終止' || label.status === '瑕疵／報廢') {
+      throw new Error(`布卷 ${code} 狀態為「${label.status}」，不可出貨`)
+    }
+    const heldByOther = stockReservations.some(
+      (r) =>
+        r.packingNoticeId !== current.parentId &&
+        r.rollCodes.includes(code) &&
+        effectiveReservationStatus(r) === '預留中',
+    )
+    if (heldByOther) throw new Error(`布卷 ${code} 已被其他包裝通知單預留`)
+  })
+
+  const updated: ShippingOrder = {
+    ...current,
+    items: current.items.map((item, i) => ({ ...item, rollCodes: cleaned[i] })),
+  }
+  shippingOrders[idx] = updated
+  return delay(updated)
+}
+
 export function updateShippingOrderSignatures(id: string, signatures: ShippingOrder['signatures']): Promise<ShippingOrder> {
   assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
   const idx = shippingOrders.findIndex((s) => s.id === id)
@@ -2934,6 +2977,14 @@ export function completeShippingOrder(id: string): Promise<ShippingOrder> {
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
   // 建單者不得自行確認出貨——即使某帳號同時具備業務與生管角色（權限規格第七章第 1 節）
   assertCanAct(getCurrentAccount(), '表8', '改為出貨完成', shippingOrders[idx].createdByAccountId)
+
+  // 布疋條碼必填（決策162）：草稿可留空，但每一列都要由倉管填好才能出貨——扣庫存要知道扣哪幾捲
+  const missing = shippingOrders[idx].items
+    .map((item, i) => (item.rollCodes.length === 0 ? i + 1 : 0))
+    .filter(Boolean)
+  if (missing.length > 0) {
+    throw new Error(`第 ${missing.join('、')} 項明細尚未填入布疋條碼，請倉管補齊後再確認出貨`)
+  }
 
   // 瑕疵／報廢的布卷不可再被任何訂單挑選：明細若含此類捲號，擋下出貨並要求先改捲
   const defective = shippingOrders[idx].items

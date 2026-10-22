@@ -29,6 +29,7 @@ import {
   setShippingOrderStatus,
   updateShippingOrderItems,
   updateShippingOrderHeader,
+  updateShippingOrderRollCodes,
   updateShippingOrderSignatures,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
@@ -42,6 +43,7 @@ export function ShippingOrderDetailPage() {
   const queryClient = useQueryClient()
   const { data: shippingOrders = [] } = useQuery({ queryKey: ['shippingOrders'], queryFn: api.shippingOrders })
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
+  const { data: fabricLabels = [] } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
   const order = shippingOrders.find((s) => s.id === id)
   /**
    * 售價幣別（決策143）：讀本單自己記下的值，不回頭查表1——
@@ -62,8 +64,13 @@ export function ShippingOrderDetailPage() {
   /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
   const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '', shippingAddress: '' })
   const [rejectOpen, setRejectOpen] = useState(false)
+  /** 布疋條碼草稿（決策162）：依明細列序，「已建立」後由倉管填入，按儲存才寫入 */
+  const [rollDraft, setRollDraft] = useState<string[][]>([])
   useEffect(() => {
-    if (order) setItemDraft(order.items)
+    if (order) {
+      setItemDraft(order.items)
+      setRollDraft(order.items.map((item) => item.rollCodes))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, order?.items])
 
@@ -115,6 +122,15 @@ export function ShippingOrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  const saveRollsMutation = useMutation({
+    mutationFn: () => updateShippingOrderRollCodes(id!, rollDraft),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('布疋條碼已儲存')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const permissions = useCurrentAccount()
 
   /**
@@ -149,6 +165,7 @@ export function ShippingOrderDetailPage() {
       ])
       toast.success(`${updated.id} 已確認出貨完成，已扣減對應布卷條碼庫存`)
     },
+    onError: (error: Error) => toast.error(error.message),
   })
 
   if (!order) {
@@ -169,6 +186,19 @@ export function ShippingOrderDetailPage() {
   const canEditDraft = permissions.can('表8', '編輯草稿')
   const itemsEditable = order.status === '草稿' && canEditDraft
   const itemsDirty = JSON.stringify(itemDraft) !== JSON.stringify(order.items)
+  // 布疋條碼（決策162）：業務建草稿可留空，「已建立」後由倉管填入，每列都有才能確認出貨
+  const rollsEditable = order.status === '已建立' && permissions.can('表8', '填入布疋條碼')
+  const rollsDirty = JSON.stringify(rollDraft) !== JSON.stringify(order.items.map((item) => item.rollCodes))
+  const missingRollRows = order.items.map((item, i) => (item.rollCodes.length === 0 ? i + 1 : 0)).filter(Boolean)
+  const usedElsewhere = new Set(rollDraft.flat())
+  /** 可挑的布卷：尚可出貨者，同品名同色排前面；其他列已選的不重複列出 */
+  const rollOptionsFor = (item: ShippingOrderItem, row: number) =>
+    fabricLabels
+      .filter((l) => l.status !== '已完成' && l.status !== '已終止' && l.status !== '瑕疵／報廢')
+      .filter((l) => !usedElsewhere.has(l.rollCode) || rollDraft[row]?.includes(l.rollCode))
+      .filter((l) => !rollDraft[row]?.includes(l.rollCode))
+      .map((l) => ({ label: l, match: l.productName === item.roricaProductName && l.color === item.color }))
+      .sort((a, b) => Number(b.match) - Number(a.match))
   const notice = packingNotices.find((n) => n.id === order.parentId)
   const markings = notice?.markings ?? []
   // 箱/袋號：逐組嘜頭各一個，草稿階段填寫，與單頭一起手動儲存
@@ -237,7 +267,11 @@ export function ShippingOrderDetailPage() {
                 {/* 出貨完成會觸發扣庫存：僅生管可按，且不得為本單的建立者（權限規格第七章第 1 節） */}
                 {permissions.can('表8', '改為出貨完成') &&
                   (() => {
-                    const blocked = permissions.blockedReason('表8', '改為出貨完成', order.createdByAccountId)
+                    const blocked =
+                      permissions.blockedReason('表8', '改為出貨完成', order.createdByAccountId) ??
+                      (missingRollRows.length > 0
+                        ? `第 ${missingRollRows.join('、')} 項明細尚未填入布疋條碼，須由倉管補齊`
+                        : undefined)
                     return (
                       <Button
                         size="sm"
@@ -267,6 +301,14 @@ export function ShippingOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表8" />
+
+      {order.status === '已建立' && missingRollRows.length > 0 && (
+        <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          第 {missingRollRows.join('、')} 項明細尚未填入布疋條碼——
+          {rollsEditable ? '請在出貨明細挑選實際出貨的布卷後儲存，' : '待倉管填入，'}
+          全部填齊後才能確認出貨完成。
+        </div>
+      )}
 
       <RejectDialog
         open={rejectOpen}
@@ -399,7 +441,8 @@ export function ShippingOrderDetailPage() {
         <CardHeader>
           <CardTitle className="text-base">
             出貨明細（{itemsEditable ? itemDraft.length : order.items.length} 項）
-            {itemsEditable && '　—　由包裝通知單帶入，確認建單前可微調數量／售價或刪除品項'}
+            {itemsEditable && '　—　由包裝通知單帶入，確認建單前可微調數量／售價或刪除品項；布疋條碼由倉管於建立後填入'}
+            {rollsEditable && '　—　請填入實際出貨的布疋條碼（拼接時可選多捲）'}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0">
@@ -424,7 +467,49 @@ export function ShippingOrderDetailPage() {
                     <TableCell>{item.customerProductName || '-'}</TableCell>
                     <TableCell>{item.roricaProductName || '-'}</TableCell>
                     <TableCell>{item.color || '-'}</TableCell>
-                    <TableCell>{item.rollCodes.join('＋')}</TableCell>
+                    <TableCell>
+                      {rollsEditable ? (
+                        <div className="min-w-[14rem] space-y-1">
+                          {(rollDraft[i] ?? []).length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {(rollDraft[i] ?? []).map((code) => (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  className="rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-ink-body hover:border-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    setRollDraft((prev) => prev.map((codes, ci) => (ci === i ? codes.filter((c) => c !== code) : codes)))
+                                  }
+                                >
+                                  {code} ×
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <select
+                            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                            value=""
+                            onChange={(e) => {
+                              const code = e.target.value
+                              if (!code) return
+                              setRollDraft((prev) => prev.map((codes, ci) => (ci === i ? [...codes, code] : codes)))
+                            }}
+                          >
+                            <option value="">{(rollDraft[i] ?? []).length > 0 ? '再加入一卷（拼接）' : '請選擇布卷條碼'}</option>
+                            {rollOptionsFor(item, i).map(({ label, match }) => (
+                              <option key={label.id} value={label.rollCode}>
+                                {match ? '' : '［品名／色號不同］'}
+                                {label.rollCode}（{label.productName}／{label.color}，{formatNumber(label.length, 1)}Y）
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : item.rollCodes.length > 0 ? (
+                        item.rollCodes.join('＋')
+                      ) : (
+                        <span className="text-xs text-muted-foreground">待倉管填入</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       {itemsEditable ? (
                         <Input
@@ -508,6 +593,18 @@ export function ShippingOrderDetailPage() {
               </TableBody>
             </Table>
           </div>
+          {rollsEditable && (
+            <div className="mt-3 flex justify-end px-4">
+              <Button
+                size="sm"
+                className="bg-brand hover:bg-brand-dark"
+                disabled={!rollsDirty || saveRollsMutation.isPending}
+                onClick={() => saveRollsMutation.mutate()}
+              >
+                {saveRollsMutation.isPending ? '儲存中...' : '儲存布疋條碼'}
+              </Button>
+            </div>
+          )}
           {itemsEditable && (
             <div className="mt-3 flex justify-end px-4">
               <Button

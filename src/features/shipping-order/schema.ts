@@ -6,8 +6,9 @@ export const shippingOrderItemSchema = z.object({
   roricaProductName: z.string().optional(),
   color: z.string().optional(),
   sourceItemId: z.string().optional(),
-  // 一筆明細可對應多個捲號：拼接（接疋）出貨時即為實際使用的捲號組合
-  rollCodes: z.array(z.string()).min(1, '請選擇布卷條碼'),
+  // 一筆明細可對應多個捲號：拼接（接疋）出貨時即為實際使用的捲號組合。
+  // 建草稿時非必填（決策162）：由倉管於「已建立」後填入，補齊才能確認出貨
+  rollCodes: z.array(z.string()),
   yard: z.coerce.number().positive('Yard數量需大於 0'),
   // 空白＝沿用表1 單價（決策142），不是 0 元：表單端以 setValueAs 把空字串轉成 undefined，
   // 否則 coerce 會把它變成 0，「贈品」與「沿用表1 單價」就分不出來

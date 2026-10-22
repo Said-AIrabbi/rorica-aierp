@@ -192,8 +192,9 @@ export function ShippingOrderFormPage() {
                     <Input {...register(`items.${index}.color`)} />
                   </div>
                   <div className="space-y-1">
-                    {/* 一筆明細可對應多個捲號：拼接出貨時逐一加入，記錄實際使用的捲號組合 */}
-                    <Label className="text-xs">布卷條碼（可多選＝拼接組合）</Label>
+                    {/* 一筆明細可對應多個捲號：拼接出貨時逐一加入，記錄實際使用的捲號組合。
+                        非必填（決策162）：建立後由倉管填入，出貨完成前須補齊 */}
+                    <Label className="text-xs">布卷條碼（非必填，可多選＝拼接組合）</Label>
                     <Select
                       value=""
                       onValueChange={(v) => {
@@ -202,7 +203,7 @@ export function ShippingOrderFormPage() {
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder={rollCodes.length > 0 ? `已選 ${rollCodes.length} 卷，可再加入` : '請選擇條碼'} />
+                        <SelectValue placeholder={rollCodes.length > 0 ? `已選 ${rollCodes.length} 卷，可再加入` : '可留空，由倉管填入'} />
                       </SelectTrigger>
                       <SelectContent>
                         {fabricLabels
