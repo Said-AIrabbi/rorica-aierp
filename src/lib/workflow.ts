@@ -67,6 +67,22 @@ export function packingNoticeApprovalState(
   return notice.status === '草稿' ? '未送簽' : '已簽核'
 }
 
+/** 表4 預期縮率的預設值（%，決策159） */
+export const DEFAULT_SHRINKAGE_PCT = 5
+
+/** 表4 明細的預期縮率：未記錄者（舊單）視為預設值 */
+export function shrinkagePctOf(item: { expectedShrinkagePct?: number }): number {
+  return item.expectedShrinkagePct ?? DEFAULT_SHRINKAGE_PCT
+}
+
+/**
+ * 依預期縮率推算指染數量（決策159）：指染數量＝（1＋預期縮率）× 成品數量，取到小數 1 位。
+ * 布染完會縮，要交出成品數量，投下去的胚布就得多放縮掉的那一份。
+ */
+export function inDyeQtyFromShrinkage(finishedQty: number, shrinkagePct: number): number {
+  return Math.round(finishedQty * (1 + shrinkagePct / 100) * 10) / 10
+}
+
 /**
  * 表2／表4 的簽核旗標（決策153），推定規則與表1 相同：
  * 未記錄者，草稿視為未送簽、其餘視為已簽核——本機制上線前已送出的單不倒退回待簽核。

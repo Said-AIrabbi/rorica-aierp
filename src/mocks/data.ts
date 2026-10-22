@@ -605,6 +605,7 @@ export const dyeOrders: DyeOrder[] = packingNotices.slice(0, 6).map((pn, i) => {
       // 兩段式：成品數量為該列應產出量（固定不變）；指染數量只在胚布到廠、尚未結案期間有值
       finishedQty: totalQty,
       inDyeQty: status === '生效' && greigeArrived ? totalQty : 0,
+      expectedShrinkagePct: 5,
     }
   })
 

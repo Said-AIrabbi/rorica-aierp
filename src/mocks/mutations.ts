@@ -20,8 +20,10 @@ import {
 import { activeBankAccounts, defaultBankAccountFor, resolvePiBankAccount } from '@/lib/company'
 import {
   buildSecondaryProcessingPackaging,
+  DEFAULT_SHRINKAGE_PCT,
   defaultRollYard,
   draftApprovalState,
+  inDyeQtyFromShrinkage,
   ABNORMAL_CLAIM_MONTHS,
   effectivePurchaseOrderStatus,
   isPackingNoticeFullyShipped,
@@ -1473,9 +1475,9 @@ export function triggerPurchaseOrderFulfillment(id: string): Promise<PurchaseOrd
           fabricSpec: product?.greigeSpec,
           finishedSpec: product?.finishedSpec,
           unitPrice: item.unitPrice,
-          // 成品數量＝該列應產出量；胚布到廠確認後才登記指染數量
+          // 成品數量＝該列應產出量；指染數量依預設縮率推算（決策159）
           finishedQty: item.yard,
-          inDyeQty: 0,
+          ...shrinkageFields(item.yard),
         }
       })
       dyeOrders.unshift({
@@ -1837,8 +1839,10 @@ export interface DyeOrderItemInput {
   unitPrice?: number
   /** 成品數量：該列應產出的成品數量（原稱待染數量） */
   finishedQty: number
-  /** 指染數量：建單時可手動填寫（胚布已到廠即可投染）；未填為 0，之後由「胚布到貨」整批登記 */
+  /** 指染數量（決策159）：未填時依預期縮率由成品數量推算 */
   inDyeQty?: number
+  /** 預期縮率（%，決策159）：未填為 5 */
+  expectedShrinkagePct?: number
 }
 
 export interface DyeOrderInput {
@@ -1857,6 +1861,15 @@ export interface DyeOrderInput {
 }
 
 /** 建立染整單草稿：生管可直接開單，不需等待表3或色號判斷完成，此時尚未觸發委外加工 */
+/**
+ * 表4 明細的預期縮率與指染數量（決策159）：縮率未填用預設 5%，指染數量未填依縮率由成品數量推算。
+ * 有填就照填的——三個欄位皆可手動改。
+ */
+function shrinkageFields(finishedQty: number, shrinkagePct?: number, inDyeQty?: number) {
+  const pct = shrinkagePct ?? DEFAULT_SHRINKAGE_PCT
+  return { expectedShrinkagePct: pct, inDyeQty: inDyeQty ?? inDyeQtyFromShrinkage(finishedQty, pct) }
+}
+
 export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
   assertCanAct(getCurrentAccount(), '表4', '建立')
   const notice = packingNotices.find((n) => n.id === input.parentId)
@@ -1895,7 +1908,7 @@ export function createDyeOrder(input: DyeOrderInput): Promise<DyeOrder> {
       finishedSpec: item.finishedSpec,
       unitPrice: item.unitPrice,
       finishedQty: item.finishedQty,
-      inDyeQty: item.inDyeQty ?? 0,
+      ...shrinkageFields(item.finishedQty, item.expectedShrinkagePct, item.inDyeQty),
     }
   })
   const order: DyeOrder = {
@@ -1957,6 +1970,10 @@ export interface DyeOrderItemDraftInput {
   /** 留空（undefined）代表清除單價，回到「未談定」 */
   unitPrice?: number
   inDyeQty?: number
+  /** 成品數量（決策159 起草稿可改）：未傳時維持原值 */
+  finishedQty?: number
+  /** 預期縮率（%，決策159）：未傳時維持原值 */
+  expectedShrinkagePct?: number
   /** 廠商品名（決策158）：有傳這個鍵才更新，空白即清除 */
   vendorProductName?: string
 }
@@ -1977,6 +1994,12 @@ export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrd
     if (input.inDyeQty != null && (!Number.isFinite(input.inDyeQty) || input.inDyeQty < 0)) {
       throw new Error('指染數量不可為負數')
     }
+    if (input.finishedQty != null && (!Number.isFinite(input.finishedQty) || input.finishedQty < 0)) {
+      throw new Error('成品數量不可為負數')
+    }
+    if (input.expectedShrinkagePct != null && (!Number.isFinite(input.expectedShrinkagePct) || input.expectedShrinkagePct < 0)) {
+      throw new Error('預期縮率不可為負數')
+    }
   }
 
   const updated: DyeOrder = {
@@ -1989,6 +2012,8 @@ export function updateDyeOrderItems(id: string, itemsById: Record<string, DyeOrd
         unitPrice: input.unitPrice,
         // 指染數量沒有「未填」這個狀態（三段式庫存要拿它去加總），留空即 0
         inDyeQty: input.inDyeQty ?? 0,
+        finishedQty: input.finishedQty ?? item.finishedQty,
+        expectedShrinkagePct: input.expectedShrinkagePct ?? item.expectedShrinkagePct,
         vendorProductName: 'vendorProductName' in input ? cleanText(input.vendorProductName) : item.vendorProductName,
       }
     }),
@@ -2191,11 +2216,7 @@ export function submitDyeOrderLargeSample(id: string, result: '通過' | '不通
     largeSampleSubmissions: submissions,
     largeSampleConfirmedAt: submission.submittedAt,
     status: '已完成',
-    // 染整結束：指染數量歸零，成品數量即該列實際產出的量，不再變動
-    items: current.items.map((item) => ({
-      ...item,
-      inDyeQty: 0,
-    })),
+    // 指染數量不再歸零（決策159）：它記的是當初投了多少胚布去染，結案後仍要能與實際入庫數量對照縮率
   }
   dyeOrders[idx] = updated
 

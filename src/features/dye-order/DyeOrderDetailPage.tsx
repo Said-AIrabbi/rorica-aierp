@@ -33,7 +33,7 @@ import {
 } from '@/mocks/mutations'
 import { formatDate, isColorStale, COLOR_STALE_MONTHS } from '@/lib/dates'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { colorRatioText, draftApprovalState, rollYardUpperLimit } from '@/lib/workflow'
+import { colorRatioText, draftApprovalState, rollYardUpperLimit, inDyeQtyFromShrinkage, shrinkagePctOf } from '@/lib/workflow'
 
 export function DyeOrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,7 +52,10 @@ export function DyeOrderDetailPage() {
    * 是兩件事——存成數字時清空會立刻變 0，使用者看到的是自己沒打的數字。
    */
   const [itemDraft, setItemDraft] = useState<
-    Record<string, { unitPrice: string; inDyeQty: string; vendorProductName: string }>
+    Record<
+      string,
+      { unitPrice: string; inDyeQty: string; vendorProductName: string; finishedQty: string; shrinkagePct: string }
+    >
   >({})
   /** 單頭草稿：僅草稿且未送簽時可改，送簽後回復唯讀（決策153） */
   const [headDraft, setHeadDraft] = useState({
@@ -74,6 +77,8 @@ export function DyeOrderDetailPage() {
               unitPrice: i.unitPrice != null ? String(i.unitPrice) : '',
               inDyeQty: i.inDyeQty ? String(i.inDyeQty) : '',
               vendorProductName: i.vendorProductName ?? '',
+              finishedQty: String(i.finishedQty),
+              shrinkagePct: String(shrinkagePctOf(i)),
             },
           ]),
         ),
@@ -182,6 +187,27 @@ export function DyeOrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  /**
+   * 改明細草稿的某幾格；recalc 為 true（改了縮率或成品數量）時一併重算指染數量（決策159）。
+   * 輸入未完成（非數字）時先不重算，免得打字到一半指染數量就被清掉
+   */
+  const editItem = (
+    itemId: string,
+    patch: Partial<{ unitPrice: string; inDyeQty: string; finishedQty: string; shrinkagePct: string }>,
+    recalc = false,
+  ) =>
+    setItemDraft((prev) => {
+      const next = { ...prev[itemId], ...patch }
+      if (recalc) {
+        const finished = Number(next.finishedQty)
+        const pct = Number(next.shrinkagePct)
+        if (next.finishedQty.trim() !== '' && next.shrinkagePct.trim() !== '' && Number.isFinite(finished) && Number.isFinite(pct)) {
+          next.inDyeQty = String(inDyeQtyFromShrinkage(finished, pct))
+        }
+      }
+      return { ...prev, [itemId]: next }
+    })
+
   const saveItemsMutation = useMutation({
     mutationFn: () =>
       updateDyeOrderItems(
@@ -193,13 +219,15 @@ export function DyeOrderDetailPage() {
               unitPrice: d.unitPrice.trim() === '' ? undefined : Number(d.unitPrice),
               inDyeQty: d.inDyeQty.trim() === '' ? undefined : Number(d.inDyeQty),
               vendorProductName: d.vendorProductName,
+              finishedQty: d.finishedQty.trim() === '' ? undefined : Number(d.finishedQty),
+              expectedShrinkagePct: d.shrinkagePct.trim() === '' ? undefined : Number(d.shrinkagePct),
             },
           ]),
         ),
       ),
     onSuccess: async () => {
       await invalidateAll()
-      toast.success(`${id} 明細已儲存（廠商品名、加工單價、指染數量）`)
+      toast.success(`${id} 明細已儲存`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -270,7 +298,9 @@ export function DyeOrderDetailPage() {
     return (
       d.unitPrice !== (i.unitPrice != null ? String(i.unitPrice) : '') ||
       d.inDyeQty !== (i.inDyeQty ? String(i.inDyeQty) : '') ||
-      d.vendorProductName !== (i.vendorProductName ?? '')
+      d.vendorProductName !== (i.vendorProductName ?? '') ||
+      d.finishedQty !== String(i.finishedQty) ||
+      d.shrinkagePct !== String(shrinkagePctOf(i))
     )
   })
   // 單卷碼數上限：依來源表1該筆明細的定碼長度與生產數量容許誤差動態計算
@@ -489,8 +519,9 @@ export function DyeOrderDetailPage() {
                   <TableHead>胚布規格</TableHead>
                   <TableHead>成品規格</TableHead>
                   <TableHead className="text-right">加工單價</TableHead>
-                  <TableHead className="text-right">成品數量</TableHead>
                   <TableHead className="text-right">指染數量</TableHead>
+                  <TableHead className="text-right">預期縮率</TableHead>
+                  <TableHead className="text-right">成品數量</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -593,26 +624,51 @@ export function DyeOrderDetailPage() {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell className="text-right">{formatNumber(item.finishedQty, 0)}</TableCell>
-                    {/* 指染數量：胚布已在廠即可於建單時填入，否則留空、等胚布到貨自動轉入 */}
+                    {/* 決策159：指染數量 → 預期縮率 → 成品數量。改縮率或成品數量即重算指染數量，
+                        直接改指染數量不回推另外兩欄 */}
                     <TableCell className="text-right">
                       {itemsEditable ? (
                         <Input
                           type="number"
-                          step="1"
+                          step="0.1"
                           min="0"
                           className="w-24 text-right"
-                          placeholder="胚布未到"
                           value={itemDraft[item.id]?.inDyeQty ?? ''}
-                          onChange={(e) =>
-                            setItemDraft((prev) => ({
-                              ...prev,
-                              [item.id]: { ...prev[item.id], inDyeQty: e.target.value },
-                            }))
-                          }
+                          onChange={(e) => editItem(item.id, { inDyeQty: e.target.value })}
                         />
                       ) : (
-                        formatNumber(item.inDyeQty, 0)
+                        formatNumber(item.inDyeQty, 1)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {itemsEditable ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            className="w-16 text-right"
+                            value={itemDraft[item.id]?.shrinkagePct ?? ''}
+                            onChange={(e) => editItem(item.id, { shrinkagePct: e.target.value }, true)}
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      ) : (
+                        `${formatNumber(shrinkagePctOf(item), 1)}%`
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {itemsEditable ? (
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className="w-24 text-right"
+                          value={itemDraft[item.id]?.finishedQty ?? ''}
+                          onChange={(e) => editItem(item.id, { finishedQty: e.target.value }, true)}
+                        />
+                      ) : (
+                        formatNumber(item.finishedQty, 1)
                       )}
                     </TableCell>
                   </TableRow>
@@ -634,7 +690,7 @@ export function DyeOrderDetailPage() {
                   onClick={() => saveItemsMutation.mutate()}
                 >
                   <Save className="mr-1 h-4 w-4" />
-                  {saveItemsMutation.isPending ? '儲存中...' : '儲存明細（廠商品名、加工單價、指染數量）'}
+                  {saveItemsMutation.isPending ? '儲存中...' : '儲存明細'}
                 </Button>
               )}
               {sampleCodeEditable && (

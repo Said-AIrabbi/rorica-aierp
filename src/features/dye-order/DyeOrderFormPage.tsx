@@ -19,7 +19,7 @@ import { api } from '@/mocks/api'
 import { createDyeOrder } from '@/mocks/mutations'
 import { getVendor, resolveProduct } from '@/mocks/data'
 import { formatNumber, yardToMeter } from '@/lib/units'
-import { defaultRollYard, rollYardUpperLimit } from '@/lib/workflow'
+import { defaultRollYard, rollYardUpperLimit, DEFAULT_SHRINKAGE_PCT, inDyeQtyFromShrinkage } from '@/lib/workflow'
 import { dyeOrderFormSchema, type DyeOrderFormValues } from './schema'
 
 export function DyeOrderFormPage() {
@@ -61,6 +61,11 @@ export function DyeOrderFormPage() {
   const sumOf = (key: 'finishedQty' | 'inDyeQty') =>
     items.reduce((sum, item) => sum + (Number(item[key]) || 0), 0)
   const totalFinishedQty = sumOf('finishedQty')
+  /** 改成品數量或預期縮率時重算該列指染數量（決策159）；輸入未完成（非數字）時先不動 */
+  const recalcInDye = (index: number, finishedQty: number, shrinkagePct: number) => {
+    if (!Number.isFinite(finishedQty) || !Number.isFinite(shrinkagePct)) return
+    setValue(`items.${index}.inDyeQty`, inDyeQtyFromShrinkage(finishedQty, shrinkagePct))
+  }
   const totalInDyeQty = sumOf('inDyeQty')
   const notice = packingNotices.find((n) => n.id === parentId)
   // 有訂購單時，受託加工廠依訂購單選定的加工廠自動帶入且唯讀；「有胚」無訂購單情境才人工選擇
@@ -129,8 +134,9 @@ export function DyeOrderFormPage() {
           finishedSpec: product?.finishedSpec ?? '',
           unitPrice: undefined,
           finishedQty: item.yard,
-          // 指染數量預設 0：建單當下胚布通常還沒到廠，可由使用者自行填寫
-          inDyeQty: 0,
+          // 預期縮率預設 5%，指染數量依此推算（決策159）
+          expectedShrinkagePct: DEFAULT_SHRINKAGE_PCT,
+          inDyeQty: inDyeQtyFromShrinkage(item.yard, DEFAULT_SHRINKAGE_PCT),
         }
       }),
     )
@@ -254,8 +260,9 @@ export function DyeOrderFormPage() {
                       <TableHead>胚布規格</TableHead>
                       <TableHead>成品規格</TableHead>
                       <TableHead className="text-right">加工單價</TableHead>
-                      <TableHead className="text-right">成品數量</TableHead>
                       <TableHead className="text-right">指染數量</TableHead>
+                      <TableHead className="text-right">預期縮率</TableHead>
+                      <TableHead className="text-right">成品數量</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -335,11 +342,35 @@ export function DyeOrderFormPage() {
                         <TableCell className="text-right">
                           <Input type="number" step="0.1" className="w-20 text-right" {...register(`items.${index}.unitPrice`)} />
                         </TableCell>
+                        {/* 決策159：指染數量 → 預期縮率 → 成品數量。改縮率或成品數量即重算指染數量；
+                            直接改指染數量不回推另外兩欄 */}
                         <TableCell className="text-right">
-                          <Input type="number" className="w-20 text-right" {...register(`items.${index}.finishedQty`)} />
+                          <Input type="number" step="0.1" className="w-24 text-right" {...register(`items.${index}.inDyeQty`)} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className="w-20 text-right" {...register(`items.${index}.inDyeQty`)} />
+                          <div className="flex items-center justify-end gap-1">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              className="w-16 text-right"
+                              {...register(`items.${index}.expectedShrinkagePct`, {
+                                onChange: (e) => recalcInDye(index, Number(items[index]?.finishedQty), Number(e.target.value)),
+                              })}
+                            />
+                            <span className="text-xs text-muted-foreground">%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            className="w-24 text-right"
+                            {...register(`items.${index}.finishedQty`, {
+                              onChange: (e) =>
+                                recalcInDye(index, Number(e.target.value), Number(items[index]?.expectedShrinkagePct)),
+                            })}
+                          />
                         </TableCell>
                         <TableCell>
                           {/* 清除僅作用於本張表4：表1 明細與其他單據不受影響 */}

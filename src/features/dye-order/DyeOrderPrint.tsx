@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getVendor, productBranchSuffix, vendorDisplayName } from '@/mocks/data'
 import type { DyeOrder, DyeOrderItem } from '@/types'
-import { colorRatioText } from '@/lib/workflow'
+import { colorRatioText, shrinkagePctOf } from '@/lib/workflow'
 
 /**
  * 胚布規格與成品規格字串長（如「100% POLY 75D/72F × 150D/48F」），
@@ -18,10 +18,12 @@ const columns: PrintColumn<DyeOrderItem>[] = [
   { header: '項次', cell: (_r, i) => i + 1, align: 'center', width: '10mm' },
   { header: '顏色', cell: (r) => r.color, width: '18mm' },
   // 色樣編號是染廠回填的長編號（如 ORD-20260909-001-D1-L1-SAMPLE），實測需 49mm
-  { header: '色樣編號', cell: (r) => r.sampleCode ?? '________', width: '59mm' },
-  { header: '對色標準', cell: (r) => r.colorMatchStandard ?? ' ', width: '30mm' },
+  { header: '色樣編號', cell: (r) => r.sampleCode ?? '________', width: '53mm' },
+  { header: '對色標準', cell: (r) => r.colorMatchStandard ?? ' ', width: '22mm' },
   { header: '單卷碼數', cell: (r) => (r.rollYard ? `${formatNumber(r.rollYard, 1)} Y` : ' '), align: 'right', width: '19mm' },
+  // 決策159：指染數量 → 預期縮率 → 成品數量；縮率欄寬由色樣編號與對色標準撥出
   { header: '指染數量', cell: (r) => formatNumber(r.inDyeQty, 1), align: 'right', width: '19mm' },
+  { header: '預期縮率', cell: (r) => `${formatNumber(shrinkagePctOf(r), 1)}%`, align: 'right', width: '14mm' },
   { header: '成品數量', cell: (r) => formatNumber(r.finishedQty, 1), align: 'right', width: '19mm' },
   { header: '加工單價', cell: (r) => (r.unitPrice === undefined ? ' ' : formatNumber(r.unitPrice, 2)), align: 'right', width: '16mm' },
 ]
