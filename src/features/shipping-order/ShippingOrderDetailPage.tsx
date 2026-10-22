@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Save, Trash2, Undo2 } from 'lucide-react'
+import { ArrowLeft, Plus, Save, Trash2, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReadOnlyNotice } from '@/components/shared/ReadOnlyNotice'
@@ -11,8 +11,9 @@ import { DetailField, DetailGrid } from '@/components/shared/DetailField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PrintActions } from '@/components/print/PrintActions'
 import { ShippingOrderPrint } from './ShippingOrderPrint'
+import { AddNoticeItemsDialog, type AddNoticeItemLine } from './AddNoticeItemsDialog'
 import { MarkingPrint, SmallMarkingPrint } from '@/features/packing-notice/MarkingPrint'
-import { smallMarkingLines } from '@/lib/workflow'
+import { shippingBoxNosFor, shippingItemNoticeId, shippingOrderNoticeIds, smallMarkingLines } from '@/lib/workflow'
 import { PackagingSummary } from '@/components/shared/PackagingSummary'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,7 +25,9 @@ import { api } from '@/mocks/api'
 import { getAccount, getCustomer } from '@/mocks/data'
 import { GOODS_RECEIPT_PURPOSES } from '@/types'
 import {
+  addShippingOrderItemsFromNotices,
   completeShippingOrder,
+  removeNoticeFromShippingOrder,
   rejectShippingOrder,
   setShippingOrderStatus,
   updateShippingOrderItems,
@@ -59,8 +62,10 @@ export function ShippingOrderDetailPage() {
 
   // 明細由包裝通知單帶入後可微調／刪除，供倉管於確認建單前調整實際出貨內容
   const [itemDraft, setItemDraft] = useState<ShippingOrderItem[]>([])
-  // 箱/袋號輸入草稿：鍵為嘜頭組別索引；與單頭一起按「儲存單頭資訊」寫入，未儲存則維持原狀
-  const [boxNoDraft, setBoxNoDraft] = useState<Record<number, string>>({})
+  // 箱/袋號輸入草稿：鍵為「表1單號#嘜頭組別索引」（合併單各表1 的嘜頭分開記，決策163）；
+  // 與單頭一起按「儲存單頭資訊」寫入，未儲存則維持原狀
+  const [boxNoDraft, setBoxNoDraft] = useState<Record<string, string>>({})
+  const [addOpen, setAddOpen] = useState(false)
   /** 單頭草稿：出貨日／類型／用途，僅草稿階段可改，按儲存才寫入 */
   const [headDraft, setHeadDraft] = useState({ shipDate: '', isSampleOrder: false, purpose: '', shippingAddress: '' })
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -82,7 +87,7 @@ export function ShippingOrderDetailPage() {
         purpose: order.purpose ?? '',
         shippingAddress: order.shippingAddress ?? '',
       })
-      setBoxNoDraft(Object.fromEntries((order.markingBoxNos ?? []).map((v, i) => [i, v])))
+      setBoxNoDraft({})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id])
@@ -96,7 +101,10 @@ export function ShippingOrderDetailPage() {
         isSampleOrder: headDraft.isSampleOrder,
         purpose: (headDraft.purpose || undefined) as ShippingOrder['purpose'],
         shippingAddress: headDraft.shippingAddress,
-        markingBoxNos: markingBoxNoPayload(),
+        markingBoxNos: markingBoxNoPayload(order!.parentId),
+        otherMarkingBoxNos: Object.fromEntries(
+          sourceNotices.filter((n) => n.id !== order!.parentId).map((n) => [n.id, markingBoxNoPayload(n.id)]),
+        ),
       }),
     onSuccess: async () => {
       await invalidate()
@@ -118,6 +126,30 @@ export function ShippingOrderDetailPage() {
     onSuccess: async () => {
       await invalidate()
       toast.success('出貨明細已儲存')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  /** 合併出貨（決策163）：被移空的草稿會刪除，提示使用者是哪幾張 */
+  const addItemsMutation = useMutation({
+    mutationFn: (lines: AddNoticeItemLine[]) => addShippingOrderItemsFromNotices(id!, lines),
+    onSuccess: async ({ removedDraftIds }) => {
+      await invalidate()
+      setAddOpen(false)
+      toast.success(
+        removedDraftIds.length > 0
+          ? `已加入明細；${removedDraftIds.join('、')} 的明細已全數移入本單，該草稿已刪除`
+          : '已加入明細，其他草稿中對應的數量已扣除',
+      )
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const removeNoticeMutation = useMutation({
+    mutationFn: (noticeId: string) => removeNoticeFromShippingOrder(id!, noticeId),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('已移除該表1 的明細，數量回到未排')
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -199,12 +231,26 @@ export function ShippingOrderDetailPage() {
       .filter((l) => !rollDraft[row]?.includes(l.rollCode))
       .map((l) => ({ label: l, match: l.productName === item.roricaProductName && l.color === item.color }))
       .sort((a, b) => Number(b.match) - Number(a.match))
+  // 主表1：數量基準以它為準；合併單（決策163）的其他表1 由明細推算，嘜頭與包裝依表1 分段呈現
   const notice = packingNotices.find((n) => n.id === order.parentId)
-  const markings = notice?.markings ?? []
+  const noticeIds = shippingOrderNoticeIds(order)
+  const merged = noticeIds.length > 1
+  const sourceNotices = noticeIds
+    .map((nid) => packingNotices.find((n) => n.id === nid))
+    .filter((n): n is NonNullable<typeof n> => Boolean(n))
+  const markingGroups = sourceNotices.flatMap((n) =>
+    (n.markings ?? []).map((marking, index) => ({ notice: n, marking, index, count: (n.markings ?? []).length })),
+  )
+  /** 嘜頭組別的名稱：合併單加上表1 單號，否則沿用「嘜頭 N」 */
+  const markingLabel = (g: (typeof markingGroups)[number], prefix: string) =>
+    merged ? `${prefix} ${g.notice.id}${g.count > 1 ? `-${g.index + 1}` : ''}` : g.count > 1 ? `${prefix} ${g.index + 1}` : prefix
   // 箱/袋號：逐組嘜頭各一個，草稿階段填寫，與單頭一起手動儲存
-  const boxNoOf = (index: number) => boxNoDraft[index] ?? order?.markingBoxNos?.[index] ?? ''
-  /** 送出時以嘜頭組數為長度，缺的補空字串，避免索引與嘜頭組別錯位 */
-  const markingBoxNoPayload = () => markings.map((_, i) => boxNoOf(i))
+  const boxNoOf = (noticeId: string, index: number) =>
+    boxNoDraft[`${noticeId}#${index}`] ?? shippingBoxNosFor(order, noticeId)?.[index] ?? ''
+  /** 送出時以該表1 嘜頭組數為長度，缺的補空字串，避免索引與嘜頭組別錯位 */
+  const markingBoxNoPayload = (noticeId: string) =>
+    (packingNotices.find((n) => n.id === noticeId)?.markings ?? []).map((_, i) => boxNoOf(noticeId, i))
+  const canMerge = itemsEditable && !order.sourceAbnormalId
   // 數量以「當初下單用的單位」為主值呈現，另一單位標為換算值；沿用表1 的作法，
   // 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的
   const itemUnit = notice?.itemUnit ?? 'Yard'
@@ -223,9 +269,15 @@ export function ShippingOrderDetailPage() {
         description={
           <>
             來源包裝通知單：
-            <Link to={`/packing-notice/${order.parentId}`} className="text-brand-dark underline">
-              {order.parentId}
-            </Link>
+            {noticeIds.map((nid, i) => (
+              <span key={nid}>
+                {i > 0 && '、'}
+                <Link to={`/packing-notice/${nid}`} className="text-brand-dark underline">
+                  {nid}
+                </Link>
+              </span>
+            ))}
+            {merged && '（合併出貨，第一張為主表1）'}
           </>
         }
         actions={
@@ -237,20 +289,21 @@ export function ShippingOrderDetailPage() {
                 { key: 'doc', label: '列印出貨單', sheet: <ShippingOrderPrint order={order} /> },
                 // 嘜頭資料維護於表1，但貼箱是出貨當下的動作，故列印入口放在表8。
                 // 一張單可能有多組嘜頭，各自一張 A4，故列印選單逐組列出。
-                ...markings.map((m, index) => ({
-                  key: `marking-${index}`,
-                  label: markings.length > 1 ? `列印嘜頭 ${index + 1}` : '列印嘜頭',
+                // 合併單（決策163）各表1 的嘜頭不同，逐表1、逐組列出
+                ...markingGroups.map((g) => ({
+                  key: `marking-${g.notice.id}-${g.index}`,
+                  label: markingLabel(g, '列印嘜頭'),
                   // 列印取已儲存的箱/袋號：未按儲存的輸入不應印到對外的嘜頭上
-                  sheet: <MarkingPrint marking={m} boxNo={order.markingBoxNos?.[index] ?? ''} />,
+                  sheet: <MarkingPrint marking={g.marking} boxNo={shippingBoxNosFor(order, g.notice.id)?.[g.index] ?? ''} />,
                 })),
                 // 小嘜頭縫在布疋上，只有勾選加印的嘜頭組別才有，故僅就這些組別提供入口
-                ...markings.flatMap((m, index) =>
-                  m.hasSmallMarking
+                ...markingGroups.flatMap((g) =>
+                  g.marking.hasSmallMarking
                     ? [
                         {
-                          key: `small-marking-${index}`,
-                          label: markings.length > 1 ? `列印小嘜頭 ${index + 1}` : '列印小嘜頭',
-                          sheet: <SmallMarkingPrint marking={m} />,
+                          key: `small-marking-${g.notice.id}-${g.index}`,
+                          label: markingLabel(g, '列印小嘜頭'),
+                          sheet: <SmallMarkingPrint marking={g.marking} />,
                         },
                       ]
                     : [],
@@ -301,6 +354,18 @@ export function ShippingOrderDetailPage() {
       />
 
       <ReadOnlyNotice doc="表8" />
+
+      {canMerge && (
+        <AddNoticeItemsDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          order={order}
+          packingNotices={packingNotices}
+          shippingOrders={shippingOrders}
+          pending={addItemsMutation.isPending}
+          onConfirm={(lines) => addItemsMutation.mutate(lines)}
+        />
+      )}
 
       {order.status === '已建立' && missingRollRows.length > 0 && (
         <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
@@ -444,12 +509,45 @@ export function ShippingOrderDetailPage() {
             {itemsEditable && '　—　由包裝通知單帶入，確認建單前可微調數量／售價或刪除品項；布疋條碼由倉管於建立後填入'}
             {rollsEditable && '　—　請填入實際出貨的布疋條碼（拼接時可選多捲）'}
           </CardTitle>
+          {canMerge && (
+            <div className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> 從其他表1 加入明細
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="px-0">
+          {merged && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 px-4 text-xs text-muted-foreground">
+              合併出貨：
+              {noticeIds.map((nid) => (
+                <span key={nid} className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-ink-body">
+                  {nid}
+                  {nid === order.parentId ? (
+                    <span className="text-muted-foreground">（主）</span>
+                  ) : (
+                    canMerge && (
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        title={`移除 ${nid} 的明細`}
+                        disabled={removeNoticeMutation.isPending || itemsDirty}
+                        onClick={() => removeNoticeMutation.mutate(nid)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <Table className="min-w-[44rem]">
               <TableHeader>
                 <TableRow>
+                  {merged && <TableHead>來源表1</TableHead>}
                   <TableHead>客戶品名</TableHead>
                   <TableHead>皇加品名</TableHead>
                   <TableHead>色號</TableHead>
@@ -464,6 +562,7 @@ export function ShippingOrderDetailPage() {
               <TableBody>
                 {(itemsEditable ? itemDraft : order.items).map((item, i) => (
                   <TableRow key={`${item.rollCodes.join('+')}-${i}`}>
+                    {merged && <TableCell className="whitespace-nowrap">{shippingItemNoticeId(order, item)}</TableCell>}
                     <TableCell>{item.customerProductName || '-'}</TableCell>
                     <TableCell>{item.roricaProductName || '-'}</TableCell>
                     <TableCell>{item.color || '-'}</TableCell>
@@ -621,30 +720,34 @@ export function ShippingOrderDetailPage() {
       </Card>
 
       {/* 裝箱出貨要照客戶原始包裝要求作業，故與嘜頭一樣由表1 唯讀帶入 */}
-      {notice && (
-        <Card className="mt-4">
+      {sourceNotices.map((n) => (
+        <Card key={n.id} className="mt-4">
           <CardHeader>
-            <CardTitle className="text-base">包裝設定（帶入自表1包裝通知單）</CardTitle>
+            <CardTitle className="text-base">
+              包裝設定（帶入自表1包裝通知單{merged ? ` ${n.id}` : ''}）
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <PackagingSummary packaging={buildSecondaryProcessingPackaging(notice)} />
+            <PackagingSummary packaging={buildSecondaryProcessingPackaging(n)} />
           </CardContent>
         </Card>
-      )}
+      ))}
 
-      {markings.length > 0 && (
+      {markingGroups.length > 0 && (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle className="text-base">
-              嘜頭（帶入自表1包裝通知單{markings.length > 1 ? `，共 ${markings.length} 組` : ''}）
+              嘜頭（帶入自表1包裝通知單{markingGroups.length > 1 ? `，共 ${markingGroups.length} 組` : ''}）
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {markings.map((marking, index) => (
-              <div key={index} className={markings.length > 1 ? 'rounded-lg border border-border p-3' : undefined}>
-                {markings.length > 1 && (
-                  // 序號對應列印選單的「列印嘜頭 N」，貼箱時才知道印出來的是哪一組
-                  <div className="mb-2 text-xs font-medium text-muted-foreground">嘜頭 {index + 1}</div>
+            {markingGroups.map((g) => {
+              const { marking, index } = g
+              return (
+              <div key={`${g.notice.id}-${index}`} className={markingGroups.length > 1 ? 'rounded-lg border border-border p-3' : undefined}>
+                {markingGroups.length > 1 && (
+                  // 名稱對應列印選單的「列印嘜頭 …」，貼箱時才知道印出來的是哪一組
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">{markingLabel(g, '嘜頭')}</div>
                 )}
                 {/* 箱/袋號是出貨當下才知道的資訊（箱袋編到幾號），故在表8 填寫；
                     草稿階段可輸入，與單頭一起儲存，確認建立後轉為唯讀 */}
@@ -653,12 +756,12 @@ export function ShippingOrderDetailPage() {
                   {itemsEditable ? (
                     <Input
                       className="w-56"
-                      value={boxNoOf(index)}
+                      value={boxNoOf(g.notice.id, index)}
                       placeholder="非必填，例：C/NO 1-20"
-                      onChange={(e) => setBoxNoDraft((prev) => ({ ...prev, [index]: e.target.value }))}
+                      onChange={(e) => setBoxNoDraft((prev) => ({ ...prev, [`${g.notice.id}#${index}`]: e.target.value }))}
                     />
                   ) : (
-                    <div className="text-sm text-ink-body">{order.markingBoxNos?.[index] || '-'}</div>
+                    <div className="text-sm text-ink-body">{shippingBoxNosFor(order, g.notice.id)?.[index] || '-'}</div>
                   )}
                   {itemsEditable && (
                     <p className="text-xs text-muted-foreground">填寫後請按單頭資訊的「儲存單頭資訊」一併儲存</p>
@@ -679,7 +782,8 @@ export function ShippingOrderDetailPage() {
                   />
                 </DetailGrid>
               </div>
-            ))}
+              )
+            })}
           </CardContent>
         </Card>
       )}

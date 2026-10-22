@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Lock, Pencil, Send, Undo2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Lock, Pencil, Send, Undo2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -17,6 +17,7 @@ import { accounts, getCustomer, productBranchSuffix, vendorDisplayName } from '@
 import {
   applyCustomSplicingCombination,
   approvePackingNotice,
+  closePackingNotice,
   confirmSplicingSuggestion,
   rejectPackingNotice,
   rejectSplicingSuggestion,
@@ -38,6 +39,10 @@ import {
   packingNoticeApprovalState,
   packingNoticeLocks,
   isPackingNoticeFullyShipped,
+  noticeItemRemainingYard,
+  noticeItemShippedYard,
+  shippingOrderNoticeIds,
+  tolerancePct,
 } from '@/lib/workflow'
 import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
 import { smallMarkingLines } from '@/lib/workflow'
@@ -138,6 +143,20 @@ export function PackingNoticeDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   })
 
+  /** 管理層手動結案（決策163）：短交或客戶取消餘量、確定不再出貨時 */
+  const [closeOpen, setCloseOpen] = useState(false)
+  const closeMutation = useMutation({
+    mutationFn: (reason: string) => closePackingNotice(id!, reason),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['packingNotices'] }),
+        queryClient.invalidateQueries({ queryKey: ['stockReservations'] }),
+      ])
+      toast.success('已手動結案，尚綁著的庫存預留已釋放')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
   const notice = notices.find((n) => n.id === id)
 
   if (!notice) {
@@ -161,12 +180,15 @@ export function PackingNoticeDetailPage() {
   const relatedDyeOrders = dyeOrders.filter((d) => d.parentId === notice.id)
   const relatedReceipts = goodsReceipts.filter((r) => r.parentId === notice.id)
   const relatedSecondary = secondaryProcessingOrders.filter((o) => o.parentId === notice.id)
-  const relatedShipping = shippingOrders.filter((s) => s.parentId === notice.id)
+  // 合併出貨單（決策163）：明細有任何一列出這張表1 就算相關，不只看主表1
+  const relatedShipping = shippingOrders.filter((s) => shippingOrderNoticeIds(s).includes(notice.id))
   const relatedReservations = stockReservations.filter((r) => r.packingNoticeId === notice.id)
   const relatedSuggestions = splicingSuggestions.filter((sg) => sg.packingNoticeId === notice.id)
   const pendingSuggestions = relatedSuggestions.filter((sg) => sg.status === '待確認')
   const editable = isPackingNoticeEditable(notice)
-  const fullyShipped = isPackingNoticeFullyShipped(notice, notice.id, shippingOrders)
+  const fullyShipped = isPackingNoticeFullyShipped(notice, shippingOrders)
+  const canCloseNotice = notice.status === '生效' && permissions.can('表1', '結案')
+  const tolPct = tolerancePct(notice.tolerance)
   const locks = packingNoticeLocks(notice)
   // 拼接確認屬庫存配貨、不是編輯表1，故生管有此權限而其餘表1 動作仍唯讀（主文件決策17）
   const canConfirmSplicing = permissions.can('表1', '確認拼接組合')
@@ -243,8 +265,26 @@ export function PackingNoticeDetailPage() {
                 <Undo2 className="mr-1 h-4 w-4" /> 退回
               </Button>
             )}
+            {canCloseNotice && (
+              <Button variant="outline" size="sm" disabled={closeMutation.isPending} onClick={() => setCloseOpen(true)}>
+                <XCircle className="mr-1 h-4 w-4" /> 手動結案
+              </Button>
+            )}
           </>
         }
+      />
+
+      <RejectDialog
+        open={closeOpen}
+        onOpenChange={setCloseOpen}
+        title={`手動結案 ${notice.id}`}
+        description="確定不再出貨（短交、客戶取消餘量）時使用。結案後本單轉為「已完成」，尚綁著的庫存預留一併釋放；還有已建立未出貨的出貨單時不可結案。"
+        confirmLabel="確定結案"
+        pending={closeMutation.isPending}
+        onConfirm={(reason) => {
+          setCloseOpen(false)
+          closeMutation.mutate(reason)
+        }}
       />
 
       <RejectDialog
@@ -315,7 +355,21 @@ export function PackingNoticeDetailPage() {
 
       {notice.status === '生效' && !fullyShipped && (
         <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-          尚未全數出貨完成，狀態將於關聯的表8出貨單全數確認出貨後自動變更為「已完成」，不需人工標記。
+          尚未全數出貨完成。每列出貨量達到下單量
+          {tolPct > 0 ? `的 ${100 - tolPct}%（容許誤差 ${notice.tolerance.mode}）` : '（容許誤差為「其他」，須出足）'}
+          即算出完，全部出完後狀態自動變更為「已完成」；出貨可分多張表8，也可與其他表1 合併在同一張。
+          {canCloseNotice && '確定不再出貨時，可按「手動結案」。'}
+        </div>
+      )}
+
+      {notice.manualClose && (
+        <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+          <p className="font-medium text-ink">手動結案</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {formatDate(notice.manualClose.at)}
+            {accounts.find((a) => a.id === notice.manualClose?.byAccountId)?.name ?? notice.manualClose.byAccountId}：
+            {notice.manualClose.reason}
+          </p>
         </div>
       )}
 
@@ -432,6 +486,13 @@ export function PackingNoticeDetailPage() {
                           ? `≈ ${formatNumber(item.meter, 1)} 米 (Meter)`
                           : `≈ ${formatNumber(item.yard, 1)} 碼 (Yard)`}
                       </div>
+                      {/* 出貨進度（決策163）：已出貨＝已完成表8 的量；未排＝還沒排上任何表8 的量 */}
+                      {notice.status !== '草稿' && (
+                        <div className="text-xs text-muted-foreground">
+                          已出 {formatNumber(noticeItemShippedYard(notice.id, item, shippingOrders), 0)}Y／未排{' '}
+                          {formatNumber(noticeItemRemainingYard(notice.id, item, shippingOrders), 0)}Y
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {/* 看不到售價的角色拿到的資料裡沒有這個欄位，一律顯示「-」（權限規格決策53） */}

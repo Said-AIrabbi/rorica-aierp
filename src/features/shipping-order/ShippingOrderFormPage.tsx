@@ -15,6 +15,7 @@ import { getCustomer } from '@/mocks/data'
 import { createShippingOrder } from '@/mocks/mutations'
 import { shippingOrderFormSchema, type ShippingOrderFormValues } from './schema'
 import { formatNumber, yardToMeter } from '@/lib/units'
+import { noticeItemRemainingYard, shippingItemNoticeId } from '@/lib/workflow'
 import { GOODS_RECEIPT_PURPOSES } from '@/types'
 
 export function ShippingOrderFormPage() {
@@ -22,6 +23,14 @@ export function ShippingOrderFormPage() {
   const queryClient = useQueryClient()
   const { data: packingNotices = [] } = useQuery({ queryKey: ['packingNotices'], queryFn: api.packingNotices })
   const { data: fabricLabels = [] } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
+  const { data: shippingOrders = [] } = useQuery({ queryKey: ['shippingOrders'], queryFn: api.shippingOrders })
+
+  /** 這一列在既有出貨單草稿上排了多少——新單填超過剩餘未排量時，差額從這些草稿移過來（決策163） */
+  const inDrafts = (noticeId: string, itemId: string | undefined) =>
+    shippingOrders
+      .filter((o) => o.status === '草稿' && !o.sourceAbnormalId)
+      .flatMap((o) => o.items.filter((line) => shippingItemNoticeId(o, line) === noticeId && line.sourceItemId === itemId))
+      .reduce((sum, line) => sum + line.yard, 0)
 
   const {
     register,
@@ -48,9 +57,14 @@ export function ShippingOrderFormPage() {
       if (!notice) throw new Error('找不到來源包裝通知單')
       return createShippingOrder({ ...values, customerId: notice.customerId })
     },
+    onError: (error: Error) => toast.error(error.message),
     onSuccess: async (order) => {
       await queryClient.invalidateQueries({ queryKey: ['shippingOrders'] })
-      toast.success(`已建立 ${order.id}`)
+      toast.success(
+        order.removedDraftIds?.length
+          ? `已建立 ${order.id}；${order.removedDraftIds.join('、')} 的明細已全數移入，該草稿已刪除`
+          : `已建立 ${order.id}`,
+      )
       navigate(`/shipping-order/${order.id}`)
     },
   })
@@ -60,7 +74,10 @@ export function ShippingOrderFormPage() {
   const selectedNotice = packingNotices.find((n) => n.id === parentId)
   const customer = selectedNotice ? getCustomer(selectedNotice.customerId) : undefined
 
-  /** 明細由包裝通知單直接帶入，可微調/刪除 */
+  /**
+   * 明細由包裝通知單直接帶入，可微調/刪除。
+   * 數量預設帶剩餘未排量（決策163）；全都已排在草稿上時改帶草稿上的量——開新單就是要把這批貨移過來出。
+   */
   function loadItemsFromNotice(id: string) {
     const notice = packingNotices.find((n) => n.id === id)
     if (!notice) return
@@ -71,7 +88,7 @@ export function ShippingOrderFormPage() {
         roricaProductName: item.roricaProductName,
         color: item.color,
         rollCodes: [],
-        yard: item.yard,
+        yard: noticeItemRemainingYard(notice.id, item, shippingOrders) || inDrafts(notice.id, item.id),
         unitPrice: undefined,
         note: item.note,
       })),
@@ -158,7 +175,9 @@ export function ShippingOrderFormPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">出貨明細（由包裝通知單直接帶入，可微調/刪除）</CardTitle>
+            <CardTitle className="text-base">
+              出貨明細（由包裝通知單直接帶入，可微調/刪除；數量超過未排量時，差額自既有出貨單草稿移入）
+            </CardTitle>
             <Button
               type="button"
               variant="outline"
@@ -242,6 +261,18 @@ export function ShippingOrderFormPage() {
                   <div className="space-y-1">
                     <Label className="text-xs">Yard</Label>
                     <Input type="number" step="1" {...register(`items.${index}.yard`)} />
+                    {(() => {
+                      const sourceItemId = watch(`items.${index}.sourceItemId`)
+                      const noticeItem = selectedNotice?.items.find((i) => i.id === sourceItemId)
+                      if (!selectedNotice || !noticeItem) return null
+                      const remaining = noticeItemRemainingYard(selectedNotice.id, noticeItem, shippingOrders)
+                      const drafted = inDrafts(selectedNotice.id, noticeItem.id)
+                      return (
+                        <p className="text-xs text-muted-foreground">
+                          未排 {formatNumber(remaining, 0)}Y{drafted > 0 ? `／草稿已排 ${formatNumber(drafted, 0)}Y` : ''}
+                        </p>
+                      )
+                    })()}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Meter（自動換算）</Label>

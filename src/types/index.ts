@@ -506,6 +506,11 @@ export interface PackingNotice {
   customerOrderNo: string
   status: PackingNoticeStatus
   /**
+   * 管理層手動結案（決策163）：出貨量未達「下單量－容許誤差下限」、但確定不再出貨（短交、客戶取消餘量）時，
+   * 由管理層填原因結案。容許誤差選「其他」的表1 系統讀不懂誤差範圍，短交只能走這條。
+   */
+  manualClose?: DocumentRejection
+  /**
    * 簽核旗標（決策118）。未記錄者（早於本機制的舊資料）視為「已簽核」——
    * 既有的生效單不該因為新增欄位而倒退回待簽核。
    */
@@ -1023,6 +1028,11 @@ export interface ShippingOrderItem {
   /** 來源表1明細列 id：表1「所有明細皆已出貨」的完成判定以此逐列比對，避免同品名同色互相沖抵 */
   sourceItemId?: string
   /**
+   * 來源表1 單號（決策163）：一張表8 可合併多張表1 的明細，每一列記住自己來自哪張表1。
+   * 未記錄者（本欄位新增前的舊資料）視為單頭的主表1（parentId），讀取一律經 shippingItemNoticeId()。
+   */
+  sourceNoticeId?: string
+  /**
    * 布疋條碼編號：一筆明細可對應多個捲號——拼接（接疋）出貨時即為實際使用的捲號組合，
    * 供日後客訴回溯；出貨扣帳時依序扣減這些捲的長度。
    *
@@ -1063,6 +1073,10 @@ export interface ShippingOrder {
    */
   currency?: PiCurrency
   id: string
+  /**
+   * 主表1（決策163）：單號取自它（`主表1-S{n}`），收貨地址、幣別、數量基準亦以它為準。
+   * 合併多張表1 時其餘表1 由各明細的 sourceNoticeId 記錄，「關聯哪些表1」一律經 shippingOrderNoticeIds() 推算。
+   */
   parentId: string
   customerId: string
   status: ShippingOrderStatus
@@ -1088,6 +1102,11 @@ export interface ShippingOrder {
    * 索引對應來源表1 的嘜頭組別（markings 的第幾組），每組嘜頭各自一個箱/袋號。
    */
   markingBoxNos?: string[]
+  /**
+   * 合併進來的其他表1 的箱/袋號（決策163）：鍵為表1 單號，值的索引對應該表1 的嘜頭組別。
+   * 主表1 的仍記在 markingBoxNos，舊資料不需轉換；讀取一律經 shippingBoxNosFor()。
+   */
+  otherMarkingBoxNos?: Record<string, string[]>
 }
 
 // ---------- 表5 二次加工單 ----------

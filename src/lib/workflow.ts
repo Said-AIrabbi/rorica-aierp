@@ -7,10 +7,13 @@ import type {
   DyeOrder,
   GoodsReceipt,
   PackingNotice,
+  PackingNoticeItem,
+  PackingNoticeTolerance,
   PurchaseOrder,
   PurchaseOrderItem,
   SecondaryProcessingPackaging,
   ShippingOrder,
+  ShippingOrderItem,
 } from '@/types'
 
 /**
@@ -227,29 +230,138 @@ export function isPurchaseOrderReadyToTriggerFulfillment(
   return !goodsReceipts.some((r) => r.parentId === order.parentId && r.source === '直採大貨-胚布')
 }
 
+// ---------- 表8 與表1 的對應（決策163：一張表8 可合併多張表1，一張表1 可分多張表8 出） ----------
+
+/** 表8 明細的來源表1：舊資料沒記錄者視為單頭的主表1 */
+export function shippingItemNoticeId(
+  order: Pick<ShippingOrder, 'parentId'>,
+  item: Pick<ShippingOrderItem, 'sourceNoticeId'>,
+): string {
+  return item.sourceNoticeId ?? order.parentId
+}
+
+/** 這張表8 關聯的所有表1，主表1 排第一 */
+export function shippingOrderNoticeIds(order: Pick<ShippingOrder, 'parentId' | 'items'>): string[] {
+  return [...new Set([order.parentId, ...order.items.map((i) => shippingItemNoticeId(order, i))])]
+}
+
+/** 某張表1 在這張表8 上的箱/袋號（索引對應該表1 的嘜頭組別） */
+export function shippingBoxNosFor(
+  order: Pick<ShippingOrder, 'parentId' | 'markingBoxNos' | 'otherMarkingBoxNos'>,
+  noticeId: string,
+): string[] | undefined {
+  return noticeId === order.parentId ? order.markingBoxNos : order.otherMarkingBoxNos?.[noticeId]
+}
+
+/** 收貨地址比對用：去頭尾空白、連續空白視為一個；合併表8 要求地址相同（決策163） */
+export function normalizeAddress(address: string | undefined): string {
+  return (address ?? '').trim().replace(/\s+/g, ' ')
+}
+
 /**
- * 表1包裝通知單「已完成」判定：所有明細物品皆已出貨。優先以「來源明細列 id」逐列比對
- * 已完成表8出貨單的明細（同品名同色但不同規格分支／不同包裝方式的兩列才不會互相沖抵），
- * 出貨明細未帶來源 id（手動加開的品項）時才退回以「皇加品名＋顏色」比對。
+ * 表1 的生產數量容許誤差換成百分比（決策163）：±5% → 5、±10% → 10。
+ * 「其他」是文字說明，系統讀不懂，視為 0——須出足下單量，短交由管理層手動結案。
+ */
+export function tolerancePct(tolerance: PackingNoticeTolerance | undefined): number {
+  if (tolerance?.mode === '±5%') return 5
+  if (tolerance?.mode === '±10%') return 10
+  return 0
+}
+
+/**
+ * 這一列表8 明細是否在出表1 的這一列。
+ * 有來源明細 id 就逐列比對；舊資料沒有時退回「皇加品名＋顏色」，但只限主表1 就是它的表8——
+ * 合併單若也用品名比對，兩張表1 的同品名同色會被重複計算。
+ */
+function shipsNoticeItem(
+  order: Pick<ShippingOrder, 'parentId'>,
+  line: ShippingOrderItem,
+  noticeId: string,
+  item: Pick<PackingNoticeItem, 'id' | 'roricaProductName' | 'color'>,
+): boolean {
+  if (shippingItemNoticeId(order, line) !== noticeId) return false
+  if (line.sourceItemId) return line.sourceItemId === item.id
+  return order.parentId === noticeId && line.roricaProductName === item.roricaProductName && line.color === item.color
+}
+
+type ShippingForCount = Pick<ShippingOrder, 'id' | 'parentId' | 'status' | 'items' | 'sourceAbnormalId'>
+
+/** 表9 的換貨出貨單是補償，不是履約——不計入表1 的出貨量與排程量 */
+const fulfilsNotice = (order: ShippingForCount) => !order.sourceAbnormalId
+
+/** 表1 某列明細已出貨的量（Y）：所有「已完成」表8 中出這一列的加總，不論那張表8 的主表1 是誰 */
+export function noticeItemShippedYard(
+  noticeId: string,
+  item: Pick<PackingNoticeItem, 'id' | 'roricaProductName' | 'color'>,
+  shippingOrders: ShippingForCount[],
+): number {
+  return shippingOrders
+    .filter((o) => o.status === '已完成' && fulfilsNotice(o))
+    .flatMap((o) => o.items.filter((line) => shipsNoticeItem(o, line, noticeId, item)))
+    .reduce((sum, line) => sum + line.yard, 0)
+}
+
+/** 表1 某列明細已排上表8 的量（Y）：草稿、已建立、已完成都算；可排除正在編輯的那一張 */
+export function noticeItemScheduledYard(
+  noticeId: string,
+  item: Pick<PackingNoticeItem, 'id' | 'roricaProductName' | 'color'>,
+  shippingOrders: ShippingForCount[],
+  excludeOrderId?: string,
+): number {
+  return shippingOrders
+    .filter((o) => o.id !== excludeOrderId && fulfilsNotice(o))
+    .flatMap((o) => o.items.filter((line) => shipsNoticeItem(o, line, noticeId, item)))
+    .reduce((sum, line) => sum + line.yard, 0)
+}
+
+/**
+ * 剩餘未排量（決策163）＝下單量－已排上任何表8 的量（含已出貨）。
+ * 新開表8 或加入明細時數量預設帶這個數字，不再帶下單量——否則第二次出貨又會帶滿。
+ */
+export function noticeItemRemainingYard(
+  noticeId: string,
+  item: Pick<PackingNoticeItem, 'id' | 'roricaProductName' | 'color' | 'yard'>,
+  shippingOrders: ShippingForCount[],
+  excludeOrderId?: string,
+): number {
+  const left = item.yard - noticeItemScheduledYard(noticeId, item, shippingOrders, excludeOrderId)
+  return Math.max(0, Number(left.toFixed(2)))
+}
+
+/**
+ * 表1 某列可排上表8 的上限（Y）：下單量加上容許誤差的上限——
+ * 染整入庫常比下單多一點，容許範圍內多出的貨照樣可以出。
+ */
+export function noticeItemScheduleCap(
+  item: Pick<PackingNoticeItem, 'yard'>,
+  tolerance: PackingNoticeTolerance | undefined,
+): number {
+  return Number((item.yard * (1 + tolerancePct(tolerance) / 100)).toFixed(2))
+}
+
+/** 表1 某列是否已出貨完成：出貨量達到「下單量－容許誤差下限」即算（決策163） */
+export function isNoticeItemFullyShipped(
+  noticeId: string,
+  item: Pick<PackingNoticeItem, 'id' | 'roricaProductName' | 'color' | 'yard'>,
+  tolerance: PackingNoticeTolerance | undefined,
+  shippingOrders: ShippingForCount[],
+): boolean {
+  const floor = item.yard * (1 - tolerancePct(tolerance) / 100)
+  return noticeItemShippedYard(noticeId, item, shippingOrders) >= floor - 1e-6
+}
+
+/**
+ * 表1包裝通知單「已完成」判定：每一列明細都已出貨完成（決策163）。
+ *
+ * 出貨量逐列加總所有已完成表8 中出這一列的量——表8 可合併多張表1、一張表1 也可分多張表8 出，
+ * 故不看表8 的主表1 是誰，只看明細的來源。達到「下單量－容許誤差下限」即算出完：
+ * 容許誤差 ±5% 的 1000Y 出了 950Y 就算完成；「其他」須出足，短交由管理層手動結案。
  */
 export function isPackingNoticeFullyShipped(
-  notice: Pick<PackingNotice, 'items'>,
-  parentId: string,
-  shippingOrders: Pick<ShippingOrder, 'parentId' | 'status' | 'items'>[],
+  notice: Pick<PackingNotice, 'id' | 'items' | 'tolerance'>,
+  shippingOrders: ShippingForCount[],
 ): boolean {
-  const completedItems = shippingOrders
-    .filter((s) => s.parentId === parentId && s.status === '已完成')
-    .flatMap((s) => s.items)
-  return notice.items.every((item) => {
-    const shippedQty = completedItems
-      .filter((i) =>
-        i.sourceItemId
-          ? i.sourceItemId === item.id
-          : i.roricaProductName === item.roricaProductName && i.color === item.color,
-      )
-      .reduce((sum, i) => sum + i.yard, 0)
-    return shippedQty >= item.yard
-  })
+  return notice.items.every((item) => isNoticeItemFullyShipped(notice.id, item, notice.tolerance, shippingOrders))
 }
 
 /**

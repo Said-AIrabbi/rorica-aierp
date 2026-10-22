@@ -30,8 +30,15 @@ import {
   shrinkagePctOf,
   ABNORMAL_CLAIM_MONTHS,
   effectivePurchaseOrderStatus,
+  isNoticeItemFullyShipped,
   isPackingNoticeFullyShipped,
   isWithinAbnormalClaimWindow,
+  normalizeAddress,
+  noticeItemRemainingYard,
+  noticeItemScheduleCap,
+  noticeItemScheduledYard,
+  shippingItemNoticeId,
+  shippingOrderNoticeIds,
   packingNoticeApprovalState,
   packingNoticeLocks,
   pendingAbnormalHandlings,
@@ -965,6 +972,37 @@ export function setPackingNoticeStatus(id: string, status: PackingNotice['status
   packingNotices[idx] = updated
   // 第一張表1 生效即確定 PI 交期的 Day 0，應出貨日於此統一落地
   applyPiDueDateOnEffective(updated)
+  return delay(packingNotices[idx])
+}
+
+/**
+ * 表1 手動結案（決策163）：出貨量未達「下單量－容許誤差下限」、但確定不再出貨時，由管理層填原因結案。
+ * 容許誤差選「其他」的表1 系統讀不懂範圍，短交只能走這條。
+ * 還有「已建立」的表8 時不可結案——貨正要出，結了案那張單出完就沒有表1 可對。
+ */
+export function closePackingNotice(id: string, reason: string): Promise<PackingNotice> {
+  const account = requireCurrentAccount()
+  assertCanAct(account, '表1', '結案')
+  const idx = requirePackingNotice(id)
+  const notice = packingNotices[idx]
+  if (notice.status !== '生效') throw new Error('僅「生效」的包裝通知單可手動結案')
+  if (!reason.trim()) throw new Error('結案原因必填——短交或取消餘量要留下理由')
+  const pending = shippingOrders.filter(
+    (o) => o.status === '已建立' && !o.sourceAbnormalId && shippingOrderNoticeIds(o).includes(id),
+  )
+  if (pending.length > 0) {
+    throw new Error(`尚有已建立未出貨的出貨單 ${pending.map((o) => o.id).join('、')}，請先出貨或退回後再結案`)
+  }
+  packingNotices[idx] = {
+    ...notice,
+    status: '已完成',
+    manualClose: { at: dayjs().toISOString(), byAccountId: account.id, reason: reason.trim() },
+  }
+  // 不再出貨：這張表1 還綁著的預留一併釋放，布卷回到可用庫存
+  const releasedAt = dayjs().toISOString()
+  stockReservations.forEach((r, i) => {
+    if (r.packingNoticeId === id && r.status === '預留中') stockReservations[i] = { ...r, status: '已釋放', releasedAt }
+  })
   return delay(packingNotices[idx])
 }
 
@@ -2696,17 +2734,18 @@ function autoCreateOrAppendShippingOrder(parentId: string, customerId: string, n
   // 售價自 PI 單價帶入（決策45）；已自行填過售價的明細不覆蓋
   const withPrice = newItems.map((item) => ({
     ...item,
+    // 自動草稿一張表1 一張（決策163），來源表1 即為主表1；明確記下，日後被移進合併單時仍查得到
+    sourceNoticeId: item.sourceNoticeId ?? parentId,
     unitPrice: item.unitPrice ?? piUnitPriceForNoticeItem(sourceNotice, item.sourceItemId),
   }))
-  const draftIdx = shippingOrders.findIndex((s) => s.parentId === parentId && s.status === '草稿')
+  const draftIdx = shippingOrders.findIndex((s) => s.parentId === parentId && s.status === '草稿' && !s.sourceAbnormalId)
   if (draftIdx !== -1) {
     shippingOrders[draftIdx] = { ...shippingOrders[draftIdx], items: [...shippingOrders[draftIdx].items, ...withPrice] }
     return
   }
-  const existingForParent = shippingOrders.filter((s) => s.parentId === parentId).length
   const warehouseAccount = accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]
   shippingOrders.unshift({
-    id: `${parentId}-S${existingForParent + 1}`,
+    id: nextShippingOrderId(parentId),
     parentId,
     customerId,
     shippingAddress: sourceNotice?.shippingAddress,
@@ -2780,38 +2819,280 @@ function piUnitPriceForNoticeItem(notice: PackingNotice | undefined, sourceItemI
   return pi?.items.find((i) => i.id === noticeItem.sourcePiItemId)?.unitPrice
 }
 
-/** 建立出貨單：明細以布卷條碼組合記錄（拼接出貨即為實際使用的捲號組合） */
-export function createShippingOrder(input: ShippingOrderInput): Promise<ShippingOrder> {
+/**
+ * 表8 單號（決策163）：`主表1-S{n}`，n 取該主表1 現有最大序號＋1。
+ * 不能用張數＋1——合併時被移空的草稿會刪除，張數變少後新單號就會撞到既有的單。
+ */
+function nextShippingOrderId(parentId: string): string {
+  const prefix = `${parentId}-S`
+  const maxSeq = shippingOrders.reduce((max, s) => {
+    if (!s.id.startsWith(prefix)) return max
+    const n = Number(s.id.slice(prefix.length))
+    return Number.isInteger(n) && n > max ? n : max
+  }, 0)
+  return `${prefix}${maxSeq + 1}`
+}
+
+/**
+ * 表8 合併的條件（決策163）：同一客戶、同一幣別、同一收貨地址，且表1 已生效。
+ * 地址不同就是兩趟貨，不能開成一張單；幣別不同則一張單上的金額加總沒有意義。
+ */
+function assertMergeableNotice(
+  notice: PackingNotice,
+  target: { customerId: string; currency: PiCurrency; shippingAddress?: string },
+): void {
+  if (notice.status !== '生效') throw new Error(`${notice.id} 尚未生效或已結案，不可加入出貨單`)
+  if (notice.customerId !== target.customerId) throw new Error(`${notice.id} 的客戶不同，不可合併在同一張出貨單`)
+  if ((notice.currency ?? 'NTD') !== target.currency) throw new Error(`${notice.id} 的幣別不同，不可合併在同一張出貨單`)
+  if (normalizeAddress(notice.shippingAddress) !== normalizeAddress(target.shippingAddress)) {
+    throw new Error(`${notice.id} 的收貨地址與本單不同，不可合併在同一張出貨單`)
+  }
+}
+
+interface ShippingAllocationRequest {
+  noticeId: string
+  itemId: string
+  qty: number
+}
+
+interface ShippingAllocationPlan {
+  notice: PackingNotice
+  item: PackingNoticeItem
+  qty: number
+  /** 從其他草稿移過來的量：草稿單號 → 該草稿各列要扣的量（依列序） */
+  takes: { orderId: string; lineIndex: number; qty: number }[]
+}
+
+/**
+ * 排上表8 的量從哪裡來（決策163）：先用剩餘未排量，不夠再從其他草稿移——
+ * 自動草稿一張表1 一張、帶滿下單量，要把其中一部分開進另一張出貨單時，原草稿就得扣掉，
+ * 否則同一批貨會同時排在兩張單上。再不夠，最多可超排到容許誤差上限，超過即擋下。
+ *
+ * 只算不動：全部明細都排得出來才一次套用（applyShippingAllocation），不會只移了一半就報錯。
+ */
+function planShippingAllocation(requests: ShippingAllocationRequest[], targetOrderId?: string): ShippingAllocationPlan[] {
+  // 同一列明細可能被要求多次（例如分兩列加入），先合併再算
+  const merged = new Map<string, ShippingAllocationRequest>()
+  requests.forEach((r) => {
+    const key = `${r.noticeId}|${r.itemId}`
+    const prev = merged.get(key)
+    merged.set(key, prev ? { ...prev, qty: prev.qty + r.qty } : { ...r })
+  })
+  return [...merged.values()].map((req) => {
+    const notice = packingNotices.find((n) => n.id === req.noticeId)
+    if (!notice) throw new Error(`包裝通知單 ${req.noticeId} 不存在`)
+    const item = notice.items.find((i) => i.id === req.itemId)
+    if (!item) throw new Error(`${req.noticeId} 查無明細 ${req.itemId}`)
+    if (!(req.qty > 0)) throw new Error(`${item.roricaProductName}／${item.color} 的數量需大於 0`)
+
+    let need = req.qty - noticeItemRemainingYard(notice.id, item, shippingOrders)
+    const takes: ShippingAllocationPlan['takes'] = []
+    if (need > 1e-6) {
+      shippingOrders
+        .filter((o) => o.id !== targetOrderId && o.status === '草稿' && !o.sourceAbnormalId)
+        .forEach((o) => {
+          o.items.forEach((line, lineIndex) => {
+            if (need <= 1e-6) return
+            if (shippingItemNoticeId(o, line) !== notice.id || line.sourceItemId !== item.id) return
+            const take = Math.min(line.yard, need)
+            takes.push({ orderId: o.id, lineIndex, qty: take })
+            need -= take
+          })
+        })
+    }
+    if (need > 1e-6) {
+      // 草稿都移完了仍不夠：容許誤差上限內可以超排（入庫常比下單多一點）
+      const cap = noticeItemScheduleCap(item, notice.tolerance)
+      const scheduledAfter = noticeItemScheduledYard(notice.id, item, shippingOrders) + req.qty - takes.reduce((s, t) => s + t.qty, 0)
+      if (scheduledAfter > cap + 1e-6) {
+        const room = Math.max(0, cap - (scheduledAfter - req.qty))
+        throw new Error(
+          `${notice.id} 的 ${item.roricaProductName}／${item.color} 超過可排量：下單 ${item.yard}Y，含容許誤差最多可排 ${cap}Y，本次最多再排 ${Number(room.toFixed(2))}Y（已排在已建立或已完成出貨單上的量不會被移動）`,
+        )
+      }
+    }
+    return { notice, item, qty: req.qty, takes }
+  })
+}
+
+/**
+ * 套用排程：從其他草稿扣量，整列移走時捲號一併帶過來；被移空的草稿刪除（草稿尚未成立，沒有下游參照）。
+ * 回傳每列明細帶過來的捲號，與被刪除的草稿單號。
+ */
+function applyShippingAllocation(plans: ShippingAllocationPlan[]): { rollCodes: Map<string, string[]>; removed: string[] } {
+  const rollCodes = new Map<string, string[]>()
+  const touched = new Set<string>()
+  plans.forEach((plan) => {
+    const carried: string[] = []
+    plan.takes.forEach((t) => {
+      const idx = shippingOrders.findIndex((o) => o.id === t.orderId)
+      const line = shippingOrders[idx].items[t.lineIndex]
+      const left = Number((line.yard - t.qty).toFixed(2))
+      // 整列移走才帶捲號；只移一部分時捲號留在原草稿，由倉管在新單上另外挑
+      if (left <= 1e-6) carried.push(...line.rollCodes)
+      const items = [...shippingOrders[idx].items]
+      items[t.lineIndex] = { ...line, yard: left, meter: Number(yardToMeter(left).toFixed(1)) }
+      shippingOrders[idx] = { ...shippingOrders[idx], items }
+      touched.add(t.orderId)
+    })
+    rollCodes.set(`${plan.notice.id}|${plan.item.id}`, carried)
+  })
+  const removed: string[] = []
+  touched.forEach((orderId) => {
+    const idx = shippingOrders.findIndex((o) => o.id === orderId)
+    const items = shippingOrders[idx].items.filter((line) => line.yard > 1e-6)
+    if (items.length === 0) {
+      shippingOrders.splice(idx, 1)
+      removed.push(orderId)
+    } else {
+      shippingOrders[idx] = { ...shippingOrders[idx], items }
+    }
+  })
+  return { rollCodes, removed }
+}
+
+/** 由表1 明細組出一列表8 明細（售價依決策142／143 的順序帶入） */
+function shippingLineFromNotice(notice: PackingNotice, item: PackingNoticeItem, qty: number, rollCodes: string[]): ShippingOrderItem {
+  return {
+    sourceItemId: item.id,
+    sourceNoticeId: notice.id,
+    customerProductName: item.customerProductName,
+    roricaProductName: item.roricaProductName,
+    color: item.color,
+    rollCodes,
+    yard: qty,
+    meter: Number(yardToMeter(qty).toFixed(1)),
+    unitPrice: defaultShippingPrice(notice, item, resolveProduct(item.productId, item.roricaProductName)),
+    note: item.note,
+  }
+}
+
+/**
+ * 建立出貨單：明細以布卷條碼組合記錄（拼接出貨即為實際使用的捲號組合）。
+ *
+ * 來自表1 的明細（帶 sourceItemId）依決策163 排程：先用剩餘未排量，不夠就從同一列的其他草稿移過來，
+ * 最多超排到容許誤差上限。可跨表1（各列帶 sourceNoticeId），條件見 assertMergeableNotice。
+ */
+export function createShippingOrder(input: ShippingOrderInput): Promise<ShippingOrder & { removedDraftIds?: string[] }> {
   assertCanAct(getCurrentAccount(), '表8', '建立')
-  const existingForParent = shippingOrders.filter((s) => s.parentId === input.parentId).length
-  const warehouseAccount = accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]
   const sourceNotice = packingNotices.find((n) => n.id === input.parentId)
+  const currency = sourceNotice?.currency ?? 'NTD'
+  const shippingAddress = sourceNotice?.shippingAddress
+  // 合併進來的其他表1：同客戶、同幣別、同收貨地址
+  const otherNoticeIds = [
+    ...new Set(input.items.map((i) => i.sourceNoticeId).filter((id): id is string => !!id && id !== input.parentId)),
+  ]
+  otherNoticeIds.forEach((noticeId) => {
+    const other = packingNotices.find((n) => n.id === noticeId)
+    if (!other) throw new Error(`包裝通知單 ${noticeId} 不存在`)
+    assertMergeableNotice(other, { customerId: input.customerId, currency, shippingAddress })
+  })
+
+  // 先取號再移量：移空而刪除的草稿若剛好是最大序號，新單不可沿用它的單號
+  const orderId = nextShippingOrderId(input.parentId)
+  const tracked = input.items.filter((item) => item.sourceItemId)
+  const plans = planShippingAllocation(
+    tracked.map((item) => ({ noticeId: item.sourceNoticeId ?? input.parentId, itemId: item.sourceItemId!, qty: item.yard })),
+  )
+  const { rollCodes: carried, removed } = applyShippingAllocation(plans)
+
   const order: ShippingOrder = {
-    id: `${input.parentId}-S${existingForParent + 1}`,
+    id: orderId,
     parentId: input.parentId,
     customerId: input.customerId,
-    shippingAddress: sourceNotice?.shippingAddress,
-    currency: sourceNotice?.currency ?? 'NTD',
+    shippingAddress,
+    currency,
     markingBoxNos: markingBoxNosFromNotice(sourceNotice),
     status: '草稿',
     shipDate: dayjs().toISOString(),
     isSampleOrder: input.isSampleOrder,
-    items: input.items.map((item) => ({
-      ...item,
-      meter: Number(yardToMeter(item.yard).toFixed(1)),
-      // 手動建單時沒填售價者，同樣先取表1 單價（決策142）
-      unitPrice:
-        item.unitPrice ??
-        noticeItemSalePrice(
-          sourceNotice,
-          sourceNotice?.items.find((i) => i.id === item.sourceItemId),
-        ),
-    })),
-    operatorAccountId: warehouseAccount.id,
+    items: input.items.map((item) => {
+      const noticeId = item.sourceItemId ? (item.sourceNoticeId ?? input.parentId) : item.sourceNoticeId
+      const notice = noticeId ? packingNotices.find((n) => n.id === noticeId) : sourceNotice
+      const key = `${noticeId}|${item.sourceItemId}`
+      // 從別張草稿整列移過來的捲號：使用者沒自己挑的話就沿用（只帶給第一列，避免同捲重複出現）
+      const inherited = carried.get(key) ?? []
+      carried.delete(key)
+      return {
+        ...item,
+        sourceNoticeId: noticeId,
+        rollCodes: item.rollCodes.length > 0 ? item.rollCodes : inherited,
+        meter: Number(yardToMeter(item.yard).toFixed(1)),
+        // 手動建單時沒填售價者，同樣先取表1 單價（決策142）
+        unitPrice:
+          item.unitPrice ??
+          noticeItemSalePrice(
+            notice,
+            notice?.items.find((i) => i.id === item.sourceItemId),
+          ),
+      }
+    }),
+    operatorAccountId: (accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]).id,
     purpose: input.purpose,
   }
   shippingOrders.unshift(order)
-  return delay(order)
+  return delay(removed.length > 0 ? { ...order, removedDraftIds: removed } : order)
+}
+
+/**
+ * 表8 草稿加入其他表1 的明細（決策163）：合併出貨。
+ *
+ * 條件同建單：同客戶、同幣別、與本單收貨地址相同（本單地址若在草稿改過，以改過的為準——
+ * 貨要一起送到那裡，地址不同的表1 本來就該分開送）。數量依決策163 排程，必要時從其他草稿移過來；
+ * 被移空的草稿刪除並回傳單號，畫面上提示使用者。
+ */
+export function addShippingOrderItemsFromNotices(
+  id: string,
+  lines: ShippingAllocationRequest[],
+): Promise<{ order: ShippingOrder; removedDraftIds: string[] }> {
+  assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
+  const idx = shippingOrders.findIndex((s) => s.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const current = shippingOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可加入明細')
+  if (current.sourceAbnormalId) throw new Error('換貨出貨單不可加入表1 明細')
+  if (lines.length === 0) throw new Error('請至少勾選一筆明細')
+  const target = { customerId: current.customerId, currency: current.currency ?? 'NTD', shippingAddress: current.shippingAddress }
+  ;[...new Set(lines.map((l) => l.noticeId))].forEach((noticeId) => {
+    const notice = packingNotices.find((n) => n.id === noticeId)
+    if (!notice) throw new Error(`包裝通知單 ${noticeId} 不存在`)
+    assertMergeableNotice(notice, target)
+  })
+
+  const plans = planShippingAllocation(lines, id)
+  const { rollCodes: carried, removed } = applyShippingAllocation(plans)
+  const newLines = plans.map((plan) =>
+    shippingLineFromNotice(plan.notice, plan.item, plan.qty, carried.get(`${plan.notice.id}|${plan.item.id}`) ?? []),
+  )
+  // 移量可能動到本單以外的草稿，本單索引要重新找
+  const targetIdx = shippingOrders.findIndex((s) => s.id === id)
+  const updated: ShippingOrder = { ...shippingOrders[targetIdx], items: [...shippingOrders[targetIdx].items, ...newLines] }
+  shippingOrders[targetIdx] = updated
+  return delay({ order: updated, removedDraftIds: removed })
+}
+
+/**
+ * 從表8 草稿移除某張合併進來的表1（決策163）：該表1 的明細全部拿掉，量回到「未排」。
+ * 主表1 不可移除——單號、地址、幣別都是它的。
+ */
+export function removeNoticeFromShippingOrder(id: string, noticeId: string): Promise<ShippingOrder> {
+  assertCanAct(getCurrentAccount(), '表8', '編輯草稿')
+  const idx = shippingOrders.findIndex((s) => s.id === id)
+  if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
+  const current = shippingOrders[idx]
+  if (current.status !== '草稿') throw new Error('僅草稿狀態可調整明細')
+  if (noticeId === current.parentId) throw new Error('主表1 不可移除——單號、收貨地址與幣別都取自它')
+  const items = current.items.filter((line) => shippingItemNoticeId(current, line) !== noticeId)
+  if (items.length === current.items.length) throw new Error(`本單沒有 ${noticeId} 的明細`)
+  const otherMarkingBoxNos = { ...(current.otherMarkingBoxNos ?? {}) }
+  delete otherMarkingBoxNos[noticeId]
+  const updated: ShippingOrder = {
+    ...current,
+    items,
+    otherMarkingBoxNos: Object.keys(otherMarkingBoxNos).length > 0 ? otherMarkingBoxNos : undefined,
+  }
+  shippingOrders[idx] = updated
+  return delay(updated)
 }
 
 /**
@@ -2825,6 +3106,7 @@ export function updateShippingOrderItems(id: string, items: ShippingOrderItem[])
   const current = shippingOrders[idx]
   if (current.status !== '草稿') throw new Error('僅草稿狀態可調整明細')
   if (items.length === 0) throw new Error('至少需保留一筆明細')
+  assertShippingEditWithinCap(current, items)
   const updated: ShippingOrder = {
     ...current,
     // Yard/Meter 雙單位一律同時記錄，Meter 依 Yard 重新換算
@@ -2832,6 +3114,38 @@ export function updateShippingOrderItems(id: string, items: ShippingOrderItem[])
   }
   shippingOrders[idx] = updated
   return delay(updated)
+}
+
+/**
+ * 草稿改數量時的上限檢查（決策163）：只檢查**加量**的列——改小、改售價都不擋，
+ * 自動草稿由入庫帶進來時本來就可能略超下單量，不能因此連帶改不了別的欄位。
+ * 加量後該列在所有表8 的排程總量不得超過「下單量＋容許誤差上限」。
+ */
+function assertShippingEditWithinCap(current: ShippingOrder, nextItems: ShippingOrderItem[]): void {
+  const totals = (items: ShippingOrderItem[]) => {
+    const map = new Map<string, number>()
+    items.forEach((line) => {
+      if (!line.sourceItemId) return
+      const key = `${shippingItemNoticeId(current, line)}|${line.sourceItemId}`
+      map.set(key, (map.get(key) ?? 0) + line.yard)
+    })
+    return map
+  }
+  const before = totals(current.items)
+  totals(nextItems).forEach((qty, key) => {
+    if (qty <= (before.get(key) ?? 0) + 1e-6) return
+    const [noticeId, itemId] = key.split('|')
+    const notice = packingNotices.find((n) => n.id === noticeId)
+    const item = notice?.items.find((i) => i.id === itemId)
+    if (!notice || !item) return
+    const cap = noticeItemScheduleCap(item, notice.tolerance)
+    const elsewhere = noticeItemScheduledYard(noticeId, item, shippingOrders, current.id)
+    if (elsewhere + qty > cap + 1e-6) {
+      throw new Error(
+        `${noticeId} 的 ${item.roricaProductName}／${item.color} 超過可排量：含容許誤差最多 ${cap}Y，其他出貨單已排 ${Number(elsewhere.toFixed(2))}Y，本單最多 ${Number(Math.max(0, cap - elsewhere).toFixed(2))}Y`,
+      )
+    }
+  })
 }
 
 /** 簽名欄：處理人／倉管／出貨／業務，比照紙本單據四個簽名欄位 */
@@ -2843,6 +3157,8 @@ export interface ShippingOrderHeaderInput {
   shippingAddress?: string
   /** 箱/袋號：索引對應來源表1 的嘜頭組別，與單頭一起儲存（不另設專用儲存動作） */
   markingBoxNos?: string[]
+  /** 合併進來的其他表1 的箱/袋號（決策163）：鍵為表1 單號 */
+  otherMarkingBoxNos?: Record<string, string[]>
 }
 
 /** 表8 草稿階段的單頭手動更新：確認建單後回復唯讀（比照明細） */
@@ -2864,6 +3180,10 @@ export function updateShippingOrderHeader(id: string, input: ShippingOrderHeader
     shippingAddress: input.shippingAddress?.trim() ? input.shippingAddress.trim() : undefined,
     // 全部留白時不留下空陣列，列印端以「未填不印」判斷
     markingBoxNos: input.markingBoxNos?.some((v) => v.trim()) ? input.markingBoxNos : undefined,
+    otherMarkingBoxNos: (() => {
+      const kept = Object.entries(input.otherMarkingBoxNos ?? {}).filter(([, v]) => v.some((x) => x.trim()))
+      return kept.length > 0 ? Object.fromEntries(kept) : undefined
+    })(),
   }
   shippingOrders[idx] = updated
   return delay(updated)
@@ -3021,13 +3341,29 @@ export function completeShippingOrder(id: string): Promise<ShippingOrder> {
     })
   })
 
-  // 表1「已完成」判定：所有明細物品皆已出貨，由出貨單完成時回頭結案，非人工手動標記
-  const noticeIdx = packingNotices.findIndex((n) => n.id === updated.parentId)
-  if (noticeIdx !== -1) {
-    const notice = packingNotices[noticeIdx]
-    if (notice.status === '生效' && isPackingNoticeFullyShipped(notice, notice.id, shippingOrders)) {
-      packingNotices[noticeIdx] = { ...notice, status: '已完成' }
-    }
+  /**
+   * 表1「已完成」判定（決策163）：本單明細涉及的**每一張**表1 都要檢查——合併單一次可能出好幾張表1 的貨。
+   * 每列出貨量達到「下單量－容許誤差下限」即算出完；換貨出貨單是補償不是履約，不回頭結案表1。
+   */
+  if (!updated.sourceAbnormalId) {
+    shippingOrderNoticeIds(updated).forEach((noticeId) => {
+      const noticeIdx = packingNotices.findIndex((n) => n.id === noticeId)
+      if (noticeIdx === -1) return
+      const notice = packingNotices[noticeIdx]
+      // 部分出貨時預留留給剩下的量；整列出完才把該列的預留轉為「已轉出貨」
+      notice.items.forEach((item) => {
+        if (!updated.items.some((line) => line.sourceItemId === item.id)) return
+        if (!isNoticeItemFullyShipped(notice.id, item, notice.tolerance, shippingOrders)) return
+        stockReservations.forEach((r, i) => {
+          if (r.packingNoticeItemId === item.id && r.status === '預留中') {
+            stockReservations[i] = { ...r, status: '已轉出貨' }
+          }
+        })
+      })
+      if (notice.status === '生效' && isPackingNoticeFullyShipped(notice, shippingOrders)) {
+        packingNotices[noticeIdx] = { ...notice, status: '已完成' }
+      }
+    })
   }
 
   return delay(updated)
@@ -3422,7 +3758,8 @@ export function createAbnormalNotice(input: AbnormalNoticeInput): Promise<Abnorm
     noticeDate: now.toISOString(),
     createdByAccountId: (accounts.find((a) => a.roles.includes('業務')) ?? accounts[0]).id,
     customerId: input.customerId ?? source?.customerId,
-    ...resolveAbnormalTrace(source?.parentId),
+    // 合併出貨單的各列來自不同表1（決策163），追溯取這一列自己的來源
+    ...resolveAbnormalTrace(source && item ? shippingItemNoticeId(source, item) : source?.parentId),
     shippingOrderId: source?.id,
     shipDate: source?.shipDate,
     productName: item?.roricaProductName ?? '',
@@ -3703,10 +4040,9 @@ export function createReplacementShippingOrder(id: string): Promise<ShippingOrde
   const source = notice.shippingOrderId ? shippingOrders.find((s) => s.id === notice.shippingOrderId) : undefined
   if (!source) throw new Error('找不到原出貨單，無法建立換貨出貨單')
 
-  const existingForParent = shippingOrders.filter((s) => s.parentId === source.parentId).length
   const warehouseAccount = accounts.find((a) => a.roles.includes('倉管')) ?? accounts[0]
   const order: ShippingOrder = {
-    id: `${source.parentId}-S${existingForParent + 1}`,
+    id: nextShippingOrderId(source.parentId),
     parentId: source.parentId,
     customerId: source.customerId,
     status: '草稿',

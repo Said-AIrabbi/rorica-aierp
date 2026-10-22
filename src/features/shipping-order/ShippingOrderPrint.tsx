@@ -1,7 +1,7 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
 import { PackagingPrintSection } from '@/components/print/PackagingPrintSection'
 import { PRINT_TITLES, SHIPPING_SIGNATURE_LABELS } from '@/lib/print'
-import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
+import { buildSecondaryProcessingPackaging, shippingOrderNoticeIds } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
 import { getAccount, getCustomer, getPackingNotice } from '@/mocks/data'
@@ -50,8 +50,13 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
   const title = order.isSampleOrder ? PRINT_TITLES.shippingSample : PRINT_TITLES.shippingOrder
   const notice = getPackingNotice(order.parentId)
   const itemUnit = notice?.itemUnit ?? 'Yard'
+  // 合併出貨（決策163）：關聯的表1 全部列出，包裝設定逐張印
+  const noticeIds = shippingOrderNoticeIds(order)
   // 包裝設定原樣帶入自表1：倉管依此出貨、客戶也照此驗收，與表5 共用同一份版面
-  const packaging = notice ? buildSecondaryProcessingPackaging(notice) : undefined
+  const packagings = noticeIds.flatMap((nid) => {
+    const n = getPackingNotice(nid)
+    return n ? [{ id: nid, packaging: buildSecondaryProcessingPackaging(n) }] : []
+  })
 
   /**
    * 地址欄（決策133）：這張紙是送貨的人與客戶驗收時看的，印錯地址就是送錯地方。
@@ -66,7 +71,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
 
   const meta: PrintMetaItem[] = [
     { label: '出貨單號', value: order.id },
-    { label: '來源包裝通知單', value: order.parentId },
+    { label: '來源包裝通知單', value: noticeIds.join('、') },
     { label: '類型', value: order.isSampleOrder ? '樣品單' : '出貨單' },
     { label: '出貨日期', value: formatDate(order.shipDate) },
     { label: '客戶', value: customer ? `${customer.code}　${customer.shortName}` : order.customerId, span: 2 },
@@ -112,7 +117,9 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
         />
       </PrintSection>
 
-      {packaging && <PackagingPrintSection packaging={packaging} />}
+      {packagings.map(({ id, packaging }) => (
+        <PackagingPrintSection key={id} packaging={packaging} title={packagings.length > 1 ? `包裝設定（${id}）` : undefined} />
+      ))}
     </PrintSheet>
   )
 }

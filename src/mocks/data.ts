@@ -1335,6 +1335,7 @@ accounts.push({
     actions: [
       { doc: '表1', action: '簽核' },
       { doc: '表1', action: '退回' },
+      { doc: '表1', action: '結案' },
       { doc: 'PI', action: '批准' },
       { doc: 'PI', action: '退回' },
       { doc: '表9', action: '批准' },
