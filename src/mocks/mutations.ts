@@ -2927,10 +2927,10 @@ export function updateShippingOrderSignatures(id: string, signatures: ShippingOr
 export function setShippingOrderStatus(id: string, status: ShippingOrder['status']): Promise<ShippingOrder> {
   const idx = shippingOrders.findIndex((s) => s.id === id)
   if (idx === -1) throw new Error(`出貨單 ${id} 不存在`)
-  // 「改為出貨完成」會觸發扣庫存，僅生管可按且不得為建單者（權限規格第七章第 1 節）；
+  // 「改為出貨完成」會觸發扣庫存，僅生管、倉管可按且不得為建單者（權限規格第七章第 1 節、決策61）；
   // 該路徑一律走 completeShippingOrder()，這裡只處理草稿↔已建立
   if (status === '已完成') {
-    throw new Error('請改用「確認出貨」——出貨完成會觸發扣庫存，須由生管執行')
+    throw new Error('請改用「確認出貨」——出貨完成會觸發扣庫存，須由生管或倉管執行')
   }
   assertCanAct(getCurrentAccount(), '表8', status === '草稿' ? '退回' : '建立')
   const updated: ShippingOrder = { ...shippingOrders[idx], status }

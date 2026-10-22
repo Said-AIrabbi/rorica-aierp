@@ -264,7 +264,7 @@ export function ShippingOrderDetailPage() {
             )}
             {order.status === '已建立' && (
               <>
-                {/* 出貨完成會觸發扣庫存：僅生管可按，且不得為本單的建立者（權限規格第七章第 1 節） */}
+                {/* 出貨完成會觸發扣庫存：生管、倉管可按，且不得為本單的建立者（權限規格第七章第 1 節、決策61） */}
                 {permissions.can('表8', '改為出貨完成') &&
                   (() => {
                     const blocked =
