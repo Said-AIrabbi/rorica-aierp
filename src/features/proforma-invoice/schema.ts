@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isSurchargeItem } from '@/lib/pi'
 import {
   COLOR_RATIO_MAX,
   FIXED_ROLL_PACKING_METHODS,
@@ -34,7 +35,8 @@ export const piItemSchema = z
     /** 產品編號：選定產品分支時記錄，隨轉換帶入表1（決策44） */
     productId: z.string().optional(),
     customerProductName: z.string().optional(),
-    color: z.string().min(1, '請輸入顏色'),
+    // 顏色必填，surcharge 除外（決策157）——見下方 refine
+    color: z.string(),
     yard: z.coerce.number().positive('數量需大於 0'),
     unitPrice: z.coerce.number().min(0, '單價需大於等於 0'),
     packingMethod: z.enum(PACKING_METHODS),
@@ -46,6 +48,8 @@ export const piItemSchema = z
     (item) => !FIXED_ROLL_PACKING_METHODS.includes(item.packingMethod) || (item.fixedLengthMeter ?? 0) > 0,
     { message: '定碼ROLL包裝方式需輸入定碼長度（米）', path: ['fixedLengthMeter'] },
   )
+  // surcharge 是費用不是布，沒有顏色可填
+  .refine((item) => isSurchargeItem(item) || item.color.trim().length > 0, { message: '請輸入顏色', path: ['color'] })
 
 export const piFormSchema = z.object({
   // 客戶：查無主檔時仍可送出（PI 階段對方尚未成為客戶，決策51）

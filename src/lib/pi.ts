@@ -72,12 +72,28 @@ export const PI_CURRENCY_SYMBOL: Record<PiCurrency, string> = {
   HKD: 'HK$',
 }
 
+/**
+ * Surcharge（決策157）：客戶訂單未達基礎訂單量時加收的費用，以一列明細的形式加在 PI 上。
+ * 它不是真正的商品——**只計金額、不計數量**，也不轉入表1（不生產、不出貨、不預留庫存）。
+ *
+ * 判定只看皇加品名：去掉前後空白後不分大小寫等於「surcharge」即是（皇加指定，客戶品名不參與判定）。
+ * 金額照一般明細計算（數量 × 單價），只是數量不加進數量合計。
+ */
+export function isSurchargeItem(item: { roricaProductName: string }): boolean {
+  return item.roricaProductName.trim().toLowerCase() === 'surcharge'
+}
+
+/** 計入數量合計的明細：排除 surcharge（決策157） */
+export function piQuantityItems<T extends { roricaProductName: string }>(items: T[]): T[] {
+  return items.filter((item) => !isSurchargeItem(item))
+}
+
 /** 主檔牌價（NTD）換算為該幣別的參照金額 */
 export function ntdToCurrency(ntd: number, currency: PiCurrency): number {
   return ntd / PI_FX_REFERENCE[currency]
 }
 
-/** PI 總金額：單價 × 數量逐列加總（決策13） */
+/** PI 總金額：單價 × 數量逐列加總（決策13）；surcharge 列的金額照樣計入（決策157） */
 /**
  * PI 總金額。看不到售價的角色（生管、倉管）拿到的明細**沒有 unitPrice 這個欄位**
  * （欄位可見性會直接刪掉），此時回傳 undefined 而不是 NaN——

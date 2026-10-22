@@ -4,7 +4,7 @@ import { PI_SIGNATURE_LABELS, PRINT_TITLES, printValue } from '@/lib/print'
 import { resolvePiBankAccount } from '@/lib/company'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, yardPriceToMeterPrice } from '@/lib/units'
-import { PI_CURRENCY_SYMBOL, piTotalAmount } from '@/lib/pi'
+import { PI_CURRENCY_SYMBOL, isSurchargeItem, piQuantityItems, piTotalAmount } from '@/lib/pi'
 import { basisQtyText } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
 import { companyProfile, getProduct } from '@/mocks/data'
@@ -25,13 +25,15 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
    */
   const bank = resolvePiBankAccount(companyProfile, pi)
   const total = piTotalAmount(pi)
-  const totalQty = pi.items.reduce((sum, item) => sum + (pi.itemUnit === 'Yard' ? item.yard : item.meter), 0)
+  // 數量合計不含 surcharge（決策157）：它是費用，數量只是用來乘出金額
+  const quantityItems = piQuantityItems(pi.items)
+  const totalQty = quantityItems.reduce((sum, item) => sum + (pi.itemUnit === 'Yard' ? item.yard : item.meter), 0)
   /**
    * 碼數總量：金額的計算基準一律是碼（單價以每碼存放）。
    * 以米報價時單價與數量都印米制（決策134 之一），這一欄仍附上碼數——
    * 皇加內部的布卷、標籤與出貨單都以碼計，客戶日後對帳或追單時用得到。
    */
-  const totalYard = pi.items.reduce((sum, item) => sum + item.yard, 0)
+  const totalYard = quantityItems.reduce((sum, item) => sum + item.yard, 0)
   /**
    * 單價的列印單位跟著報價基準走（2026/10/05，決策134 之一）。
    * 原本固定印每碼：以米報價的客戶拿「米數 × 每碼單價」會算出一個不等於金額的數字，
@@ -54,9 +56,12 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
       // 報價基準為 Meter 時另附碼數：皇加內部與下游單據一律以碼計，客戶對帳時用得到
       header: `QTY (${pi.itemUnit})`,
       cell: (row) =>
-        pi.itemUnit === 'Yard'
-          ? basisQtyText(row.yard, row.meter, pi.itemUnit)
-          : `${basisQtyText(row.yard, row.meter, pi.itemUnit)}（${formatNumber(row.yard, 1)} Y）`,
+        // surcharge 只印乘出金額用的數字，不帶單位、不附碼數——它不是布的長度（決策157）
+        isSurchargeItem(row)
+          ? formatNumber(pi.itemUnit === 'Yard' ? row.yard : row.meter, 2)
+          : pi.itemUnit === 'Yard'
+            ? basisQtyText(row.yard, row.meter, pi.itemUnit)
+            : `${basisQtyText(row.yard, row.meter, pi.itemUnit)}（${formatNumber(row.yard, 1)} Y）`,
       align: 'right',
       // 以米報價時這一欄要塞「5,070.3 Meter（5,545 Y）」這種內容，實測需 41.3mm
       width: '42mm',
@@ -133,6 +138,8 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
             `${symbol} ${formatNumber(total, 2)}`,
           ]}
           subRow={(row) => {
+            // surcharge 沒有規格、包裝與彩條可印（決策157）
+            if (isSurchargeItem(row)) return row.note || null
             const product = row.productId ? getProduct(row.productId) : undefined
             // 規格與彩條字串長，擠在同一列會把表格撐爆，故放到同一項次的第二行
             const parts = [

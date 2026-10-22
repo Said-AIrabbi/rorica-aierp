@@ -9,7 +9,14 @@ import {
   reservationExpiresAt,
   suggestSplicingCombination,
 } from '@/lib/inventory'
-import { canConvertPi, effectivePiStatus, isPiOnManualHold, piOverwriteRule, piQuoteValidUntil } from '@/lib/pi'
+import {
+  canConvertPi,
+  effectivePiStatus,
+  isPiOnManualHold,
+  piOverwriteRule,
+  piQuantityItems,
+  piQuoteValidUntil,
+} from '@/lib/pi'
 import { activeBankAccounts, defaultBankAccountFor, resolvePiBankAccount } from '@/lib/company'
 import {
   buildSecondaryProcessingPackaging,
@@ -4457,7 +4464,11 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
 
   const today = dayjs()
   const customer = resolveCustomerByName(current.customerName)
-  const poNos = [...new Set(current.items.map((item) => item.poNo))]
+  // surcharge 不轉入表1（決策157）：它是費用不是布，轉進去會被拿去預留庫存、自動開訂購單。
+  // 只有 surcharge 的 PO 也就不會產生表1
+  const goods = piQuantityItems(current.items)
+  if (goods.length === 0) throw new Error('本張 PI 只有 surcharge，沒有可轉入包裝通知單的商品明細')
+  const poNos = [...new Set(goods.map((item) => item.poNo))]
   const notices: PackingNotice[] = []
 
   poNos.forEach((poNo, i) => {
@@ -4473,9 +4484,7 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
       // 暫定值：交期的 Day 0 是「第一張表1 的生效日」（決策36），此刻表1 還是草稿、尚未起算，
       // 故先以今天推算；待第一張表1 轉生效時由 applyPiDueDateOnEffective 統一改寫為正式的應出貨日
       expectedDeliveryAt: today.add(current.leadTimeDays, 'day').format('YYYY-MM-DD'),
-      items: current.items
-        .filter((item) => item.poNo === poNo)
-        .map((item, j) => piItemToPackingItem(item, noticeId, j)),
+      items: goods.filter((item) => item.poNo === poNo).map((item, j) => piItemToPackingItem(item, noticeId, j)),
       itemUnit: current.itemUnit,
       markings: current.markings,
       sourcePiId: current.id,
@@ -4614,7 +4623,8 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
 
   // 第二階段：確定沒有任何一張被擋下，才實際覆蓋
   pending.forEach(({ nIdx, notice }) => {
-    const items = current.items.filter((item) => item.poNo === notice.customerOrderNo)
+    // surcharge 不轉入表1（決策157），覆蓋時同樣略過
+    const items = piQuantityItems(current.items).filter((item) => item.poNo === notice.customerOrderNo)
     if (items.length === 0) return
     const updatedNotice: PackingNotice = {
       ...notice,

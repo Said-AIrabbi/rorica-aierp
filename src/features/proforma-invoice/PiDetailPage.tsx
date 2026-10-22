@@ -40,6 +40,7 @@ import {
   isPiOnManualHold,
   piDownstreamBlockers,
   piDueDate,
+  isSurchargeItem,
   piTotalAmount,
 } from '@/lib/pi'
 import { resolvePiBankAccount } from '@/lib/company'
@@ -458,7 +459,15 @@ export function PiDetailPage() {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>{item.poNo}</TableCell>
-                        <TableCell>{item.roricaProductName}</TableCell>
+                        <TableCell>
+                          {item.roricaProductName}
+                          {/* 決策157：surcharge 只計金額、不計數量，也不轉入表1 */}
+                          {isSurchargeItem(item) && (
+                            <span className="ml-1.5 rounded bg-warning/15 px-1.5 py-0.5 text-[11px] font-medium text-warning">
+                              費用，不計數量
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell>{product ? `${product.productCode}-${product.sortNo}` : '-'}</TableCell>
                         <TableCell>{item.customerProductName || '-'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
@@ -470,7 +479,13 @@ export function PiDetailPage() {
                         </TableCell>
                         <TableCell>{item.color}</TableCell>
                         <TableCell className="text-right">
-                          <BasisQty yard={item.yard} meter={item.meter} unit={pi.itemUnit} />
+                          {isSurchargeItem(item) ? (
+                            <span className="text-muted-foreground">
+                              {formatNumber(pi.itemUnit === 'Yard' ? item.yard : item.meter, 2)}
+                            </span>
+                          ) : (
+                            <BasisQty yard={item.yard} meter={item.meter} unit={pi.itemUnit} />
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           {formatNumber(

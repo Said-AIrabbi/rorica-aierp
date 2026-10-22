@@ -28,6 +28,7 @@ import {
   PI_CURRENCY_SYMBOL,
   PI_PAYMENT_TERM_TEMPLATES,
   PI_TRADE_TERM_HINTS,
+  isSurchargeItem,
   piQuoteValidUntil,
 } from '@/lib/pi'
 import { bankAccountOptions, bankAccountScopeText, defaultBankAccountFor } from '@/lib/company'
@@ -581,8 +582,15 @@ export function PiFormPage() {
               const item = values.items?.[index]
               const product = resolveProduct(item?.productId, item?.roricaProductName)
               const colorRatios = item?.colorRatios ?? []
+              const surcharge = isSurchargeItem({ roricaProductName: item?.roricaProductName ?? '' })
               return (
                 <div key={field.id} className="rounded-lg border border-border p-3">
+                  {/* 決策157：皇加品名為 surcharge 的列是費用不是布，輸入時就講清楚它的算法 */}
+                  {surcharge && (
+                    <p className="mb-3 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
+                      Surcharge（未達基礎訂單量的額外費用）：只計金額（數量 × 單價），數量不計入合計；轉表1 時不帶入；顏色可不填。
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-1">
                       <Label className="text-xs">PO NO.（拆單以此為界）</Label>
@@ -617,7 +625,7 @@ export function PiFormPage() {
 
                     <div className="space-y-1">
                       <Label className="text-xs">顏色</Label>
-                      <Input {...register(`items.${index}.color`)} placeholder="例：WHITE" />
+                      <Input {...register(`items.${index}.color`)} placeholder={surcharge ? '非必填' : '例：WHITE'} />
                     </div>
 
                     <div className="space-y-1 lg:col-span-2">
