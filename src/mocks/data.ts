@@ -1026,7 +1026,7 @@ if (abnormalNotices.length > 0) {
   })
 }
 
-// 上游追討附單：客訴後回頭向染整廠追討，掛在該張表9底下（欄位暫時與表9相同）
+// 異常通知附單：客訴後回頭向染整廠追討，掛在該張表9底下（欄位暫時與表9相同）
 if (abnormalNotices.length > 0) {
   const parent = abnormalNotices.find((x) => x.status === '處理中') ?? abnormalNotices[0]
   abnormalNotices.push({

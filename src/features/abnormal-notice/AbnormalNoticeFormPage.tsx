@@ -28,7 +28,7 @@ export function AbnormalNoticeFormPage() {
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: api.vendors })
   const { data: abnormalNotices = [] } = useQuery({ queryKey: ['abnormalNotices'], queryFn: api.abnormalNotices })
 
-  // 由某張表9的「建立上游追討附單」進來時，帶著母單號與種類
+  // 由某張表9的「建立異常通知附單」進來時，帶著母單號與種類
   const presetParent = searchParams.get('parent') ?? undefined
   const presetKind = searchParams.get('kind') === '上游追討' ? '上游追討' : '客訴異常'
   const parentNotice = presetParent ? abnormalNotices.find((n) => n.id === presetParent) : undefined
@@ -62,8 +62,9 @@ export function AbnormalNoticeFormPage() {
   const item = source?.items[Number(values.shippingOrderItemIndex) || 0]
   const customer = source ? getCustomer(source.customerId) : undefined
   const withinWindow = isWithinAbnormalClaimWindow(source?.shipDate)
-  // 異常數量上限為原出貨數量（可等於）：即時擋在畫面上，不必等送出才由 mutation 丟錯
-  const exceedsShipped = !!item && Number(values.abnormalQty) > item.yard
+  // 異常數量上限為原出貨數量（可等於）：即時擋在畫面上，不必等送出才由 mutation 丟錯；附單不受此限（決策168）
+  const isUpstream = values.kind === '上游追討'
+  const exceedsShipped = !isUpstream && !!item && Number(values.abnormalQty) > item.yard
   const categoryItems =
     ABNORMAL_CATEGORIES.find((c) => c.name === values.categoryName)?.items ?? ([] as readonly string[])
 
@@ -107,7 +108,7 @@ export function AbnormalNoticeFormPage() {
       </Link>
 
       <PageHeader
-        title={values.kind === '上游追討' ? '新增上游追討附單' : '受理客訴（開立異常通知單）'}
+        title={values.kind === '上游追討' ? '新增異常通知附單' : '受理客訴（開立異常通知單）'}
         formCode={values.kind === '上游追討' ? '表9 附單' : '表9'}
         description={
           values.kind === '上游追討'
@@ -182,13 +183,15 @@ export function AbnormalNoticeFormPage() {
                 <Input value={item ? `${formatNumber(item.yard, 1)} Y` : ''} disabled placeholder="-" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-destructive">異常數量（Y，可小於出貨數量＝部分退）</Label>
-                {/* 上限為原出貨數量：退貨依實際碼數處理，退回的碼數不可能多於當初出的貨 */}
+                <Label className="text-destructive">
+                  {isUpstream ? '異常數量（Y，附單可大於出貨數量）' : '異常數量（Y，可小於出貨數量＝部分退）'}
+                </Label>
+                {/* 表9 上限為原出貨數量：退貨依實際碼數處理，退回的碼數不可能多於當初出的貨；附單不設上限 */}
                 <Input
                   type="number"
                   step="0.1"
                   min="0"
-                  max={item?.yard}
+                  max={isUpstream ? undefined : item?.yard}
                   className="border-destructive/50"
                   {...register('abnormalQty')}
                 />

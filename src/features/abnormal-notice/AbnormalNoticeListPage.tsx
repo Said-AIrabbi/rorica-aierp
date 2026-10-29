@@ -40,7 +40,7 @@ export function AbnormalNoticeListPage() {
         cell: ({ row }) =>
           row.original.kind === '上游追討' ? (
             <Badge variant="outline" className="border-accent-blue text-accent-blue">
-              上游追討附單
+              異常通知附單
             </Badge>
           ) : (
             <Badge variant="outline">客訴異常</Badge>

@@ -8,7 +8,7 @@ import { z } from 'zod'
 export const abnormalNoticeFormSchema = z
   .object({
     kind: z.enum(['客訴異常', '上游追討']),
-    /** 上游追討附單掛在哪張表9底下；皇加自行發現時留空，系統自產獨立主號 */
+    /** 異常通知附單掛在哪張表9底下；皇加自行發現時留空，系統自產獨立主號 */
     parentAbnormalId: z.string().optional(),
     shippingOrderId: z.string().min(1, '請選擇來源出貨單'),
     shippingOrderItemIndex: z.coerce.number().min(0),

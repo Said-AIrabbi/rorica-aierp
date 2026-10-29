@@ -797,7 +797,7 @@ export function assertCanMaintainMaster(account: Account | undefined, master: Ma
  * 是因為對外單據在實務上由固定角色列印，而該角色對該單的金額欄位本來就可見。
  *
  * 表9 拆兩列：主單的退款／扣款屬「售價」群（業務可見），
- * 上游追討附單的索賠金額屬「加工與委外費用」群（生管可見）。
+ * 異常通知附單的索賠金額屬「加工與委外費用」群（生管可見）。
  */
 export const DESIGNATED_PRINTERS: {
   doc: string
@@ -810,7 +810,7 @@ export const DESIGNATED_PRINTERS: {
   { doc: '表5 二次加工單', recipient: '加工廠', role: '生管', group: '加工與委外費用' },
   { doc: '表8 出貨單', recipient: '客戶', role: '業務', group: '售價' },
   { doc: '表9 主單及對客戶附單', recipient: '客戶', role: '業務', group: '售價' },
-  { doc: '表9 上游追討附單', recipient: '染整廠', role: '生管', group: '加工與委外費用' },
+  { doc: '表9 異常通知附單', recipient: '染整廠', role: '生管', group: '加工與委外費用' },
 ]
 
 /**

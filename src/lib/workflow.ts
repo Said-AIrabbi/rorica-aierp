@@ -589,7 +589,7 @@ export function abnormalClaimDeadline(shipDate: string): dayjs.Dayjs {
 }
 
 /**
- * 是否仍在可受理客訴的期間內。無出貨日期者（如皇加自行發現的上游追討附單）不受此限，
+ * 是否仍在可受理客訴的期間內。無出貨日期者（如皇加自行發現的異常通知附單）不受此限，
  * 因為 6 個月是自「客戶簽收」起算，沒有簽收就沒有起算點。
  */
 export function isWithinAbnormalClaimWindow(shipDate: string | undefined, at: string | Date = new Date()): boolean {

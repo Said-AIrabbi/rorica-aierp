@@ -21,7 +21,7 @@ export const PRINT_TITLES = {
   shippingOrder: { formCode: '表8', title: '出貨單' },
   shippingSample: { formCode: '表8', title: '樣品單' },
   abnormalNotice: { formCode: '表9', title: '異常通知單' },
-  upstreamClaim: { formCode: '表9 附單', title: '上游追討附單' },
+  upstreamClaim: { formCode: '表9 附單', title: '異常通知單' },
   // 嘜頭：貼於出貨紙箱的標記，不套用公司抬頭，故不列於此（版面見 features/packing-notice/MarkingPrint.tsx）
 } as const
 

@@ -234,7 +234,7 @@ export function HomePage() {
           queryKey="abnormalNotices"
           formCode="表9"
           title="異常通知單"
-          description="客訴退貨／扣款／換貨，處理方式可複選；含上游追討附單"
+          description="客訴退貨／扣款／換貨，處理方式可複選；含異常通知附單"
           icon={AlertTriangle}
           query={api.abnormalNotices}
           getStatus={(item) => item.status}

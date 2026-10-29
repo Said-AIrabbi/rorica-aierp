@@ -4270,14 +4270,15 @@ export function createAbnormalNotice(input: AbnormalNoticeInput): Promise<Abnorm
   if (input.shippingOrderId && !source) throw new Error(`出貨單 ${input.shippingOrderId} 不存在`)
   const item = source?.items[input.shippingOrderItemIndex ?? 0]
 
-  // 客戶簽收後 6 個月內方可提出客訴，逾期不受理；上游追討附單沒有客戶簽收這個起算點，不受此限
+  // 客戶簽收後 6 個月內方可提出客訴，逾期不受理；異常通知附單沒有客戶簽收這個起算點，不受此限
   if (input.kind === '客訴異常' && !isWithinAbnormalClaimWindow(source?.shipDate, now.toISOString())) {
     throw new Error(
       `出貨日 ${dayjs(source?.shipDate).format('YYYY/MM/DD')} 已逾 ${ABNORMAL_CLAIM_MONTHS} 個月客訴受理期限，不受理`,
     )
   }
   if (!(input.abnormalQty > 0)) throw new Error('異常數量需大於 0')
-  if (item && input.abnormalQty > item.yard) {
+  // 上限為原出貨數量；附單（決策168）不受此限——向染整廠追討的可能是整批損失，不只出給客戶的那一段
+  if (item && input.kind === '客訴異常' && input.abnormalQty > item.yard) {
     throw new Error(`異常數量不可大於原出貨數量 ${item.yard}`)
   }
 

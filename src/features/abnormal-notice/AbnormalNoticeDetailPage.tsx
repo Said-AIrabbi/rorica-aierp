@@ -217,7 +217,7 @@ export function AbnormalNoticeDetailPage() {
         description={
           isUpstream ? (
             <>
-              上游追討附單（向染整廠／供應商索取退貨或退款）
+              異常通知附單（向染整廠／供應商索取退貨或退款）
               {notice.parentAbnormalId && (
                 <>
                   ，母單：
@@ -238,11 +238,11 @@ export function AbnormalNoticeDetailPage() {
             <StatusBadge status={notice.status} className="text-sm" />
             {/*
               表9 拆兩種收受方：主單給客戶（退款／扣款屬「售價」群，業務可見）、
-              上游追討附單給染整廠（索賠金額屬「加工與委外費用」群，生管可見）。
+              異常通知附單給染整廠（索賠金額屬「加工與委外費用」群，生管可見）。
               不拆的話不論誰列印都會有一欄空白（權限規格第七章第 3 節）。
             */}
             <PrintActions
-              outboundDoc={isUpstream ? '表9 上游追討附單' : '表9 主單及對客戶附單'}
+              outboundDoc={isUpstream ? '表9 異常通知附單' : '表9 主單及對客戶附單'}
               sheets={[{ key: 'doc', label: isUpstream ? '列印附單' : '列印異常通知單', sheet: <AbnormalNoticePrint notice={notice} /> }]}
             />
             {/* 管理層批准／退回：核決在前、執行在後 */}
@@ -836,7 +836,7 @@ export function AbnormalNoticeDetailPage() {
         <Card className="mt-4">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">
-              上游追討附單
+              異常通知附單
               <span className="ml-2 text-xs font-normal text-muted-foreground">
                 向染整廠追討為平行進行的獨立流程，與本單各自結案
               </span>
@@ -854,7 +854,7 @@ export function AbnormalNoticeDetailPage() {
           </CardHeader>
           <CardContent>
             {children.length === 0 ? (
-              <p className="text-sm text-muted-foreground">尚未建立上游追討附單</p>
+              <p className="text-sm text-muted-foreground">尚未建立異常通知附單</p>
             ) : (
               <div className="space-y-2">
                 {children.map((child) => {

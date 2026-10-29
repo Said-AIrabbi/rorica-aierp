@@ -34,7 +34,7 @@ const returnedColumns: PrintColumn<ReturnedRoll>[] = [
 ]
 
 /**
- * 表9 異常通知單／上游追討附單列印版面。
+ * 表9 異常通知單／異常通知附單列印版面。
  * 四個簽核欄（生管回覆／管理層／業務／會計）為紙本手簽，故系統上只填生管回覆，
  * 其餘三欄一律留白供列印後簽名；附單需列印給染整廠，版面比照表9（PRD 決策81）。
  */
@@ -60,7 +60,8 @@ export function AbnormalNoticePrint({ notice }: { notice: AbnormalNotice }) {
     { label: '出貨日期', value: notice.shipDate ? formatDate(notice.shipDate) : ' ' },
     { label: '皇加品名', value: printValue(notice.productName) },
     { label: '顏色', value: printValue(notice.color) },
-    { label: '出貨數量 (Y)', value: formatNumber(notice.shippedQty, 1) },
+    // 附單（決策168）不印出貨數量：給染整廠的單只談異常數量，皇加出給客戶多少與對方無關，且附單的異常數量可大於出貨數量
+    ...(isUpstream ? [] : [{ label: '出貨數量 (Y)', value: formatNumber(notice.shippedQty, 1) }]),
     { label: '異常數量 (Y)', value: formatNumber(notice.abnormalQty, 1) },
     { label: '異常問題分類', value: [notice.categoryName, notice.categoryItem].filter(Boolean).join('／') || ' ' },
     { label: '上游追討對象', value: printValue(vendorDisplayName(upstreamVendor)), span: 2 },
