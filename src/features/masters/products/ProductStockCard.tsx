@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/mocks/api'
-import { isRollReserved } from '@/lib/inventory'
+import { isRollReserved, rollDisplayStatus } from '@/lib/inventory'
 import { formatNumber, meterToYard } from '@/lib/units'
 import { rollLengthText } from '@/components/shared/BasisQty'
 import type { FabricLabel, Product } from '@/types'
@@ -142,9 +142,9 @@ export function ProductStockCard({ product }: { product: Product }) {
                         <TableCell className="text-right tabular-nums">{dualUnitLength(roll)}</TableCell>
                         <TableCell className="text-muted-foreground">{roll.receiptId}</TableCell>
                         <TableCell>
-                          <StatusBadge status={roll.status} />
-                          {roll.status === '在庫' && isRollReserved(roll.rollCode, stockReservations) && (
-                            <span className="ml-1.5 text-xs text-muted-foreground">已預留</span>
+                          <StatusBadge status={rollDisplayStatus(roll)} />
+                          {roll.status === '在庫' && roll.reservedFor && (
+                            <span className="ml-1.5 text-xs text-muted-foreground">{roll.reservedFor}</span>
                           )}
                           {roll.defectNote && <div className="text-xs text-destructive">{roll.defectNote}</div>}
                         </TableCell>

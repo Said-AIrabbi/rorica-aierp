@@ -5,8 +5,10 @@ import {
   allocateWholeRolls,
   availableFabricLabels,
   checkCustomSplicing,
-  effectiveReservationStatus,
+  isReservationHolding,
+  isReservationLocking,
   isRollReserved,
+  rollReservedFor,
   reservationExpiresAt,
   suggestSplicingCombination,
 } from '@/lib/inventory'
@@ -902,11 +904,24 @@ function recalcReservationsForNotice(notice: PackingNotice): void {
 }
 
 /** 手動釋放庫存預留（例如客戶取消需求）；14天效期到期則由 effectiveReservationStatus 自動視為已釋放 */
+/** 表1 結案（出完或手動結案）時，出完後保留的剩料一併放出（決策170） */
+function releaseNoticeHoldings(noticeId: string, at: string): void {
+  stockReservations.forEach((r, i) => {
+    if (r.packingNoticeId === noticeId && isReservationHolding(r)) {
+      stockReservations[i] = { ...r, holding: false, releasedAt: at }
+    }
+  })
+}
+
 export function releaseStockReservation(id: string): Promise<StockReservation> {
   assertCanReleaseReservation(getCurrentAccount())
   const idx = stockReservations.findIndex((r) => r.id === id)
   if (idx === -1) throw new Error(`庫存預留紀錄 ${id} 不存在`)
-  const updated: StockReservation = { ...stockReservations[idx], status: '已釋放', releasedAt: dayjs().toISOString() }
+  const current = stockReservations[idx]
+  // 出完後保留的剩料（決策170）：手動釋放只解除保留，「已轉出貨」的事實不改
+  const updated: StockReservation = isReservationHolding(current)
+    ? { ...current, holding: false, releasedAt: dayjs().toISOString() }
+    : { ...current, status: '已釋放', releasedAt: dayjs().toISOString() }
   stockReservations[idx] = updated
   return delay(updated)
 }
@@ -1017,6 +1032,8 @@ export function closePackingNotice(id: string, reason: string): Promise<PackingN
   const releasedAt = dayjs().toISOString()
   stockReservations.forEach((r, i) => {
     if (r.packingNoticeId === id && r.status === '預留中') stockReservations[i] = { ...r, status: '已釋放', releasedAt }
+    // 出完後保留的剩料（決策170）一併放出
+    else if (r.packingNoticeId === id && isReservationHolding(r)) stockReservations[i] = { ...r, holding: false, releasedAt }
   })
   return delay(packingNotices[idx])
 }
@@ -2989,6 +3006,9 @@ export function splitFabricLabel(id: string, firstLength: number, lossLength = 0
   if (idx === -1) throw new Error(`布卷條碼標籤 ${id} 不存在`)
   const original = fabricLabels[idx]
   if (original.status !== '在庫') throw new Error('僅「在庫」狀態的布卷可以分割')
+  // 預留中的布卷（決策170）：預留記的是這個條碼，分割後原條碼終止，預留就指向不存在的捲
+  const holder = rollReservedFor(original.rollCode, stockReservations)
+  if (holder) throw new Error(`布卷已預留給表1 ${holder}，不可分割；如需分割請先釋放預留`)
   assertValidLoss(lossLength)
   if (!(firstLength > 0) || firstLength + lossLength >= original.length) {
     throw new Error('分割長度＋損耗需大於 0 且小於原布卷長度')
@@ -3628,12 +3648,12 @@ export function updateShippingOrderHeader(id: string, input: ShippingOrderHeader
  *
  * `rollCodesByItem` 依明細列序對應，長度須與明細相同；可分次填、可留空，
  * 必填檢查放在確認出貨完成（completeShippingOrder），不在這裡——倉管可能分批理貨。
- * 條碼須為現存、尚可出貨的布卷。被其他表1 預留的布卷也可以挑（決策167）：確認出貨完成時才把它從那張表1 的預留轉走，
- * 挑了又拿掉則原預留不受影響。判斷「其他表1」看每一列自己的來源表1（合併單的列不一定屬於主表1）。
+ * 條碼須為現存、尚可出貨的布卷，且未被其他表1 鎖住（決策170：含出完後保留到表1 結案的剩料）。
+ * 判斷「其他表1」看每一列自己的來源表1（合併單的列不一定屬於主表1）。
  */
 /**
- * 這張表8 上被「其他表1」有效預留的布卷（決策167）：逐列以該列的來源表1 判斷。
- * 畫面據此提醒「確認出貨時會轉移預留」；確認出貨完成時依此把布卷從原預留移出。
+ * 這張表8 上被「其他表1」鎖住的布卷（決策170，取代決策167 的轉移預留）：逐列以該列的來源表1 判斷。
+ * 預留給 A 的布整捲歸 A，其他表1 一律不可挑；填條碼與確認出貨完成時都據此擋下。
  */
 export function rollsReservedByOtherNotices(
   order: Pick<ShippingOrder, 'parentId' | 'items'>,
@@ -3643,7 +3663,7 @@ export function rollsReservedByOtherNotices(
     const noticeId = shippingItemNoticeId(order, item)
     return (rollCodesByItem[i] ?? []).flatMap((code) =>
       stockReservations
-        .filter((r) => r.packingNoticeId !== noticeId && r.rollCodes.includes(code) && effectiveReservationStatus(r) === '預留中')
+        .filter((r) => r.packingNoticeId !== noticeId && r.rollCodes.includes(code) && isReservationLocking(r))
         .map((r) => ({ rollCode: code, reservationId: r.id, noticeId: r.packingNoticeId })),
     )
   })
@@ -3668,6 +3688,10 @@ export function updateShippingOrderRollCodes(id: string, rollCodesByItem: string
       throw new Error(`布卷 ${code} 狀態為「${label.status}」，不可出貨`)
     }
   })
+  const held = rollsReservedByOtherNotices(current, cleaned)
+  if (held.length > 0) {
+    throw new Error(`布卷 ${[...new Set(held.map((h) => h.rollCode))].join('、')} 已預留給其他表1（${[...new Set(held.map((h) => h.noticeId))].join('、')}），不可挑選`)
+  }
 
   const updated: ShippingOrder = {
     ...current,
@@ -3825,28 +3849,17 @@ export function completeShippingOrder(id: string): Promise<ShippingOrder> {
     throw new Error(`布卷 ${defective.join('、')} 已標記為瑕疵／報廢，不可出貨，請先更換捲號`)
   }
 
+  // 填條碼之後才被別張表1 預留走的捲（決策170）：出貨當下再擋一次
+  const heldByOthers = rollsReservedByOtherNotices(shippingOrders[idx])
+  if (heldByOthers.length > 0) {
+    throw new Error(`布卷 ${[...new Set(heldByOthers.map((h) => h.rollCode))].join('、')} 已預留給其他表1，請先更換捲號`)
+  }
+
   const updated: ShippingOrder = { ...shippingOrders[idx], status: '已完成' }
   shippingOrders[idx] = updated
 
   const now = dayjs().toISOString()
 
-  /**
-   * 轉移預留（決策167）：出貨用到其他表1 預留的布卷時，從那筆預留移出這一捲、預留量扣掉這捲的長度；
-   * 預留裡一捲都不剩就視為釋放。原表1 的可用量因此變少，需要時另行補挑或重新預留。
-   */
-  rollsReservedByOtherNotices(updated).forEach(({ rollCode, reservationId }) => {
-    const rIdx = stockReservations.findIndex((r) => r.id === reservationId)
-    if (rIdx === -1) return
-    const r = stockReservations[rIdx]
-    const rollLength = fabricLabels.find((l) => l.rollCode === rollCode)?.length ?? 0
-    const rollCodes = r.rollCodes.filter((c) => c !== rollCode)
-    stockReservations[rIdx] = {
-      ...r,
-      rollCodes,
-      qty: Math.max(Number((r.qty - rollLength).toFixed(2)), 0),
-      ...(rollCodes.length === 0 ? { status: '已釋放' as const, releasedAt: now } : {}),
-    }
-  })
   updated.items.forEach((item) => {
     let remaining = item.yard
     const spliced = item.rollCodes.length > 1
@@ -3890,18 +3903,20 @@ export function completeShippingOrder(id: string): Promise<ShippingOrder> {
       const noticeIdx = packingNotices.findIndex((n) => n.id === noticeId)
       if (noticeIdx === -1) return
       const notice = packingNotices[noticeIdx]
-      // 部分出貨時預留留給剩下的量；整列出完才把該列的預留轉為「已轉出貨」
+      // 部分出貨時預留留給剩下的量；整列出完才把該列的預留轉為「已轉出貨」，
+      // 布卷剩下的長度仍整捲鎖給這張表1（決策170），等表1 結案才放出
       notice.items.forEach((item) => {
         if (!updated.items.some((line) => line.sourceItemId === item.id)) return
         if (!isNoticeItemFullyShipped(notice.id, item, notice.tolerance, shippingOrders)) return
         stockReservations.forEach((r, i) => {
           if (r.packingNoticeItemId === item.id && r.status === '預留中') {
-            stockReservations[i] = { ...r, status: '已轉出貨' }
+            stockReservations[i] = { ...r, status: '已轉出貨', holding: true }
           }
         })
       })
       if (notice.status === '生效' && isPackingNoticeFullyShipped(notice, shippingOrders)) {
         packingNotices[noticeIdx] = { ...notice, status: '已完成' }
+        releaseNoticeHoldings(notice.id, now)
       }
     })
   }
@@ -5105,7 +5120,7 @@ function rollReferences(label: FabricLabel, opts: { openShippingOnly?: boolean }
     {
       where: '庫存預留',
       ids: stockReservations
-        .filter((r) => r.status === '預留中' && r.rollCodes.includes(label.rollCode))
+        .filter((r) => isReservationLocking(r) && r.rollCodes.includes(label.rollCode))
         .map((r) => r.id),
     },
     {

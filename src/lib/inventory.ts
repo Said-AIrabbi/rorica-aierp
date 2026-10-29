@@ -22,9 +22,29 @@ export function effectiveReservationStatus(reservation: Pick<StockReservation, '
   return isReservationExpired(reservation) ? '已釋放' : reservation.status
 }
 
-/** 該布卷條碼目前是否已被有效（未釋放、未逾期）的預留占用 */
+/** 出完後仍保留剩料的預留（決策170）：已轉出貨、表1 尚未結案也未手動釋放 */
+export function isReservationHolding(reservation: Pick<StockReservation, 'status' | 'holding'>): boolean {
+  return reservation.status === '已轉出貨' && Boolean(reservation.holding)
+}
+
+/** 這筆預留是否仍鎖著它的布卷：有效（未釋放、未逾期）的預留中，或出完後的剩料保留 */
+export function isReservationLocking(reservation: Pick<StockReservation, 'status' | 'expiresAt' | 'holding'>): boolean {
+  return effectiveReservationStatus(reservation) === '預留中' || isReservationHolding(reservation)
+}
+
+/** 該布卷條碼目前是否被某張表1 鎖住（決策170 起含出完後的剩料保留） */
 export function isRollReserved(rollCode: string, reservations: StockReservation[]): boolean {
-  return reservations.some((r) => r.rollCodes.includes(rollCode) && effectiveReservationStatus(r) === '預留中')
+  return reservations.some((r) => r.rollCodes.includes(rollCode) && isReservationLocking(r))
+}
+
+/** 鎖住這捲的表1 單號（決策170），沒有則 undefined */
+export function rollReservedFor(rollCode: string, reservations: StockReservation[]): string | undefined {
+  return reservations.find((r) => r.rollCodes.includes(rollCode) && isReservationLocking(r))?.packingNoticeId
+}
+
+/** 布卷顯示用狀態（決策170）：在庫但被某張表1 鎖住者顯示「預留中」 */
+export function rollDisplayStatus(label: Pick<FabricLabel, 'status' | 'reservedFor'>): string {
+  return label.status === '在庫' && label.reservedFor ? '預留中' : label.status
 }
 
 /** 可用庫存＝實際庫存（已建立、未使用）－已預留未出貨的布卷 */

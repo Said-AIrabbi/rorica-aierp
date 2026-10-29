@@ -46,6 +46,8 @@ function readMaster<T extends object>(key: string, master: MasterKey, rows: T[])
   return delay(applyFieldVisibility(key, rows))
 }
 
+import { rollReservedFor } from '@/lib/inventory'
+
 export const api = {
   proformaInvoices: () => readDoc('proformaInvoices', 'PI', proformaInvoices),
   packingNotices: () => readDoc('packingNotices', '表1', packingNotices),
@@ -54,7 +56,11 @@ export const api = {
   dyeRequests: () => readDoc('dyeRequests', '表3', dyeRequests),
   dyeOrders: () => readDoc('dyeOrders', '表4', dyeOrders),
   goodsReceipts: () => readDoc('goodsReceipts', '表6', goodsReceipts),
-  fabricLabels: () => readDoc('fabricLabels', '表7', fabricLabels),
+  // 預留狀態由庫存預留算出帶在布卷上（決策170）：倉管看不到表1／預留，仍要知道哪幾捲被鎖住
+  fabricLabels: () =>
+    readDoc('fabricLabels', '表7', fabricLabels).then((rows) =>
+      rows.map((l) => ({ ...l, reservedFor: rollReservedFor(l.rollCode, stockReservations) })),
+    ),
   shippingOrders: () => readDoc('shippingOrders', '表8', shippingOrders),
   abnormalNotices: () => readDoc('abnormalNotices', '表9', abnormalNotices),
   customers: () => readMaster('customers', '客戶', customers),

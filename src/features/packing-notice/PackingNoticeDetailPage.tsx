@@ -32,7 +32,7 @@ import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { ColorSwatch } from '@/components/shared/ColorSwatch'
 import { digitalColorFor } from '@/lib/digital-color'
 import { formatNumber, meterToYard, yardPriceToMeterPrice, yardToMeter } from '@/lib/units'
-import { effectiveReservationStatus, isExactMultipleOfStandard } from '@/lib/inventory'
+import { effectiveReservationStatus, isExactMultipleOfStandard, isReservationHolding } from '@/lib/inventory'
 import {
   colorRatioText,
   isPackingNoticeEditable,
@@ -870,6 +870,9 @@ export function PackingNoticeDetailPage() {
                         <TableCell>{formatDateTime(r.expiresAt)}</TableCell>
                         <TableCell>
                           <StatusBadge status={effectiveReservationStatus(r)} />
+                          {isReservationHolding(r) && (
+                            <div className="mt-0.5 text-xs text-muted-foreground">剩料保留至本單結案</div>
+                          )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {canRepick && (

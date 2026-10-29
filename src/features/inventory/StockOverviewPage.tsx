@@ -15,7 +15,7 @@ import { getCustomer } from '@/mocks/data'
 import { releaseStockReservation } from '@/mocks/mutations'
 import { formatDateTime } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
-import { effectiveReservationStatus, isRollReserved } from '@/lib/inventory'
+import { isReservationHolding, isReservationLocking, isRollReserved } from '@/lib/inventory'
 import { rollLengthText } from '@/components/shared/BasisQty'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { canReleaseReservation } from '@/lib/permissions'
@@ -48,7 +48,7 @@ export function StockOverviewPage() {
   const { data: reservations = [] } = useQuery({ queryKey: ['stockReservations'], queryFn: api.stockReservations })
 
   const activeReservations = useMemo(
-    () => reservations.filter((r) => effectiveReservationStatus(r) === '預留中'),
+    () => reservations.filter((r) => isReservationLocking(r)),
     [reservations],
   )
 
@@ -203,7 +203,9 @@ export function StockOverviewPage() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-base">庫存預留中（14天效期，逾期自動釋放）</CardTitle>
+          <CardTitle className="text-base">
+            庫存預留中（14天效期，逾期自動釋放；出完後的剩料保留至表1 結案）
+          </CardTitle>
         </CardHeader>
         <CardContent className="px-0">
           {/* 本表為手寫版面（含操作按鈕欄）不走 DataTable，凍結窗格在此比照辦理：
@@ -241,7 +243,13 @@ export function StockOverviewPage() {
                       <TableCell className="text-right">
                         {formatNumber(r.qty, 0)} {r.unit}
                       </TableCell>
-                      <TableCell>{formatDateTime(r.expiresAt)}</TableCell>
+                      <TableCell>
+                        {isReservationHolding(r) ? (
+                          <span className="text-xs text-muted-foreground">出完剩料，保留至表1 結案</span>
+                        ) : (
+                          formatDateTime(r.expiresAt)
+                        )}
+                      </TableCell>
                       <TableCell>
                         {canRelease && (
                           <Button

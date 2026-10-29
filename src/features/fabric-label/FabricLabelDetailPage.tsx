@@ -33,6 +33,7 @@ import { useCurrentAccount } from '@/lib/current-account-context'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, inchToCm } from '@/lib/units'
 import { rollLengthText } from '@/components/shared/BasisQty'
+import { rollDisplayStatus } from '@/lib/inventory'
 
 /** 長度以該捲實際量測的單位為主值，另一單位為換算值（見 rollLengthText） */
 const dualUnitLength = rollLengthText
@@ -133,7 +134,7 @@ export function FabricLabelDetailPage() {
     : undefined
 
   // 合併對象：同產品分支、同顏色、同單位、「在庫」的其他布卷
-  const mergeCandidates = label ? data.filter((l) => l.id !== label.id && isMergeableRoll(label, l)) : []
+  const mergeCandidates = label ? data.filter((l) => l.id !== label.id && !l.reservedFor && isMergeableRoll(label, l)) : []
   const mergeTotal =
     (label?.length ?? 0) + mergeCandidates.filter((l) => mergeIds.includes(l.id)).reduce((s, l) => s + l.length, 0)
   // 損耗可修正的布卷：由分割或合併產生者
@@ -172,16 +173,20 @@ export function FabricLabelDetailPage() {
         }
         actions={
           <>
-            <StatusBadge status={label.status} className="text-sm print:hidden" />
+            <StatusBadge status={rollDisplayStatus(label)} className="text-sm print:hidden" />
+            {label.reservedFor && label.status === '在庫' && (
+              <span className="text-xs text-muted-foreground print:hidden">預留給 {label.reservedFor}</span>
+            )}
             {canPrint && (
               <PrintActions sheets={[{ key: 'label', label: '列印標籤', sheet: <FabricLabelPrint label={label} /> }]} />
             )}
-            {label.status === '在庫' && label.length > 0 && canSplit && (
+            {/* 預留中的布卷不可分割／合併（決策170）：預留記的是這個條碼 */}
+            {label.status === '在庫' && !label.reservedFor && label.length > 0 && canSplit && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setSplitOpen(true)}>
                 <Scissors className="mr-1 h-4 w-4" /> 分割布卷
               </Button>
             )}
-            {label.status === '在庫' && label.length > 0 && canMerge && (
+            {label.status === '在庫' && !label.reservedFor && label.length > 0 && canMerge && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setMergeOpen(true)}>
                 <Combine className="mr-1 h-4 w-4" /> 合併布卷
               </Button>

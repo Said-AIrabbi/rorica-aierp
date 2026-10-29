@@ -11,6 +11,7 @@ import { getProduct, productBranchSuffix } from '@/mocks/data'
 import { rollLengthText } from '@/components/shared/BasisQty'
 import { ColorSwatch } from '@/components/shared/ColorSwatch'
 import { digitalColorFor } from '@/lib/digital-color'
+import { rollDisplayStatus } from '@/lib/inventory'
 import type { FabricLabel } from '@/types'
 
 export function FabricLabelListPage() {
@@ -57,7 +58,8 @@ export function FabricLabelListPage() {
       {
         id: 'status',
         header: '狀態',
-        accessorFn: (row) => row.status,
+        // 被某張表1 鎖住的在庫布卷顯示「預留中」（決策170）
+        accessorFn: (row) => rollDisplayStatus(row),
         cell: ({ getValue }) => <StatusBadge status={getValue<string>()} />,
       },
     ],

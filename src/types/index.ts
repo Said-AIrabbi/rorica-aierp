@@ -612,6 +612,11 @@ export interface StockReservation {
   createdAt: string
   expiresAt: string
   releasedAt?: string
+  /**
+   * 剩料保留（決策170）：該列出完、預留轉「已轉出貨」後，布卷剩下的長度仍整捲鎖給這張表1，
+   * 直到表1 結案或手動釋放才放出（不受 14 天效期限制）。
+   */
+  holding?: boolean
 }
 
 /**
@@ -1063,6 +1068,11 @@ export interface FabricLabel {
   lossLength?: number
   /** 出貨紀錄（決策166），依時間先後 */
   shipments?: FabricLabelShipment[]
+  /**
+   * 目前鎖住這捲的表1 單號（決策170）：讀取時由庫存預留算出、不存檔。
+   * 有值且狀態為在庫時，畫面顯示為「預留中」，其他表1 不可挑選。
+   */
+  reservedFor?: string
   /** 標記為瑕疵／報廢的時間與原因；標記後該捲不可再被任何訂單挑選 */
   defectedAt?: string
   defectNote?: string
