@@ -1,10 +1,11 @@
 import { PrintSheet, PrintSection, PrintTable, type PrintColumn, type PrintMetaItem } from '@/components/print/PrintSheet'
-import { smallMarkingLines } from '@/lib/workflow'
+import { Fragment } from 'react'
 import { PRINT_TITLES } from '@/lib/print'
 import { formatDate } from '@/lib/dates'
 import { colorRatioText } from '@/lib/workflow'
 import { formatNumber } from '@/lib/units'
 import { getCustomer, productBranchSuffix } from '@/mocks/data'
+import { MarkingThumbnail, SmallMarkingThumbnail } from './MarkingPrint'
 import type { PackingNotice, PackingNoticeItem } from '@/types'
 
 /** 出貨方式／彩條／容許誤差在資料層皆為「模式＋自訂文字」，列印時攤平為單一文字 */
@@ -82,6 +83,7 @@ const itemSubRow = (item: PackingNoticeItem) => {
  * 表1 包裝通知單列印版面。
  * 版面順序依 PRD 決策55：明細緊接表頭之後，其餘區塊（嘜頭、出貨樣數量、出貨方式／彩條、
  * 燙金／標籤類型、裁邊／生產數量容許誤差）依序下移。
+ * 嘜頭與 PI 一樣以圖示呈現（2026/10/29）。
  */
 export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
   const customer = getCustomer(notice.customerId)
@@ -131,51 +133,33 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
         />
       </PrintSection>
 
-      {/* 嘜頭可有多組，逐組各印一個表格；只有一組時不加序號，維持原本版面 */}
-      {notice.markings.map((marking, index) => (
-        <PrintSection
-          key={index}
-          title={notice.markings.length > 1 ? `嘜頭 ${index + 1}／${notice.markings.length}` : '嘜頭'}
-        >
-          <table className="pr-table">
-            <tbody>
-              <tr>
-                <th style={{ width: '24mm' }}>嘜頭形狀</th>
-                <td>{marking.shape}</td>
-                <th style={{ width: '24mm' }}>小嘜頭</th>
-                <td>
-                  {marking.hasSmallMarking
-                    ? `加印：${smallMarkingLines(marking.smallMarkingText).join('／')}`
-                    : '不加印'}
-                </td>
-              </tr>
-              {/*
-                不印客戶識別：表頭已經印過客戶代碼，嘜頭有幾組就重複幾次只是佔版面。
-                拿掉後運送目的地獨佔一列——目的地常是一整串地址或港口名，正好需要這個寬度
-              */}
-              <tr>
-                <th>運送目的地</th>
-                <td colSpan={3}>{marking.destination ?? ' '}</td>
-              </tr>
-              <tr>
-                <th>毛重 (Kg)</th>
-                <td>{marking.grossWeightKg ?? ' '}</td>
-                <th>淨重 (Kg)</th>
-                <td>{marking.netWeightKg ?? ' '}</td>
-              </tr>
-              <tr>
-                <th>成分</th>
-                <td>{marking.composition ?? ' '}</td>
-                <th>產地</th>
-                <td>
-                  {marking.origin ?? ' '}
-                  {marking.hasRoc ? '　R.O.C.' : ''}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </PrintSection>
-      ))}
+      {/*
+        嘜頭以圖示呈現，與 PI 同一個元件（決策145）：生產與倉管看到的就是箱子上實際會印的樣子，
+        不必再把欄位值在腦中拼回嘜頭。多組時逐組加序號；有加印小嘜頭者並列小嘜頭的圖。
+      */}
+      <PrintSection title="嘜頭">
+        <div className="pr-mark-thumbs">
+          {notice.markings.map((marking, i) => {
+            const label = notice.markings.length > 1 ? `嘜頭 ${i + 1}／${notice.markings.length}` : '嘜頭'
+            return (
+              <Fragment key={i}>
+                <div className="pr-mark-thumb-item">
+                  <div className="pr-mark-thumb-caption">
+                    {label}　{marking.shape}
+                  </div>
+                  <MarkingThumbnail marking={marking} />
+                </div>
+                {marking.hasSmallMarking && (
+                  <div className="pr-mark-thumb-item">
+                    <div className="pr-mark-thumb-caption">{label}　小嘜頭</div>
+                    <SmallMarkingThumbnail marking={marking} />
+                  </div>
+                )}
+              </Fragment>
+            )
+          })}
+        </div>
+      </PrintSection>
 
       <PrintSection title="出貨與包裝設定">
         <table className="pr-table">
