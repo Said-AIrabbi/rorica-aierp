@@ -35,6 +35,7 @@ import { GOODS_RECEIPT_PURPOSES, MARKING_SHAPES } from '@/types'
 import {
   addShippingOrderItemsFromNotices,
   completeShippingOrder,
+  rollsReservedByOtherNotices,
   removeNoticeFromShippingOrder,
   rejectShippingOrder,
   setShippingOrderStatus,
@@ -262,6 +263,9 @@ export function ShippingOrderDetailPage() {
   const rollsDirty = JSON.stringify(rollDraft) !== JSON.stringify(order.items.map((item) => item.rollCodes))
   const missingRollRows = order.items.map((item, i) => (item.rollCodes.length === 0 ? i + 1 : 0)).filter(Boolean)
   const usedElsewhere = new Set(rollDraft.flat())
+  // 被其他表1 預留的捲（決策167）：可以挑，確認出貨時才轉移預留；畫面逐列提醒
+  const reservedByOthers = rollsEditable ? rollsReservedByOtherNotices(order, rollDraft) : rollsReservedByOtherNotices(order)
+  const reservedByOtherCodes = new Set(reservedByOthers.map((r) => r.rollCode))
   /** 可挑的布卷：尚可出貨者，同品名同色排前面；其他列已選的不重複列出 */
   const rollOptionsFor = (item: ShippingOrderItem, row: number) =>
     fabricLabels
@@ -634,6 +638,12 @@ export function ShippingOrderDetailPage() {
                               ))}
                             </div>
                           )}
+                          {(rollDraft[i] ?? []).some((code) => reservedByOtherCodes.has(code)) && (
+                            <p className="text-xs text-warning">
+                              {(rollDraft[i] ?? []).filter((code) => reservedByOtherCodes.has(code)).join('、')}{' '}
+                              已被其他表1 預留，確認出貨完成時會從原預留轉移
+                            </p>
+                          )}
                           <select
                             className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
                             value=""
@@ -648,6 +658,9 @@ export function ShippingOrderDetailPage() {
                               <option key={label.id} value={label.rollCode}>
                                 {match ? '' : '［品名／色號不同］'}
                                 {label.rollCode}（{label.productName}／{label.color}，{formatNumber(label.length, 1)}Y）
+                                {rollsReservedByOtherNotices({ parentId: order.parentId, items: [item] }, [[label.rollCode]]).length > 0
+                                  ? '［已被其他表1 預留，出貨時轉移］'
+                                  : ''}
                               </option>
                             ))}
                           </select>
