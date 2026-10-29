@@ -1039,6 +1039,15 @@ export interface FabricLabel {
   unit: 'Yard' | 'Meter'
   status: FabricLabelStatus
   splitFromRollCode?: string
+  /** 合併來源（決策165）：由哪幾捲合併而來；來源捲已終止 */
+  mergedFromRollCodes?: string[]
+  /** 本捲（已終止）被合併進哪一捲 */
+  mergedIntoRollCode?: string
+  /**
+   * 損耗長度（決策165，單位同 length）：分割或合併時裁掉的布，預設 0。
+   * 記在產生出來的那一捲上——分割時記在第二捲（餘量捲），合併時記在新捲；之後可在「編輯布卷資料」修正。
+   */
+  lossLength?: number
   /** 標記為瑕疵／報廢的時間與原因；標記後該捲不可再被任何訂單挑選 */
   defectedAt?: string
   defectNote?: string

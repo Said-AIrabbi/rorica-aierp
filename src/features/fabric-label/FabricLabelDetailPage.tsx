@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Scissors, Pencil } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Combine, Scissors, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DetailField, DetailGrid } from '@/components/shared/DetailField'
@@ -20,7 +20,9 @@ import { DigitalColorDetail } from '@/components/shared/ColorSwatch'
 import { digitalColorFor } from '@/lib/digital-color'
 import {
   deleteFabricLabel,
+  isMergeableRoll,
   markFabricLabelDefective,
+  mergeFabricLabels,
   splitFabricLabel,
   updateFabricLabel,
   type FabricLabelInput,
@@ -43,6 +45,7 @@ export function FabricLabelDetailPage() {
   // 表7 的動作（列印標籤／分割／標記瑕疵）看單據權限；編輯與刪除屬布卷主檔維護，看主檔權限——與寫入端同一把尺
   const canPrint = permissions.can('表7', '列印標籤')
   const canSplit = permissions.can('表7', '分割布卷')
+  const canMerge = permissions.can('表7', '合併布卷')
   const canMarkDefect = permissions.can('表7', '標記瑕疵')
   const canMaintainRoll = permissions.canMaintain('布卷')
   const { data = [] } = useQuery({ queryKey: ['fabricLabels'], queryFn: api.fabricLabels })
@@ -51,6 +54,11 @@ export function FabricLabelDetailPage() {
 
   const [splitOpen, setSplitOpen] = useState(false)
   const [splitLength, setSplitLength] = useState('')
+  // 損耗（決策165）：分割／合併時裁掉的長度，預設 0
+  const [splitLoss, setSplitLoss] = useState('0')
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeIds, setMergeIds] = useState<string[]>([])
+  const [mergeLoss, setMergeLoss] = useState('0')
   const [defectOpen, setDefectOpen] = useState(false)
   const [defectNote, setDefectNote] = useState('')
   // 布卷資料的可編輯欄位另開視窗：條碼編號與來源入庫單不可改（已印在實體標籤上、被單據引用）
@@ -58,13 +66,28 @@ export function FabricLabelDetailPage() {
   const [editDraft, setEditDraft] = useState<FabricLabelInput | null>(null)
 
   const splitMutation = useMutation({
-    mutationFn: (length: number) => splitFabricLabel(id!, length),
+    mutationFn: (length: number) => splitFabricLabel(id!, length, Number(splitLoss) || 0),
     onSuccess: async (newLabels) => {
       await queryClient.invalidateQueries({ queryKey: ['fabricLabels'] })
       toast.success(`原布卷已終止，已產生新條碼 ${newLabels.map((l) => l.rollCode).join('、')}`)
       setSplitOpen(false)
       setSplitLength('')
+      setSplitLoss('0')
       navigate(`/fabric-label/${newLabels[0].id}`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const mergeMutation = useMutation({
+    // 目前這捲排第一：新條碼沿用它的前綴
+    mutationFn: () => mergeFabricLabels([id!, ...mergeIds], Number(mergeLoss) || 0),
+    onSuccess: async (merged) => {
+      await queryClient.invalidateQueries({ queryKey: ['fabricLabels'] })
+      toast.success(`原布卷已終止，已產生合併後新條碼 ${merged.rollCode}`)
+      setMergeOpen(false)
+      setMergeIds([])
+      setMergeLoss('0')
+      navigate(`/fabric-label/${merged.id}`)
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -109,6 +132,13 @@ export function FabricLabelDetailPage() {
       )
     : undefined
 
+  // 合併對象：同產品分支、同顏色、同單位、「已建立」的其他布卷
+  const mergeCandidates = label ? data.filter((l) => l.id !== label.id && isMergeableRoll(label, l)) : []
+  const mergeTotal =
+    (label?.length ?? 0) + mergeCandidates.filter((l) => mergeIds.includes(l.id)).reduce((s, l) => s + l.length, 0)
+  // 損耗可修正的布卷：由分割或合併產生者
+  const hasLoss = !!label && (!!label.splitFromRollCode || (label.mergedFromRollCodes?.length ?? 0) > 0)
+
   if (!label) {
     return (
       <div className="text-sm text-muted-foreground">
@@ -151,6 +181,11 @@ export function FabricLabelDetailPage() {
                 <Scissors className="mr-1 h-4 w-4" /> 分割布卷
               </Button>
             )}
+            {label.status === '已建立' && label.length > 0 && canMerge && (
+              <Button size="sm" variant="outline" className="print:hidden" onClick={() => setMergeOpen(true)}>
+                <Combine className="mr-1 h-4 w-4" /> 合併布卷
+              </Button>
+            )}
             {canMaintainRoll && (
               <Button
                 size="sm"
@@ -164,6 +199,7 @@ export function FabricLabelDetailPage() {
                     batchCode: label.batchCode,
                     length: label.length,
                     lengthChangeReason: '',
+                    lossLength: hasLoss ? (label.lossLength ?? 0) : undefined,
                   })
                   setEditOpen(true)
                 }}
@@ -272,6 +308,26 @@ export function FabricLabelDetailPage() {
                   onChange={(e) => setEditDraft({ ...editDraft, length: Number(e.target.value) || 0 })}
                 />
               </div>
+              {hasLoss && (
+                <div className="space-y-1.5">
+                  <Label>損耗長度（{label.unit}）</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editDraft.lossLength ?? 0}
+                    onChange={(e) => {
+                      const loss = Number(e.target.value) || 0
+                      // 修正損耗＝長度反向跟著變：多記 1 碼損耗，這捲就少 1 碼；仍可再手動調長度
+                      const length = Number((label.length - (loss - (label.lossLength ?? 0))).toFixed(2))
+                      setEditDraft({ ...editDraft, lossLength: loss, length: Math.max(0, length) })
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {label.mergedFromRollCodes?.length ? '合併' : '分割'}時記錄的損耗；修改後長度自動反向調整
+                  </p>
+                </div>
+              )}
               {editDraft.length !== label.length && (
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>長度更正原因</Label>
@@ -319,12 +375,18 @@ export function FabricLabelDetailPage() {
               onChange={(e) => setSplitLength(e.target.value)}
               placeholder={`請輸入小於 ${label.length} 的長度`}
             />
-            {splitLength && Number(splitLength) > 0 && Number(splitLength) < label.length && (
-              <p className="text-xs text-muted-foreground">
-                第二捲將自動產生，長度為 {(label.length - Number(splitLength)).toFixed(1)} {label.unit}
-              </p>
-            )}
           </div>
+          <div className="space-y-1.5">
+            <Label>損耗計算（{label.unit}，裁切損耗，預設 0）</Label>
+            <Input type="number" step="0.1" min="0" value={splitLoss} onChange={(e) => setSplitLoss(e.target.value)} />
+          </div>
+          {splitLength && Number(splitLength) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {Number(splitLength) + (Number(splitLoss) || 0) < label.length
+                ? `第二捲將自動產生，長度為 ${(label.length - Number(splitLength) - (Number(splitLoss) || 0)).toFixed(1)} ${label.unit}（原長度－第一捲－損耗）`
+                : '第一捲＋損耗需小於原長度'}
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSplitOpen(false)}>
               取消
@@ -335,6 +397,64 @@ export function FabricLabelDetailPage() {
               onClick={() => splitMutation.mutate(Number(splitLength))}
             >
               {splitMutation.isPending ? '分割中...' : '確認分割'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>合併布卷 {label.rollCode}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            合併後 {label.rollCode} 與勾選的布卷都會標記為「已終止」，原條碼捨棄、不可再用於出貨；系統產生一張新條碼。
+            只列出同皇加品名、同顏色、同單位且為「已建立」的布卷；已被預留、出貨或異常單用到的布卷不可合併。
+          </p>
+          {mergeCandidates.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+              沒有可與本捲合併的布卷。
+            </p>
+          ) : (
+            <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+              {mergeCandidates.map((l) => (
+                <label key={l.id} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent">
+                  <input
+                    type="checkbox"
+                    checked={mergeIds.includes(l.id)}
+                    onChange={(e) =>
+                      setMergeIds((prev) => (e.target.checked ? [...prev, l.id] : prev.filter((x) => x !== l.id)))
+                    }
+                  />
+                  <span className="font-mono">{l.rollCode}</span>
+                  <span className="text-muted-foreground">{dualUnitLength(l.length, l.unit)}</span>
+                  {l.batchCode && <span className="text-xs text-muted-foreground">{l.batchCode}</span>}
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label>損耗計算（{label.unit}，接疋損耗，預設 0）</Label>
+            <Input type="number" step="0.1" min="0" value={mergeLoss} onChange={(e) => setMergeLoss(e.target.value)} />
+          </div>
+          {mergeIds.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              新布卷長度＝{formatNumber(mergeTotal, 1)}（合計）－{formatNumber(Number(mergeLoss) || 0, 1)}（損耗）＝
+              <strong className="text-ink">
+                {formatNumber(mergeTotal - (Number(mergeLoss) || 0), 1)} {label.unit}
+              </strong>
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeOpen(false)}>
+              取消
+            </Button>
+            <Button
+              className="bg-brand hover:bg-brand-dark"
+              disabled={mergeMutation.isPending || mergeIds.length === 0}
+              onClick={() => mergeMutation.mutate()}
+            >
+              {mergeMutation.isPending ? '合併中...' : `確認合併（${mergeIds.length + 1} 捲）`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -403,6 +523,11 @@ export function FabricLabelDetailPage() {
               <DetailField label="批" value={label.batchCode ?? '-'} />
               <DetailField label="長度（雙單位）" value={dualUnitLength(label.length, label.unit)} />
               <DetailField label="分割來源布卷" value={label.splitFromRollCode ?? '-'} />
+              {label.mergedFromRollCodes && label.mergedFromRollCodes.length > 0 && (
+                <DetailField label="合併來源布卷" value={label.mergedFromRollCodes.join('、')} />
+              )}
+              {label.mergedIntoRollCode && <DetailField label="已合併至" value={label.mergedIntoRollCode} />}
+              {hasLoss && <DetailField label="損耗長度" value={dualUnitLength(label.lossLength ?? 0, label.unit)} />}
             </DetailGrid>
           </CardContent>
         </Card>

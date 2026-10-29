@@ -2961,33 +2961,51 @@ function rollCodePrefixAndSeq(rollCode: string): { prefix: string; seq: number }
   return { prefix, seq: Number.isNaN(seq) ? 0 : seq }
 }
 
+/** 同一條碼前綴下的下一個流水號；條碼與記錄識別碼都不可撞到既有的 */
+function nextRollSeq(prefix: string, receiptId: string, floor = 0): number {
+  let seq =
+    fabricLabels
+      .filter((l) => rollCodePrefixAndSeq(l.rollCode).prefix === prefix)
+      .reduce((max, l) => Math.max(max, rollCodePrefixAndSeq(l.rollCode).seq), floor) + 1
+  while (fabricLabels.some((l) => l.id === `${receiptId}-L${seq}` || l.rollCode === `${prefix}-${pad(seq, 2)}`)) seq += 1
+  return seq
+}
+
+function assertValidLoss(lossLength: number): void {
+  if (!(lossLength >= 0)) throw new Error('損耗長度不可為負數')
+}
+
 /**
  * 分割布卷（一捲拆成多捲）：原條碼標記為終止狀態，不可再用於出貨等後續操作，但保留紀錄供追溯，
  * 同時記一筆長度異動（異動前原長度→異動後0，原因「已分割」）；
  * 分割產生的新捲條碼直接接續當時最大可用流水號（非原編號的子序號），各自依分割後的長度建立新條碼。
+ *
+ * 損耗（決策165）：裁切會吃掉一段布，預設 0。第二捲＝原長度－第一捲－損耗，損耗記在第二捲上。
  */
-export function splitFabricLabel(id: string, firstLength: number): Promise<FabricLabel[]> {
+export function splitFabricLabel(id: string, firstLength: number, lossLength = 0): Promise<FabricLabel[]> {
   assertCanAct(getCurrentAccount(), '表7', '分割布卷')
   const idx = fabricLabels.findIndex((l) => l.id === id)
   if (idx === -1) throw new Error(`布卷條碼標籤 ${id} 不存在`)
   const original = fabricLabels[idx]
   if (original.status !== '已建立') throw new Error('僅「已建立」狀態的布卷可以分割')
-  if (!(firstLength > 0) || firstLength >= original.length) {
-    throw new Error('分割長度需大於 0 且小於原布卷長度')
+  assertValidLoss(lossLength)
+  if (!(firstLength > 0) || firstLength + lossLength >= original.length) {
+    throw new Error('分割長度＋損耗需大於 0 且小於原布卷長度')
   }
-  const secondLength = original.length - firstLength
+  const secondLength = Number((original.length - firstLength - lossLength).toFixed(2))
 
   const { prefix, seq: originalSeq } = rollCodePrefixAndSeq(original.rollCode)
-  const maxSeq = fabricLabels
-    .filter((l) => rollCodePrefixAndSeq(l.rollCode).prefix === prefix)
-    .reduce((max, l) => Math.max(max, rollCodePrefixAndSeq(l.rollCode).seq), originalSeq)
+  const maxSeq = nextRollSeq(prefix, original.receiptId, originalSeq) - 1
 
   const now = dayjs().toISOString()
   const terminated: FabricLabel = {
     ...original,
     status: '已終止',
     length: 0,
-    lengthHistory: [...(original.lengthHistory ?? []), { at: now, beforeLength: original.length, afterLength: 0, reason: '已分割' }],
+    lengthHistory: [
+      ...(original.lengthHistory ?? []),
+      { at: now, beforeLength: original.length, afterLength: 0, reason: lossLength > 0 ? `已分割（損耗 ${lossLength}）` : '已分割' },
+    ],
   }
   fabricLabels[idx] = terminated
 
@@ -3007,9 +3025,94 @@ export function splitFabricLabel(id: string, firstLength: number): Promise<Fabri
     unit: original.unit,
     status: '已建立',
     splitFromRollCode: original.rollCode,
+    lossLength: i === 1 ? lossLength : 0,
   }))
   fabricLabels.unshift(...newLabels)
   return delay(newLabels)
+}
+
+/** 可與指定布卷合併的對象：同產品分支、同顏色、同單位、「已建立」且還有長度 */
+export function isMergeableRoll(base: FabricLabel, other: FabricLabel): boolean {
+  return (
+    other.status === '已建立' &&
+    other.length > 0 &&
+    other.unit === base.unit &&
+    other.color === base.color &&
+    (base.productId ? other.productId === base.productId : other.productName === base.productName)
+  )
+}
+
+/**
+ * 合併布卷（決策165）：多捲併成一捲，產生新條碼，原條碼全部終止（保留紀錄供追溯）。
+ * 新捲長度＝各捲長度合計－損耗（預設 0），損耗記在新捲上。
+ * 只能合併同產品分支、同顏色、同單位的「已建立」布卷；已被預留、出貨或異常單引用的不可合併——
+ * 那些單據記的是舊條碼，合併後會指向已終止的捲。
+ * 新條碼沿用第一捲的條碼前綴，流水號接續該前綴目前最大值。
+ */
+export function mergeFabricLabels(ids: string[], lossLength = 0): Promise<FabricLabel> {
+  assertCanAct(getCurrentAccount(), '表7', '合併布卷')
+  const unique = [...new Set(ids)]
+  if (unique.length < 2) throw new Error('至少要選兩捲才能合併')
+  const sources = unique.map((id) => {
+    const label = fabricLabels.find((l) => l.id === id)
+    if (!label) throw new Error(`布卷條碼標籤 ${id} 不存在`)
+    return label
+  })
+  const [first] = sources
+  for (const label of sources) {
+    if (label.status !== '已建立' || !(label.length > 0)) throw new Error(`布卷 ${label.rollCode} 不是可用的「已建立」布卷`)
+    if (label !== first && !isMergeableRoll(first, label)) {
+      throw new Error(`布卷 ${label.rollCode} 與 ${first.rollCode} 不可合併：須同皇加品名、同顏色、同單位`)
+    }
+    const hit = rollReferences(label).find((r) => r.ids.length > 0)
+    if (hit) {
+      throw new Error(`布卷「${label.rollCode}」已被${hit.where}引用（${hit.ids.slice(0, 3).join('、')}），不可合併`)
+    }
+  }
+  assertValidLoss(lossLength)
+  const total = sources.reduce((sum, l) => sum + l.length, 0)
+  if (lossLength >= total) throw new Error('損耗長度需小於合併前的總長度')
+
+  const { prefix } = rollCodePrefixAndSeq(first.rollCode)
+  const seq = nextRollSeq(prefix, first.receiptId)
+  const rollCode = `${prefix}-${pad(seq, 2)}`
+  const now = dayjs().toISOString()
+
+  for (const label of sources) {
+    const idx = fabricLabels.indexOf(label)
+    fabricLabels[idx] = {
+      ...label,
+      status: '已終止',
+      length: 0,
+      mergedIntoRollCode: rollCode,
+      lengthHistory: [
+        ...(label.lengthHistory ?? []),
+        { at: now, beforeLength: label.length, afterLength: 0, reason: `已合併至 ${rollCode}` },
+      ],
+    }
+  }
+
+  const batchCodes = [...new Set(sources.map((l) => l.batchCode).filter(Boolean))]
+  const merged: FabricLabel = {
+    id: `${first.receiptId}-L${seq}`,
+    receiptId: first.receiptId,
+    rollCode,
+    productName: first.productName,
+    productId: first.productId,
+    composition: first.composition,
+    color: first.color,
+    width: first.width,
+    widthSpec: first.widthSpec,
+    // 批號不同的布併在一起，標籤上要看得出來源有哪幾批
+    batchCode: batchCodes.length > 0 ? batchCodes.join('、') : undefined,
+    length: Number((total - lossLength).toFixed(2)),
+    unit: first.unit,
+    status: '已建立',
+    mergedFromRollCodes: sources.map((l) => l.rollCode),
+    lossLength,
+  }
+  fabricLabels.unshift(merged)
+  return delay(merged)
 }
 
 /**
@@ -4831,6 +4934,8 @@ export interface FabricLabelInput {
   length: number
   /** 長度更正的原因，會寫進異動紀錄供日後追查 */
   lengthChangeReason?: string
+  /** 損耗長度修正（決策165）：只有分割／合併產生的布卷有此欄位 */
+  lossLength?: number
 }
 
 export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<FabricLabel> {
@@ -4844,6 +4949,8 @@ export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<
   // 改掛到別的產品分支＝這捲布換了身分；已被單據用到的捲號不能換，否則預留、出貨、異常單的品名跟著變
   if (product.id !== current.productId) assertRollNotReferenced(current, true)
   if (input.length < 0) throw new Error('長度不可為負數')
+  if (input.lossLength !== undefined) assertValidLoss(input.lossLength)
+  const lossChanged = input.lossLength !== undefined && input.lossLength !== (current.lossLength ?? 0)
 
   const lengthChanged = Number(input.length.toFixed(2)) !== Number(current.length.toFixed(2))
   // 長度是庫存與出貨的依據，任何更動都要留下前後值與原因，不可靜默覆蓋
@@ -4854,7 +4961,9 @@ export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<
           at: dayjs().toISOString(),
           beforeLength: current.length,
           afterLength: input.length,
-          reason: input.lengthChangeReason?.trim() || '主檔手動更正長度',
+          reason:
+            input.lengthChangeReason?.trim() ||
+            (lossChanged ? `損耗修正 ${current.lossLength ?? 0} → ${input.lossLength}` : '主檔手動更正長度'),
         },
       ]
     : current.lengthHistory
@@ -4870,6 +4979,7 @@ export function updateFabricLabel(id: string, input: FabricLabelInput): Promise<
     batchCode: input.batchCode?.trim() || undefined,
     length: input.length,
     lengthHistory,
+    lossLength: lossChanged ? input.lossLength : current.lossLength,
   }
   fabricLabels[idx] = updated
   return delay(updated)
@@ -4894,7 +5004,22 @@ export function deleteFabricLabel(id: string): Promise<{ id: string }> {
  * 不傳 onChangeProduct 時沿用主檔共用的「不可刪除」訊息。
  */
 function assertRollNotReferenced(label: FabricLabel, onChangeProduct = false) {
-  const refs = [
+  const refs = rollReferences(label)
+  if (!onChangeProduct) {
+    assertNotReferenced(`布卷「${label.rollCode}」`, refs)
+    return
+  }
+  const hit = refs.find((r) => r.ids.length > 0)
+  if (hit) {
+    throw new Error(
+      `布卷「${label.rollCode}」已被${hit.where}引用（${hit.ids.slice(0, 3).join('、')}），不可改掛到別的皇加品名；如為入庫登錯，請先解除引用`,
+    )
+  }
+}
+
+/** 引用這捲布的單據：預留中的庫存預留、出貨單明細、異常通知單 */
+function rollReferences(label: FabricLabel): { where: string; ids: string[] }[] {
+  return [
     {
       where: '庫存預留',
       ids: stockReservations
@@ -4916,16 +5041,6 @@ function assertRollNotReferenced(label: FabricLabel, onChangeProduct = false) {
         .map((n) => n.id),
     },
   ]
-  if (!onChangeProduct) {
-    assertNotReferenced(`布卷「${label.rollCode}」`, refs)
-    return
-  }
-  const hit = refs.find((r) => r.ids.length > 0)
-  if (hit) {
-    throw new Error(
-      `布卷「${label.rollCode}」已被${hit.where}引用（${hit.ids.slice(0, 3).join('、')}），不可改掛到別的皇加品名；如為入庫登錯，請先解除引用`,
-    )
-  }
 }
 
 // ---------- Phase 2：PI 單（Proforma Invoice） ----------
