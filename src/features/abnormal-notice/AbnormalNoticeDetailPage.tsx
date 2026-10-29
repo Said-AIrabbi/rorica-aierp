@@ -35,7 +35,13 @@ import {
 } from '@/mocks/mutations'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { formatNumber } from '@/lib/units'
-import { abnormalCloseDeadline, isAbnormalCloseOverdue, pendingAbnormalHandlings } from '@/lib/workflow'
+import {
+  abnormalCloseBlockers,
+  abnormalCloseDeadline,
+  abnormalFamily,
+  isAbnormalCloseOverdue,
+  pendingAbnormalHandlings,
+} from '@/lib/workflow'
 import { ABNORMAL_CATEGORIES, type AbnormalCategoryName, type AbnormalHandling } from '@/types'
 
 export function AbnormalNoticeDetailPage() {
@@ -87,14 +93,18 @@ export function AbnormalNoticeDetailPage() {
   const permissions = useCurrentAccount()
 
   /**
-   * 表9 的簽核鏈（權限規格第四章第 4 節）：業務建單 → **管理層批准** → 生管收單。
-   * 批准前單據停留在「受理中」，不進入處理分流；管理層亦可退回業務補件（2026/09/21 新增）。
+   * 表9 流程（決策169）：業務建單 → 生管進入處理（回覆＋處理方式必填）→ **管理層批准** →
+   * 執行處理方式、建立附單 → 會計簽核 → 會計結案（主單與附單同步）。管理層退回時回到生管。
    */
+  // 一起結案的那一組（主單＋附單，決策169）中尚未結案者
+  const currentNotice = abnormalNotices.find((n) => n.id === id)
+  const familyOpen = currentNotice ? abnormalFamily(currentNotice, abnormalNotices).filter((n) => n.status !== '已完成') : []
+
   const approveMutation = useMutation({
     mutationFn: () => approveAbnormalNotice(id!),
     onSuccess: async () => {
       await invalidate()
-      toast.success('管理層已批准，生管可收單並回覆處理方式')
+      toast.success('管理層已批准，可開始執行處理方式')
     },
     onError,
   })
@@ -103,7 +113,7 @@ export function AbnormalNoticeDetailPage() {
     mutationFn: (reason: string) => rejectAbnormalNotice(id!, reason),
     onSuccess: async () => {
       await invalidate()
-      toast.success('已退回業務補件；單據仍停在「受理中」，不進入處理分流')
+      toast.success('已退回生管；單據回到「受理中」，修改後再按「進入處理」送批准')
     },
     onError,
   })
@@ -113,7 +123,7 @@ export function AbnormalNoticeDetailPage() {
     mutationFn: () => signAbnormalNoticeAccounting(id!),
     onSuccess: async () => {
       await invalidate()
-      toast.success('已完成會計簽核（系統僅記錄帳號與時間，紙本簽名欄不變）')
+      toast.success('已完成會計簽核，可由會計結案')
     },
     onError,
   })
@@ -122,7 +132,7 @@ export function AbnormalNoticeDetailPage() {
     mutationFn: () => startAbnormalProcessing(id!),
     onSuccess: async () => {
       await invalidate()
-      toast.success('已完成三方簽核，狀態轉為處理中，依處理方式分流')
+      toast.success('已進入處理，等待管理層批准')
     },
     onError,
   })
@@ -131,7 +141,7 @@ export function AbnormalNoticeDetailPage() {
     mutationFn: () => completeAbnormalNotice(id!),
     onSuccess: async () => {
       await invalidate()
-      toast.success('所有處理方式皆已完成，本單結案')
+      toast.success(familyOpen.length > 1 ? `已結案：${familyOpen.map((n) => n.id).join('、')}（主單與附單同步）` : '本單已結案')
     },
     onError,
   })
@@ -187,15 +197,23 @@ export function AbnormalNoticeDetailPage() {
   }
 
   const isUpstream = notice.kind === '上游追討'
-  // 處理方式、生管回覆、同批標記、結案在寫入端都檢查「收單處理」；退貨登記與複核檢查「退貨收貨複核」
+  // 處理方式、生管回覆、同批標記在寫入端檢查「收單處理」；退貨登記與複核檢查「退貨收貨複核」；結案檢查「結案」（會計）
   const canHandle = permissions.can('表9', '收單處理')
   const canReviewReturn = permissions.can('表9', '退貨收貨複核')
-  const editable = notice.status !== '已完成' && canHandle
+  // 送批准後、批准前鎖住：管理層批准的就是送出時的處理方式（決策169）
+  const editable = notice.status !== '已完成' && canHandle && !(notice.status === '處理中' && !notice.approvedAt)
   const customer = notice.customerId ? getCustomer(notice.customerId) : undefined
   const author = getAccount(notice.createdByAccountId)
   const categoryItems = ABNORMAL_CATEGORIES.find((c) => c.name === categoryName)?.items ?? ([] as readonly string[])
   const pending = pendingAbnormalHandlings(notice)
   const children = abnormalNotices.filter((n) => n.parentAbnormalId === notice.id)
+  const approved = Boolean(notice.approvedAt)
+  // 會計簽核前要做完的事（不含簽核本身）；結案前整組（主單＋附單）每一張要做完的事
+  const accountingBlockers = abnormalCloseBlockers(notice, { skipAccounting: true })
+  const closeProblems = familyOpen
+    .map((n) => ({ id: n.id, blockers: abnormalCloseBlockers(n) }))
+    .filter((p) => p.blockers.length > 0)
+  const closeBlockedText = closeProblems.map((p) => `${p.id}：${p.blockers.join('、')}`).join('；')
 
   // 同批可標記的候選捲：同品名／同色且尚未出貨完畢、尚未標記者
   const batchCandidates = fabricLabels.filter(
@@ -245,8 +263,8 @@ export function AbnormalNoticeDetailPage() {
               outboundDoc={isUpstream ? '表9 異常通知附單' : '表9 主單及對客戶附單'}
               sheets={[{ key: 'doc', label: isUpstream ? '列印附單' : '列印異常通知單', sheet: <AbnormalNoticePrint notice={notice} /> }]}
             />
-            {/* 管理層批准／退回：核決在前、執行在後 */}
-            {notice.status === '受理中' && !notice.approvedAt && (
+            {/* 管理層批准／退回：生管進入處理之後；核決在前、執行在後 */}
+            {notice.status === '處理中' && !approved && (
               <>
                 {/*
                   沒有批准權的角色整顆按鈕不出現（權限規格決策44）；反灰只留給職責分離——
@@ -279,50 +297,66 @@ export function AbnormalNoticeDetailPage() {
                 )}
               </>
             )}
-            {/* 扣款路徑的會計簽核由財務執行 */}
-            {notice.handling.deduction && !notice.accountingSignedAt && permissions.can('表9', '會計簽核') && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={accountingMutation.isPending}
-                onClick={() => accountingMutation.mutate()}
-              >
-                會計簽核
-              </Button>
-            )}
-            {notice.status === '受理中' && notice.approvedAt && canHandle && (
+            {/* 生管進入處理：回覆與處理方式必填，送出後等管理層批准 */}
+            {notice.status === '受理中' && canHandle && (
               <Button
                 size="sm"
                 className="bg-brand hover:bg-brand-dark"
                 disabled={startMutation.isPending}
                 onClick={() => startMutation.mutate()}
               >
-                生管收單，開始處理
+                進入處理（送管理層批准）
               </Button>
             )}
-            {notice.status === '處理中' && canHandle && (
-              <Button size="sm" className="bg-brand hover:bg-brand-dark" disabled={completeMutation.isPending} onClick={() => completeMutation.mutate()}>
-                結案
+            {/* 會計簽核：所有表9 與附單都要，批准且處理方式做完之後 */}
+            {notice.status === '處理中' && approved && !notice.accountingSignedAt && permissions.can('表9', '會計簽核') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={accountingMutation.isPending || accountingBlockers.length > 0}
+                title={accountingBlockers.length > 0 ? `尚不可簽核：${accountingBlockers.join('、')}` : undefined}
+                onClick={() => accountingMutation.mutate()}
+              >
+                會計簽核
+              </Button>
+            )}
+            {/* 會計結案：主單與附單同步結案 */}
+            {notice.status === '處理中' && permissions.can('表9', '結案') && (
+              <Button
+                size="sm"
+                className="bg-brand hover:bg-brand-dark"
+                disabled={completeMutation.isPending || closeProblems.length > 0}
+                title={closeProblems.length > 0 ? `主單與附單須一起結案，尚缺——${closeBlockedText}` : undefined}
+                onClick={() => completeMutation.mutate()}
+              >
+                {familyOpen.length > 1 ? `會計結案（${familyOpen.length} 張一起）` : '會計結案'}
               </Button>
             )}
           </>
         }
       />
 
-      {/* 簽核鏈目前走到哪裡（權限規格第四章第 4 節） */}
-      {notice.status === '受理中' && (
+      {/* 流程目前走到哪裡（決策169） */}
+      {notice.status !== '已完成' && (
         <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
           <span className="font-medium text-ink-body">
-            簽核鏈：業務建單 → 管理層批准 → 生管收單
+            流程：業務建單 → 生管進入處理 → 管理層批准 → 執行處理方式{isUpstream ? '' : '／建立附單'} → 會計簽核 → 會計結案
+            {familyOpen.length > 1 ? '（主單與附單同步結案）' : ''}
           </span>
           <div className="mt-1 text-xs">
-            {notice.approvedAt
-              ? `已於 ${formatDate(notice.approvedAt)} 由 ${getAccount(notice.approvedByAccountId ?? '')?.name ?? '管理層'} 批准，生管可收單處理。`
-              : '尚未經管理層批准，不可進入處理分流。'}
-            {notice.handling.deduction &&
-              (notice.accountingSignedAt
-                ? `　會計簽核：${formatDate(notice.accountingSignedAt)}（${getAccount(notice.accountingSignedByAccountId ?? '')?.name ?? '財務'}）`
-                : '　扣款路徑尚待財務完成會計簽核。')}
+            {notice.status === '受理中'
+              ? notice.rejections?.length
+                ? '管理層已退回，請生管修改回覆或處理方式後再按「進入處理」。'
+                : '待生管填寫生管回覆、勾選處理方式後按「進入處理」。'
+              : !approved
+                ? '已進入處理，等待管理層批准；批准前不可執行處理方式。'
+                : !notice.accountingSignedAt
+                  ? accountingBlockers.length > 0
+                    ? `已於 ${formatDate(notice.approvedAt)} 由 ${getAccount(notice.approvedByAccountId ?? '')?.name ?? '管理層'} 批准。待完成：${accountingBlockers.join('；')}，之後由會計簽核。`
+                    : '處理方式皆已完成，待會計簽核。'
+                  : closeProblems.length > 0
+                    ? `已會計簽核（${formatDate(notice.accountingSignedAt)}）。同組尚缺——${closeBlockedText}`
+                    : `已會計簽核（${formatDate(notice.accountingSignedAt)}），可由會計結案。`}
           </div>
         </div>
       )}
@@ -333,7 +367,7 @@ export function AbnormalNoticeDetailPage() {
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         title={`退回 ${notice.id}`}
-        description="退回後本單仍停在「受理中」，不進入處理分流，由業務補件後再送批准。"
+        description="退回後本單回到「受理中」，由生管修改回覆或處理方式後再按「進入處理」送批准。"
         pending={rejectMutation.isPending}
         onConfirm={(reason) => {
           setRejectOpen(false)
@@ -595,7 +629,7 @@ export function AbnormalNoticeDetailPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={notice.status !== '處理中' || replacementMutation.isPending}
+                  disabled={notice.status !== '處理中' || !approved || replacementMutation.isPending}
                   onClick={() => replacementMutation.mutate()}
                 >
                   <Plus className="mr-1 h-4 w-4" /> 建立換貨出貨單
@@ -654,7 +688,7 @@ export function AbnormalNoticeDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {notice.status === '處理中' && canReviewReturn && (
+            {notice.status === '處理中' && approved && canReviewReturn && (
               <div className="mb-3 grid grid-cols-1 gap-3 rounded-lg border border-border p-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">退回布卷條碼（客戶端遺失條碼可留空）</Label>
@@ -721,7 +755,7 @@ export function AbnormalNoticeDetailPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{roll.reviewedAt ? formatDateTime(roll.reviewedAt) : '-'}</TableCell>
                       <TableCell>
-                        {roll.verdict === '待複核' && notice.status === '處理中' && canReviewReturn && (
+                        {roll.verdict === '待複核' && notice.status === '處理中' && approved && canReviewReturn && (
                           <div className="flex gap-1.5">
                             <Button
                               type="button"
@@ -841,7 +875,8 @@ export function AbnormalNoticeDetailPage() {
                 向染整廠追討為平行進行的獨立流程，與本單各自結案
               </span>
             </CardTitle>
-            {permissions.can('表9', '建立') && (
+            {/* 附單在主單批准後才建立（決策169） */}
+            {permissions.can('表9', '建立') && approved && notice.status === '處理中' && (
               <Button
                 type="button"
                 variant="outline"

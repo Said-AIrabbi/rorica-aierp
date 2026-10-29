@@ -612,6 +612,28 @@ export function isAbnormalCloseOverdue(notice: Pick<AbnormalNotice, 'status' | '
  * 表9是否具備結案條件：所有「已勾選」的處理方式皆執行完畢才算已完成（PRD 決策73）。
  * 回傳尚未完成的項目描述，空陣列即代表可結案。
  */
+/**
+ * 一起結案的那一組（決策169）：主單與掛在它底下的所有附單。從附單進來時先找回主單；
+ * 皇加自行發現、沒有主單的獨立附單自成一組。
+ */
+export function abnormalFamily(notice: AbnormalNotice, all: AbnormalNotice[]): AbnormalNotice[] {
+  const root = (notice.parentAbnormalId && all.find((n) => n.id === notice.parentAbnormalId)) || notice
+  return [root, ...all.filter((n) => n.parentAbnormalId === root.id)]
+}
+
+/**
+ * 這一張距離可結案還缺什麼（決策169）：已進入處理、已經管理層批准、處理方式都做完、已會計簽核。
+ * 已結案者回傳空陣列。會計簽核前的檢查（skipAccounting）不看會計簽核本身。
+ */
+export function abnormalCloseBlockers(notice: AbnormalNotice, opts: { skipAccounting?: boolean } = {}): string[] {
+  if (notice.status === '已完成') return []
+  if (notice.status === '受理中') return ['生管尚未按「進入處理」']
+  if (!notice.approvedAt) return ['管理層尚未批准']
+  const blockers = pendingAbnormalHandlings(notice)
+  if (!opts.skipAccounting && !notice.accountingSignedAt) blockers.push('會計尚未簽核')
+  return blockers
+}
+
 export function pendingAbnormalHandlings(notice: AbnormalNotice): string[] {
   const pending: string[] = []
   const { returnGoods, deduction, replacement, other } = notice.handling

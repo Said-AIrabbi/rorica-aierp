@@ -37,6 +37,8 @@ import {
   noticeItemRemainingYard,
   noticeItemScheduleCap,
   noticeItemScheduledYard,
+  abnormalCloseBlockers,
+  abnormalFamily,
   shippingItemNoticeId,
   shippingOrderNoticeIds,
   sameMarkings,
@@ -50,7 +52,6 @@ import {
   receiptNoticeItems,
   packingNoticeApprovalState,
   packingNoticeLocks,
-  pendingAbnormalHandlings,
 } from '@/lib/workflow'
 import {
   assertCanAct,
@@ -4284,6 +4285,9 @@ export function createAbnormalNotice(input: AbnormalNoticeInput): Promise<Abnorm
 
   const parent = input.parentAbnormalId ? abnormalNotices.find((n) => n.id === input.parentAbnormalId) : undefined
   if (input.parentAbnormalId && !parent) throw new Error(`異常通知單 ${input.parentAbnormalId} 不存在`)
+  // 決策169：附單在主單經管理層批准後才開——追討方向要先定案；皇加自行發現的獨立附單沒有主單，不受此限
+  if (parent && !parent.approvedAt) throw new Error(`主單 ${parent.id} 尚未經管理層批准，不可建立附單`)
+  if (parent?.status === '已完成') throw new Error(`主單 ${parent.id} 已結案，不可再建立附單`)
 
   let id: string
   if (input.kind === '上游追討') {
@@ -4386,6 +4390,9 @@ export function updateAbnormalNoticeHandling(
   assertCanAct(getCurrentAccount(), '表9', '收單處理')
   const idx = requireAbnormalNotice(id)
   if (abnormalNotices[idx].status === '已完成') throw new Error('已完成的異常通知單不可修改')
+  if (abnormalNotices[idx].status === '處理中' && !abnormalNotices[idx].approvedAt) {
+    throw new Error('已送管理層批准，批准前不可修改處理方式；如需修改請由管理層退回')
+  }
   abnormalNotices[idx] = {
     ...abnormalNotices[idx],
     handling: input.handling,
@@ -4397,28 +4404,24 @@ export function updateAbnormalNoticeHandling(
 }
 
 /**
- * 受理中→處理中：生管回覆並確認處理方式、經管理層／業務／會計三方簽核後，
- * 系統才依處理方式分流。簽名為列印後手簽，系統上以生管回覆與處理方式是否齊備作為卡控。
- */
-/**
- * 表9 管理層批准（權限規格第四章第 4 節）：業務建單 → **管理層批准** → 生管收單。
- * 批准前單據停留在「受理中」，不進入處理分流。建單者不得自行批准。
+ * 表9 流程（決策169，2026/10/29）：業務建單（受理中）→ 生管填回覆與處理方式後「進入處理」（處理中、待批准）
+ * → **管理層批准** → 執行處理方式、建立附單 → 會計簽核 → 會計結案（主單與附單同步）。
+ * 批准針對的是生管提出的處理方式，所以排在生管之後；建單者不得自行批准。
  */
 export function approveAbnormalNotice(id: string): Promise<AbnormalNotice> {
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   const account = requireCurrentAccount()
   assertCanAct(account, '表9', '批准', notice.createdByAccountId)
-  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單需要批准')
+  if (notice.status !== '處理中') throw new Error('生管尚未按「進入處理」，還不到批准這一步')
   if (notice.approvedAt) throw new Error('本單已批准過')
   abnormalNotices[idx] = { ...notice, approvedAt: dayjs().toISOString(), approvedByAccountId: account.id }
   return delay(abnormalNotices[idx])
 }
 
 /**
- * 表9 管理層退回（2026/09/21 新增，權限規格決策37）：資訊不足或不應受理時退回業務。
- * 常見情形：客訴描述與照片不足、已逾 6 個月受理期、責任歸屬尚未釐清、數量與表8 對不上。
- * 退回後單據仍停在「受理中」由業務編輯，不進入處理分流。
+ * 表9 管理層退回（權限規格決策37；決策169 起退回生管）：處理方式不妥、資訊不足或不應受理時退回。
+ * 單據回到「受理中」，由生管修改回覆或處理方式後再按「進入處理」送批准；業務需補資料也在此時修改。
  */
 export function rejectAbnormalNotice(id: string, reason: string): Promise<AbnormalNotice> {
   const idx = requireAbnormalNotice(id)
@@ -4426,10 +4429,11 @@ export function rejectAbnormalNotice(id: string, reason: string): Promise<Abnorm
   const account = requireCurrentAccount()
   assertCanAct(account, '表9', '退回')
   if (!reason.trim()) throw new Error('退回原因必填——沒有原因，業務無從修正')
-  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可退回')
+  if (notice.status !== '處理中' || notice.approvedAt) throw new Error('僅「處理中」且尚未批准的異常通知單可退回')
   abnormalNotices[idx] = {
     ...notice,
-    // 退回等於收回批准：要重新走一次批准才能往下
+    status: '受理中',
+    processedAt: undefined,
     approvedAt: undefined,
     approvedByAccountId: undefined,
     rejections: [
@@ -4441,16 +4445,18 @@ export function rejectAbnormalNotice(id: string, reason: string): Promise<Abnorm
 }
 
 /**
- * 表9 會計簽核（權限規格決策25）：財務角色的系統動作，**僅記錄簽核帳號與時間**。
- * 表單上的會計簽名欄維持唯讀、列印後手簽——系統簽核推動狀態，紙本簽名留存正本。
+ * 表9 會計簽核（權限規格決策25；決策169 起所有表9 與附單都要）：財務記錄簽核帳號與時間，是結案的前提。
+ * 在管理層批准、且勾選的處理方式都做完之後才簽——會計簽的是最終處理結果。
+ * 表單上的會計簽名欄維持唯讀、列印後手簽。
  */
 export function signAbnormalNoticeAccounting(id: string): Promise<AbnormalNotice> {
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   const account = requireCurrentAccount()
   assertCanAct(account, '表9', '會計簽核', notice.createdByAccountId)
-  if (!notice.handling.deduction) throw new Error('本單未勾選「扣款不退貨」，不需要會計簽核')
   if (notice.accountingSignedAt) throw new Error('本單已完成會計簽核')
+  const blockers = abnormalCloseBlockers(notice, { skipAccounting: true })
+  if (blockers.length > 0) throw new Error(`尚不可會計簽核：${blockers.join('；')}`)
   abnormalNotices[idx] = {
     ...notice,
     accountingSignedAt: dayjs().toISOString(),
@@ -4459,13 +4465,12 @@ export function signAbnormalNoticeAccounting(id: string): Promise<AbnormalNotice
   return delay(abnormalNotices[idx])
 }
 
+/** 生管「進入處理」（決策169）：生管回覆與處理方式必填，送出後等管理層批准；批准前不可執行任何處理 */
 export function startAbnormalProcessing(id: string): Promise<AbnormalNotice> {
   assertCanAct(getCurrentAccount(), '表9', '收單處理')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
-  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可進入處理中')
-  // 決策118 同源的把關：核決在前、執行在後。未經管理層批准不得進入處理分流
-  if (!notice.approvedAt) throw new Error('本單尚未經管理層批准，不可進入處理中')
+  if (notice.status !== '受理中') throw new Error('僅「受理中」的異常通知單可進入處理')
   if (!notice.productionReply?.trim()) throw new Error('請先填寫生管回覆')
   const { returnGoods, deduction, replacement, other } = notice.handling
   if (!returnGoods && !deduction && !replacement && !other) throw new Error('請至少勾選一種處理方式')
@@ -4479,6 +4484,7 @@ export function registerReturnedRoll(id: string, input: { rollCode?: string; yar
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
   if (notice.status !== '處理中') throw new Error('僅「處理中」的異常通知單可登記退回布卷')
+  assertAbnormalApproved(notice)
   if (!notice.handling.returnGoods) throw new Error('本單未勾選「退貨」處理方式')
   if (!(input.yard > 0)) throw new Error('退回碼數需大於 0')
   const returned: ReturnedRoll = { rollCode: input.rollCode?.trim() || undefined, yard: input.yard, verdict: '待複核' }
@@ -4506,6 +4512,7 @@ export function reviewReturnedRoll(
   const returned = rolls[index]
   if (!returned) throw new Error('找不到該筆退回布卷紀錄')
   if (returned.verdict !== '待複核') throw new Error('該筆退回布卷已複核完成')
+  assertAbnormalApproved(notice)
 
   const now = dayjs().toISOString()
   let newRollCode: string | undefined
@@ -4582,6 +4589,7 @@ export function createReplacementShippingOrder(id: string): Promise<ShippingOrde
   const notice = abnormalNotices[idx]
   const replacement = notice.handling.replacement
   if (!replacement) throw new Error('本單未勾選「補貨換貨」處理方式')
+  assertAbnormalApproved(notice)
   if (replacement.shippingOrderId) throw new Error(`已建立換貨出貨單 ${replacement.shippingOrderId}`)
   const source = notice.shippingOrderId ? shippingOrders.find((s) => s.id === notice.shippingOrderId) : undefined
   if (!source) throw new Error('找不到原出貨單，無法建立換貨出貨單')
@@ -4616,15 +4624,35 @@ export function createReplacementShippingOrder(id: string): Promise<ShippingOrde
   return delay(order)
 }
 
-/** 三條處理路徑全部完成，表9才可結案（逾 12 個月未結案僅提醒追蹤，不阻擋結案） */
+/** 執行處理方式（退貨登記與複核、換貨出貨單）前須經管理層批准：核決在前、執行在後（決策169） */
+function assertAbnormalApproved(notice: AbnormalNotice): void {
+  if (!notice.approvedAt) throw new Error('本單尚未經管理層批准，不可執行處理方式')
+}
+
+/**
+ * 會計結案（決策169）：主單與它的所有附單**同步結案**，不論從哪一張按。
+ * 每一張都要已批准、處理方式做完、已會計簽核；任何一張不符就整組擋下並列出缺什麼，不會只結一半。
+ * 已結案的成員略過。逾 12 個月未結案僅提醒追蹤，不阻擋結案。
+ */
 export function completeAbnormalNotice(id: string): Promise<AbnormalNotice> {
-  assertCanAct(getCurrentAccount(), '表9', '收單處理')
+  assertCanAct(getCurrentAccount(), '表9', '結案')
   const idx = requireAbnormalNotice(id)
   const notice = abnormalNotices[idx]
-  if (notice.status !== '處理中') throw new Error('僅「處理中」的異常通知單可結案')
-  const pending = pendingAbnormalHandlings(notice)
-  if (pending.length > 0) throw new Error(`尚有處理方式未完成：${pending.join('；')}`)
-  abnormalNotices[idx] = { ...notice, status: '已完成', completedAt: dayjs().toISOString() }
+  if (notice.status === '已完成') throw new Error('本單已結案')
+  const family = abnormalFamily(notice, abnormalNotices).filter((n) => n.status !== '已完成')
+  const problems = family
+    .map((n) => ({ id: n.id, blockers: abnormalCloseBlockers(n) }))
+    .filter((p) => p.blockers.length > 0)
+  if (problems.length > 0) {
+    throw new Error(
+      `主單與附單須一起結案，尚不可結案——${problems.map((p) => `${p.id}：${p.blockers.join('、')}`).join('；')}`,
+    )
+  }
+  const now = dayjs().toISOString()
+  family.forEach((member) => {
+    const i = abnormalNotices.findIndex((n) => n.id === member.id)
+    abnormalNotices[i] = { ...abnormalNotices[i], status: '已完成', completedAt: now }
+  })
   return delay(abnormalNotices[idx])
 }
 
