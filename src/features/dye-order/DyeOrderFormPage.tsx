@@ -295,6 +295,7 @@ export function DyeOrderFormPage() {
                 <Table className="min-w-[44rem]">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10" />
                       <TableHead>顏色</TableHead>
                       <TableHead>廠商品名</TableHead>
                       <TableHead>色樣編號</TableHead>
@@ -307,12 +308,24 @@ export function DyeOrderFormPage() {
                       <TableHead className="text-right">指染數量</TableHead>
                       <TableHead className="text-right">預期縮率</TableHead>
                       <TableHead className="text-right">成品數量</TableHead>
-                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item, index) => (
                       <TableRow key={index}>
+                        <TableCell>
+                          {/* 清除僅作用於本張表4：表1 明細與其他單據不受影響 */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            title="本單不做此品項（不影響表1）"
+                            onClick={() => removeItem(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {item.color}
                           {(() => {
@@ -416,29 +429,17 @@ export function DyeOrderFormPage() {
                             })}
                           />
                         </TableCell>
-                        <TableCell>
-                          {/* 清除僅作用於本張表4：表1 明細與其他單據不受影響 */}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            title="本單不做此品項（不影響表1）"
-                            onClick={() => removeItem(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))}
                     {/* 合計列放在明細區塊內：兩個數量欄各自加總，逐列填寫時可即時對總數 */}
                     <TableRow className="bg-muted font-medium hover:bg-muted">
-                      <TableCell colSpan={8} className="text-right">
+                      {/* 刪除鈕欄＋顏色～加工單價共 10 欄併為「合計」，兩個數量各自對齊到自己的欄位下 */}
+                      <TableCell colSpan={10} className="text-right">
                         合計
                       </TableCell>
-                      <TableCell className="text-right">{totalFinishedQty}</TableCell>
                       <TableCell className="text-right">{totalInDyeQty}</TableCell>
                       <TableCell />
+                      <TableCell className="text-right">{totalFinishedQty}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>

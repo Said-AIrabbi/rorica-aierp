@@ -248,6 +248,7 @@ export function PurchaseOrderFormPage() {
                 <Table className="min-w-[44rem]">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10" />
                       <TableHead>客戶品名</TableHead>
                       <TableHead>皇加品名</TableHead>
                       <TableHead>廠商品名</TableHead>
@@ -259,12 +260,24 @@ export function PurchaseOrderFormPage() {
                       <TableHead className="text-right">定碼長度</TableHead>
                       <TableHead className="text-right">單價</TableHead>
                       <TableHead>備註</TableHead>
-                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {visibleItems.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          {/* 清除僅作用於本張表2：表1 明細與其他單據不受影響 */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            title="本單不做此品項（不影響表1）"
+                            onClick={() => removeItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           {item.customerProductName}
                           {(() => {
@@ -318,24 +331,11 @@ export function PurchaseOrderFormPage() {
                           />
                         </TableCell>
                         <TableCell className="text-muted-foreground">{item.note || '-'}</TableCell>
-                        <TableCell>
-                          {/* 清除僅作用於本張表2：表1 明細與其他單據不受影響 */}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            title="本單不做此品項（不影響表1）"
-                            onClick={() => removeItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))}
                     {visibleItems.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center text-sm text-muted-foreground">
+                        <TableCell colSpan={12} className="text-center text-sm text-muted-foreground">
                           明細已全部清除，訂購單至少要有一筆；可按上方「還原」帶回
                         </TableCell>
                       </TableRow>
