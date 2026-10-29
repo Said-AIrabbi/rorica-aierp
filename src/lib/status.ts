@@ -30,12 +30,13 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   // 表6 入庫單
   已複核: 'info',
 
-  // 表7 布卷條碼標籤
+  // 表7 布卷條碼標籤（決策166：原「已建立」改名「在庫」）
   在庫: 'info',
   已終止: 'error',
   '瑕疵／報廢': 'error',
 
   // 表8 出貨單
+  已建立: 'neutral',
   已確認出貨: 'success',
 
   // 表9 異常通知單

@@ -110,16 +110,16 @@ export function PendingApprovals() {
     }
   }
 
-  // 表9：業務受理客訴後停在「受理中」，批准前不進入處理分流
+  // 表9（決策169）：生管「進入處理」後轉處理中、等管理層批准
   if (permissions.can('表9', '批准')) {
     for (const notice of abnormals) {
-      if (notice.status !== '受理中' || notice.approvedAt) continue
+      if (notice.status !== '處理中' || notice.approvedAt) continue
       items.push({
         doc: '表9',
         id: notice.id,
         to: `/abnormal-notice/${notice.id}`,
-        summary: notice.kind,
-        since: notice.noticeDate,
+        summary: notice.kind === '上游追討' ? '異常通知附單' : '客訴異常',
+        since: notice.processedAt ?? notice.noticeDate,
         blocked: permissions.blockedReason('表9', '批准', notice.createdByAccountId),
       })
     }

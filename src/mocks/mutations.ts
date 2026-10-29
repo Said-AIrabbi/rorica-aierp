@@ -4474,7 +4474,16 @@ export function startAbnormalProcessing(id: string): Promise<AbnormalNotice> {
   if (!notice.productionReply?.trim()) throw new Error('請先填寫生管回覆')
   const { returnGoods, deduction, replacement, other } = notice.handling
   if (!returnGoods && !deduction && !replacement && !other) throw new Error('請至少勾選一種處理方式')
-  abnormalNotices[idx] = { ...notice, status: '處理中', processedAt: dayjs().toISOString() }
+  abnormalNotices[idx] = {
+    ...notice,
+    status: '處理中',
+    processedAt: dayjs().toISOString(),
+    // 批准與會計簽核都針對這次送出的處理方式：舊流程在受理中就留下的批准／簽核紀錄不沿用，要重新走一次
+    approvedAt: undefined,
+    approvedByAccountId: undefined,
+    accountingSignedAt: undefined,
+    accountingSignedByAccountId: undefined,
+  }
   return delay(abnormalNotices[idx])
 }
 
