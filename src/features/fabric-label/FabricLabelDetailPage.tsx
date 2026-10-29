@@ -132,7 +132,7 @@ export function FabricLabelDetailPage() {
       )
     : undefined
 
-  // 合併對象：同產品分支、同顏色、同單位、「已建立」的其他布卷
+  // 合併對象：同產品分支、同顏色、同單位、「在庫」的其他布卷
   const mergeCandidates = label ? data.filter((l) => l.id !== label.id && isMergeableRoll(label, l)) : []
   const mergeTotal =
     (label?.length ?? 0) + mergeCandidates.filter((l) => mergeIds.includes(l.id)).reduce((s, l) => s + l.length, 0)
@@ -176,12 +176,12 @@ export function FabricLabelDetailPage() {
             {canPrint && (
               <PrintActions sheets={[{ key: 'label', label: '列印標籤', sheet: <FabricLabelPrint label={label} /> }]} />
             )}
-            {label.status === '已建立' && label.length > 0 && canSplit && (
+            {label.status === '在庫' && label.length > 0 && canSplit && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setSplitOpen(true)}>
                 <Scissors className="mr-1 h-4 w-4" /> 分割布卷
               </Button>
             )}
-            {label.status === '已建立' && label.length > 0 && canMerge && (
+            {label.status === '在庫' && label.length > 0 && canMerge && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setMergeOpen(true)}>
                 <Combine className="mr-1 h-4 w-4" /> 合併布卷
               </Button>
@@ -218,7 +218,7 @@ export function FabricLabelDetailPage() {
               </span>
             )}
             {/* 瑕疵／報廢為布卷的另一個終態；已完成或已終止的布卷不再開放標記 */}
-            {(label.status === '已建立' || label.status === '已使用') && canMarkDefect && (
+            {label.status === '在庫' && canMarkDefect && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setDefectOpen(true)}>
                 <AlertTriangle className="mr-1 h-4 w-4" /> 標記瑕疵／報廢
               </Button>
@@ -409,7 +409,7 @@ export function FabricLabelDetailPage() {
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
             合併後 {label.rollCode} 與勾選的布卷都會標記為「已終止」，原條碼捨棄、不可再用於出貨；系統產生一張新條碼。
-            只列出同皇加品名、同顏色、同單位且為「已建立」的布卷；已被預留、出貨或異常單用到的布卷不可合併。
+            只列出同皇加品名、同顏色、同單位且為「在庫」的布卷；已被預留、出貨或異常單用到的布卷不可合併。
           </p>
           {mergeCandidates.length === 0 ? (
             <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
@@ -502,6 +502,17 @@ export function FabricLabelDetailPage() {
         </div>
       )}
 
+      {/* 部分出貨後長度已變（決策166）：實體標籤印的還是舊長度，提醒重印、不強制 */}
+      {label.status === '在庫' && (label.shipments?.length ?? 0) > 0 && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-ink-body print:hidden">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          <span>
+            本捲已出貨 {label.shipments!.length} 次，目前剩 {dualUnitLength(label.length, label.unit)}
+            。實體標籤上印的長度已過時，建議重印標籤。
+          </span>
+        </div>
+      )}
+
       <ReadOnlyNotice doc="表7" printable={false} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -550,6 +561,50 @@ export function FabricLabelDetailPage() {
                 : `商品主檔的「${label.color}」尚未登記電腦色號。`}
               色塊為螢幕示意，以實體色卡為準。
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2 print:hidden">
+          <CardHeader>
+            <CardTitle className="text-base">出貨紀錄</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(label.shipments?.length ?? 0) === 0 ? (
+              <p className="text-sm text-muted-foreground">尚無出貨紀錄。</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                      <th className="py-1.5 pr-3 font-normal">出貨日期</th>
+                      <th className="py-1.5 pr-3 font-normal">表8 出貨單</th>
+                      <th className="py-1.5 pr-3 font-normal">表1 包裝通知單</th>
+                      <th className="py-1.5 pr-3 text-right font-normal">本次出貨</th>
+                      <th className="py-1.5 text-right font-normal">出貨後剩餘</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {label.shipments!.map((s, i) => (
+                      <tr key={i} className="border-b border-border/60 last:border-0">
+                        <td className="py-1.5 pr-3">{formatDate(s.at)}</td>
+                        <td className="py-1.5 pr-3">
+                          <Link to={`/shipping-order/${s.shippingOrderId}`} className="text-brand-dark underline">
+                            {s.shippingOrderId}
+                          </Link>
+                        </td>
+                        <td className="py-1.5 pr-3">
+                          <Link to={`/packing-notice/${s.noticeId}`} className="text-brand-dark underline">
+                            {s.noticeId}
+                          </Link>
+                        </td>
+                        <td className="py-1.5 pr-3 text-right">{dualUnitLength(s.length, label.unit)}</td>
+                        <td className="py-1.5 text-right">{dualUnitLength(s.afterLength, label.unit)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 

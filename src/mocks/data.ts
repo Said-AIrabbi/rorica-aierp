@@ -696,7 +696,7 @@ export const goodsReceipts: GoodsReceipt[] = packingNotices.slice(0, 8).map((pn,
 
 type GoodsReceiptRollConfidence = GoodsReceipt['rolls'][number]['ocrConfidence']
 
-const LABEL_STATUSES: FabricLabel['status'][] = ['已建立', '已使用', '已完成']
+const LABEL_STATUSES: FabricLabel['status'][] = ['在庫', '在庫', '已完成']
 
 /**
  * 條碼流水號：格式為「胚布編號＋流水號」，同一個胚布編號的流水號必須全檔連續且唯一——
@@ -751,7 +751,7 @@ export const stockReservations: StockReservation[] = packingNotices
     const item = pn.items[0]
     if (!item) return undefined
     const matchingRolls = fabricLabels.filter(
-      (l) => l.productName === item.roricaProductName && l.color === item.color && l.status === '已建立',
+      (l) => l.productName === item.roricaProductName && l.color === item.color && l.status === '在庫',
     )
     if (matchingRolls.length === 0) return undefined
     const rollsToReserve = matchingRolls.slice(0, Math.min(2, matchingRolls.length))
@@ -905,7 +905,7 @@ const abnormalSourceOrders = shippingOrders.filter((so) => so.status === '已完
 /** 同批未出貨庫存亦有異常時連動標記的條碼：挑未被預留占用的可用捲，避免與庫存預留種子資料打架 */
 const reservedRollCodes = new Set(stockReservations.flatMap((r) => r.rollCodes))
 const batchDefectLabels = fabricLabels
-  .filter((l) => l.status === '已建立' && !reservedRollCodes.has(l.rollCode))
+  .filter((l) => l.status === '在庫' && !reservedRollCodes.has(l.rollCode))
   .slice(0, 3)
 
 const salesAccountId = (accounts.find((a) => a.roles.includes('業務')) ?? accounts[0]).id
@@ -1551,6 +1551,17 @@ function migrateVendorContacts(vendor: Vendor): Vendor {
   return { ...rest, contacts: contactPerson?.trim() ? [{ name: contactPerson, phone: phone || undefined }] : [] }
 }
 
+/**
+ * 布卷狀態改版（決策166）：舊資料的「已建立」與「已使用」（部分出貨）一律轉為「在庫」，長度不變。
+ * 舊的部分出貨沒有逐捲出貨明細可補，出貨紀錄從改版後開始累積。
+ */
+function migrateFabricLabelStatuses(): void {
+  fabricLabels.forEach((label, i) => {
+    const status = label.status as string
+    if (status === '已建立' || status === '已使用') fabricLabels[i] = { ...label, status: '在庫' }
+  })
+}
+
 /** 把一份快照套回記憶體中的資料陣列。還原本機暫存與載入遠端資料共用這一段 */
 export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   normalizeSampleResults(snapshot)
@@ -1568,6 +1579,7 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   if (snapshot.secondaryProcessingOrders)
     secondaryProcessingOrders.splice(0, secondaryProcessingOrders.length, ...snapshot.secondaryProcessingOrders)
   stockReservations.splice(0, stockReservations.length, ...snapshot.stockReservations)
+  migrateFabricLabelStatuses()
   if (snapshot.splicingSuggestions)
     splicingSuggestions.splice(0, splicingSuggestions.length, ...snapshot.splicingSuggestions)
   // 主檔為後續新增的快照欄位，舊快照可能沒有，缺少時沿用種子資料

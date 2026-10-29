@@ -1003,10 +1003,23 @@ export interface GoodsReceipt {
 }
 
 /**
- * 布卷狀態：已建立→已使用（部分出貨，不可逆）→已完成（全部出貨，不可逆）；
- * 「已終止」為分割後的原捲；「瑕疵／報廢」為另一個終態，標記後不可再被任何訂單挑選。
+ * 布卷狀態（決策166）：在庫→已完成（長度出到 0，不可逆）。
+ * 部分出貨不再改狀態——出過一半的布卷仍是「在庫」、仍可挑選，出了幾次記在出貨紀錄（shipments）。
+ * 「已終止」為分割或合併後的原捲；「瑕疵／報廢」為另一個終態，標記後不可再被任何訂單挑選。
  */
-export type FabricLabelStatus = '已建立' | '已使用' | '已完成' | '已終止' | '瑕疵／報廢'
+export type FabricLabelStatus = '在庫' | '已完成' | '已終止' | '瑕疵／報廢'
+
+/** 布卷的一筆出貨（決策166）：表8 確認出貨完成時，依序扣到哪幾捲、各扣多少，當下記在布卷上 */
+export interface FabricLabelShipment {
+  at: string
+  shippingOrderId: string
+  /** 這一列明細的來源表1 */
+  noticeId: string
+  /** 本次從這捲扣掉的長度（單位同布卷） */
+  length: number
+  /** 扣完後剩下的長度 */
+  afterLength: number
+}
 
 export interface FabricLabelLengthChange {
   at: string
@@ -1048,6 +1061,8 @@ export interface FabricLabel {
    * 記在產生出來的那一捲上——分割時記在第二捲（餘量捲），合併時記在新捲；之後可在「編輯布卷資料」修正。
    */
   lossLength?: number
+  /** 出貨紀錄（決策166），依時間先後 */
+  shipments?: FabricLabelShipment[]
   /** 標記為瑕疵／報廢的時間與原因；標記後該捲不可再被任何訂單挑選 */
   defectedAt?: string
   defectNote?: string

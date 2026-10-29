@@ -43,7 +43,7 @@ export function ProductStockCard({ product }: { product: Product }) {
   const rolls = fabricLabels.filter((l) => l.productId === product.id)
 
   const defective = rolls.filter((l) => l.status === '瑕疵／報廢')
-  const inStock = rolls.filter((l) => l.status === '已建立')
+  const inStock = rolls.filter((l) => l.status === '在庫')
   const reserved = inStock.filter((l) => isRollReserved(l.rollCode, stockReservations))
   const available = inStock.filter((l) => !isRollReserved(l.rollCode, stockReservations))
   const availableYard = available.reduce((sum, l) => sum + toYard(l), 0)
@@ -143,7 +143,7 @@ export function ProductStockCard({ product }: { product: Product }) {
                         <TableCell className="text-muted-foreground">{roll.receiptId}</TableCell>
                         <TableCell>
                           <StatusBadge status={roll.status} />
-                          {roll.status === '已建立' && isRollReserved(roll.rollCode, stockReservations) && (
+                          {roll.status === '在庫' && isRollReserved(roll.rollCode, stockReservations) && (
                             <span className="ml-1.5 text-xs text-muted-foreground">已預留</span>
                           )}
                           {roll.defectNote && <div className="text-xs text-destructive">{roll.defectNote}</div>}

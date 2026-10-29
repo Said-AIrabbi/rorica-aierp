@@ -202,7 +202,7 @@ export function AbnormalNoticeDetailPage() {
     (l) =>
       l.productName === notice.productName &&
       l.color === notice.color &&
-      (l.status === '已建立' || l.status === '已使用'),
+      l.status === '在庫',
   )
 
   return (

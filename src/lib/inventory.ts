@@ -41,7 +41,7 @@ export function availableFabricLabels(
 ): FabricLabel[] {
   return labels.filter((l) => {
     const sameProduct = productId && l.productId ? l.productId === productId : l.productName === productName
-    return sameProduct && l.color === color && l.status === '已建立' && !isRollReserved(l.rollCode, reservations)
+    return sameProduct && l.color === color && l.status === '在庫' && !isRollReserved(l.rollCode, reservations)
   })
 }
 

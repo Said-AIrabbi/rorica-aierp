@@ -82,7 +82,7 @@ export function ProductListPage() {
         header: '布卷（可用／全部）',
         accessorFn: (row) => {
           const rolls = fabricLabels.filter((l) => l.productId === row.id)
-          const available = rolls.filter((l) => l.status === '已建立' && !isRollReserved(l.rollCode, stockReservations))
+          const available = rolls.filter((l) => l.status === '在庫' && !isRollReserved(l.rollCode, stockReservations))
           return `${available.length} ／ ${rolls.length} 捲`
         },
       },

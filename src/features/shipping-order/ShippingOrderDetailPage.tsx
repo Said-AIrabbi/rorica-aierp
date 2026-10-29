@@ -228,6 +228,13 @@ export function ShippingOrderDetailPage() {
         queryClient.invalidateQueries({ queryKey: ['packingNotices'] }),
       ])
       toast.success(`${updated.id} 已確認出貨完成，已扣減對應布卷條碼庫存`)
+      // 部分出貨的捲仍在庫（決策166），但實體標籤上印的長度已過時：提醒重印，不強制
+      const partial = (await api.fabricLabels()).filter(
+        (l) => l.status === '在庫' && l.shipments?.some((s) => s.shippingOrderId === updated.id),
+      )
+      if (partial.length > 0) {
+        toast.info(`布卷 ${partial.map((l) => l.rollCode).join('、')} 出貨後仍有剩餘，長度已變動，建議重印標籤`)
+      }
     },
     onError: (error: Error) => toast.error(error.message),
   })

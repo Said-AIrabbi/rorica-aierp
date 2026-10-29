@@ -52,6 +52,8 @@ export function FabricLabelListPage() {
       { id: 'batchCode', header: '批', accessorFn: (row) => row.batchCode ?? '-' },
       // 長度以該捲入庫時實際量測的單位為主值，另一單位標 ≈ 為換算值
       { id: 'length', header: '長度（實測單位為主）', accessorFn: (row) => rollLengthText(row.length, row.unit) },
+      // 出貨次數（決策166）：部分出貨不再改狀態，出過幾次看這一欄
+      { id: 'shipments', header: '出貨次數', accessorFn: (row) => row.shipments?.length ?? 0 },
       {
         id: 'status',
         header: '狀態',

@@ -56,7 +56,7 @@ export function StockOverviewPage() {
     // 品名可能含空白，故以資料不會出現的 NUL 字元組鍵，並把品名／顏色一起放進值裡
     const onHand = new Map<string, { productName: string; color: string; labels: FabricLabel[] }>()
     fabricLabels
-      .filter((l) => l.status === '已建立')
+      .filter((l) => l.status === '在庫')
       .forEach((l) => {
         const key = `${l.productName}\u0000${l.color}`
         const entry = onHand.get(key) ?? { productName: l.productName, color: l.color, labels: [] }

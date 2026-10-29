@@ -490,7 +490,7 @@ export function confirmSplicingSuggestion(id: string): Promise<SplicingSuggestio
 
   // 建議產生後、確認前，同一批布卷可能已被其他包裝通知單預留走，故以「可用庫存」重新驗證（已預留者不算可用）
   const rolls = fabricLabels.filter(
-    (l) => suggestion.rollCodes.includes(l.rollCode) && l.status === '已建立' && !isRollReserved(l.rollCode, stockReservations),
+    (l) => suggestion.rollCodes.includes(l.rollCode) && l.status === '在庫' && !isRollReserved(l.rollCode, stockReservations),
   )
   if (rolls.length !== suggestion.rollCodes.length) throw new Error('建議的布卷已被其他單據使用，請重新查詢庫存')
 
@@ -2768,7 +2768,7 @@ function buildFabricLabelsForReceipt(receipt: GoodsReceipt): { label: FabricLabe
         batchCode: roll.batchCode,
         length: roll.length,
         unit: 'Yard',
-        status: '已建立',
+        status: '在庫',
       },
     }
   })
@@ -2987,7 +2987,7 @@ export function splitFabricLabel(id: string, firstLength: number, lossLength = 0
   const idx = fabricLabels.findIndex((l) => l.id === id)
   if (idx === -1) throw new Error(`布卷條碼標籤 ${id} 不存在`)
   const original = fabricLabels[idx]
-  if (original.status !== '已建立') throw new Error('僅「已建立」狀態的布卷可以分割')
+  if (original.status !== '在庫') throw new Error('僅「在庫」狀態的布卷可以分割')
   assertValidLoss(lossLength)
   if (!(firstLength > 0) || firstLength + lossLength >= original.length) {
     throw new Error('分割長度＋損耗需大於 0 且小於原布卷長度')
@@ -3023,7 +3023,7 @@ export function splitFabricLabel(id: string, firstLength: number, lossLength = 0
     batchCode: original.batchCode,
     length,
     unit: original.unit,
-    status: '已建立',
+    status: '在庫',
     splitFromRollCode: original.rollCode,
     lossLength: i === 1 ? lossLength : 0,
   }))
@@ -3031,10 +3031,10 @@ export function splitFabricLabel(id: string, firstLength: number, lossLength = 0
   return delay(newLabels)
 }
 
-/** 可與指定布卷合併的對象：同產品分支、同顏色、同單位、「已建立」且還有長度 */
+/** 可與指定布卷合併的對象：同產品分支、同顏色、同單位、「在庫」且還有長度 */
 export function isMergeableRoll(base: FabricLabel, other: FabricLabel): boolean {
   return (
-    other.status === '已建立' &&
+    other.status === '在庫' &&
     other.length > 0 &&
     other.unit === base.unit &&
     other.color === base.color &&
@@ -3045,8 +3045,8 @@ export function isMergeableRoll(base: FabricLabel, other: FabricLabel): boolean 
 /**
  * 合併布卷（決策165）：多捲併成一捲，產生新條碼，原條碼全部終止（保留紀錄供追溯）。
  * 新捲長度＝各捲長度合計－損耗（預設 0），損耗記在新捲上。
- * 只能合併同產品分支、同顏色、同單位的「已建立」布卷；已被預留、出貨或異常單引用的不可合併——
- * 那些單據記的是舊條碼，合併後會指向已終止的捲。
+ * 只能合併同產品分支、同顏色、同單位的「在庫」布卷；已被預留、未完成的出貨單或異常單引用的不可合併——
+ * 那些單據記的是舊條碼，合併後會指向已終止的捲。已完成的出貨單只是歷史（部分出貨後的餘捲，決策166），不擋。
  * 新條碼沿用第一捲的條碼前綴，流水號接續該前綴目前最大值。
  */
 export function mergeFabricLabels(ids: string[], lossLength = 0): Promise<FabricLabel> {
@@ -3060,11 +3060,11 @@ export function mergeFabricLabels(ids: string[], lossLength = 0): Promise<Fabric
   })
   const [first] = sources
   for (const label of sources) {
-    if (label.status !== '已建立' || !(label.length > 0)) throw new Error(`布卷 ${label.rollCode} 不是可用的「已建立」布卷`)
+    if (label.status !== '在庫' || !(label.length > 0)) throw new Error(`布卷 ${label.rollCode} 不是可用的「在庫」布卷`)
     if (label !== first && !isMergeableRoll(first, label)) {
       throw new Error(`布卷 ${label.rollCode} 與 ${first.rollCode} 不可合併：須同皇加品名、同顏色、同單位`)
     }
-    const hit = rollReferences(label).find((r) => r.ids.length > 0)
+    const hit = rollReferences(label, { openShippingOnly: true }).find((r) => r.ids.length > 0)
     if (hit) {
       throw new Error(`布卷「${label.rollCode}」已被${hit.where}引用（${hit.ids.slice(0, 3).join('、')}），不可合併`)
     }
@@ -3107,7 +3107,7 @@ export function mergeFabricLabels(ids: string[], lossLength = 0): Promise<Fabric
     batchCode: batchCodes.length > 0 ? batchCodes.join('、') : undefined,
     length: Number((total - lossLength).toFixed(2)),
     unit: first.unit,
-    status: '已建立',
+    status: '在庫',
     mergedFromRollCodes: sources.map((l) => l.rollCode),
     lossLength,
   }
@@ -3117,7 +3117,7 @@ export function mergeFabricLabels(ids: string[], lossLength = 0): Promise<Fabric
 
 /**
  * 標記布卷為瑕疵／報廢（布卷資料主檔的另一個終態）。
- * 標記後該捲不可再被任何訂單挑選——可用庫存查詢只取「已建立」的布卷，
+ * 標記後該捲不可再被任何訂單挑選——可用庫存查詢只取「在庫」的布卷，
  * 出貨結案時亦會擋下明細中含瑕疵捲的出貨單（見 completeShippingOrder）。
  * 已完成／已終止／已標記過的布卷不再開放標記。
  */
@@ -3759,8 +3759,8 @@ export function setShippingOrderStatus(id: string, status: ShippingOrder['status
 /**
  * 確認出貨完成，並觸發扣庫存：依明細記錄的布卷條碼組合逐捲扣減表7條碼標籤的長度
  * （拼接出貨時一筆明細對應多個捲號，依序扣到出貨量扣完為止；最後一捲不足整支即為裁切，
- * 裁剩的零碼布留在該捲條碼上等待下次湊單）。部分出貨（尚有剩餘長度）狀態轉為「已使用」，
- * 全部出貨（長度歸零）轉為「已完成」，兩者皆不可逆；每次扣減皆記錄一筆長度異動紀錄。
+ * 裁剩的零碼布留在該捲條碼上等待下次湊單）。部分出貨（尚有剩餘長度）維持「在庫」、仍可再被挑選（決策166），
+ * 全部出貨（長度歸零）轉為「已完成」，不可逆；每次扣減皆在布卷上記一筆出貨紀錄與一筆長度異動紀錄。
  */
 /**
  * 表8 退回草稿（權限規格第四章第 3 節、決策37）：單據已建立但內容有誤，退回讓業務重填。
@@ -3830,10 +3830,21 @@ export function completeShippingOrder(id: string): Promise<ShippingOrder> {
       fabricLabels[labelIdx] = {
         ...label,
         length: afterLength,
-        status: afterLength <= 0 ? '已完成' : '已使用',
+        status: afterLength <= 0 ? '已完成' : '在庫',
         lengthHistory: [
           ...(label.lengthHistory ?? []),
-          { at: now, beforeLength: label.length, afterLength, reason: spliced ? '拼接使用' : '出貨' },
+          { at: now, beforeLength: label.length, afterLength, reason: `${spliced ? '拼接使用' : '出貨'} ${updated.id}` },
+        ],
+        // 出貨紀錄存在布卷上：一列明細用到多捲時各扣多少只有此刻知道，事後無法從表8 反推
+        shipments: [
+          ...(label.shipments ?? []),
+          {
+            at: now,
+            shippingOrderId: updated.id,
+            noticeId: shippingItemNoticeId(updated, item),
+            length: deducted,
+            afterLength,
+          },
         ],
       }
     })
@@ -4302,7 +4313,7 @@ function applyBatchDefectMarking(notice: AbnormalNotice, rollCodes: string[]): s
     const idx = fabricLabels.findIndex((l) => l.rollCode === rollCode)
     if (idx === -1) return
     const label = fabricLabels[idx]
-    if (label.status !== '已建立' && label.status !== '已使用') return
+    if (label.status !== '在庫') return
     fabricLabels[idx] = {
       ...label,
       status: '瑕疵／報廢',
@@ -4479,7 +4490,7 @@ export function reviewReturnedRoll(
       fabricLabels[labelIdx] = {
         ...label,
         length: afterLength,
-        status: '已建立',
+        status: '在庫',
         lengthHistory: [
           ...(label.lengthHistory ?? []),
           { at: now, beforeLength: label.length, afterLength, reason: `退貨複核良品復活（${notice.id}）` },
@@ -4507,7 +4518,7 @@ export function reviewReturnedRoll(
         widthSpec: sample?.widthSpec,
         length: returned.yard,
         unit: 'Yard',
-        status: '已建立',
+        status: '在庫',
         lengthHistory: [
           { at: now, beforeLength: 0, afterLength: returned.yard, reason: `退貨良品新建條碼（${notice.id}）` },
         ],
@@ -5017,8 +5028,11 @@ function assertRollNotReferenced(label: FabricLabel, onChangeProduct = false) {
   }
 }
 
-/** 引用這捲布的單據：預留中的庫存預留、出貨單明細、異常通知單 */
-function rollReferences(label: FabricLabel): { where: string; ids: string[] }[] {
+/**
+ * 引用這捲布的單據：預留中的庫存預留、出貨單明細、異常通知單。
+ * openShippingOnly：只算還沒完成的出貨單——合併時用；刪除與改產品仍算全部（已出過貨的捲不能憑空消失）
+ */
+function rollReferences(label: FabricLabel, opts: { openShippingOnly?: boolean } = {}): { where: string; ids: string[] }[] {
   return [
     {
       where: '庫存預留',
@@ -5028,7 +5042,10 @@ function rollReferences(label: FabricLabel): { where: string; ids: string[] }[] 
     },
     {
       where: '出貨單明細',
-      ids: shippingOrders.filter((s) => s.items.some((i) => i.rollCodes.includes(label.rollCode))).map((s) => s.id),
+      ids: shippingOrders
+        .filter((s) => !(opts.openShippingOnly && s.status === '已完成'))
+        .filter((s) => s.items.some((i) => i.rollCodes.includes(label.rollCode)))
+        .map((s) => s.id),
     },
     {
       where: '異常通知單',

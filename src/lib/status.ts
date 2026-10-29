@@ -31,8 +31,7 @@ const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   已複核: 'info',
 
   // 表7 布卷條碼標籤
-  已建立: 'neutral',
-  已使用: 'info',
+  在庫: 'info',
   已終止: 'error',
   '瑕疵／報廢': 'error',
 
