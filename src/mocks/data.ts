@@ -1278,6 +1278,48 @@ function backfillShippingCurrencies(): void {
 backfillShippingCurrencies()
 
 /**
+ * 表6 的廠商＝送貨來的那一家，即關聯上游單據上的廠商：
+ * 成品／胚布訂單取表2 的賣方，染單取表4 的染整廠，二次加工單取表5 的加工廠。
+ * 建單時帶入，倉管仍可在「廠商資訊」手動改。
+ */
+export function receiptSourceVendorId(
+  related: Pick<GoodsReceipt, 'relatedDocType' | 'relatedDocId'>,
+): string | undefined {
+  const id = related.relatedDocId
+  if (!id) return undefined
+  switch (related.relatedDocType) {
+    case '成品訂單':
+    case '胚布訂單':
+      return purchaseOrders.find((o) => o.id === id)?.vendorId
+    case '染單':
+      return dyeOrders.find((o) => o.id === id)?.vendorId
+    case '二次加工單':
+      return secondaryProcessingOrders.find((o) => o.id === id)?.vendorId
+  }
+  return undefined
+}
+
+/** 舊入庫單沒有廠商者，補上上游單據的廠商；已有值（含倉管手動改過的）不覆蓋。時機同幣別回填 */
+function backfillReceiptVendors(): void {
+  goodsReceipts.forEach((receipt, i) => {
+    if (receipt.vendorId) return
+    const vendorId = receiptSourceVendorId(receipt)
+    if (vendorId) goodsReceipts[i] = { ...receipt, vendorId }
+  })
+}
+/**
+ * 種子入庫單的廠商原本是亂數挑的，與上游單據對不上；建完種子後一律改成上游廠商（出貨單號前綴跟著換），
+ * 畫面才不會每張都顯示「已手動修改」。只在種子階段跑，不碰外部快照裡倉管改過的值。
+ */
+goodsReceipts.forEach((receipt, i) => {
+  const vendor = vendors.find((v) => v.id === receiptSourceVendorId(receipt))
+  if (!vendor || vendor.id === receipt.vendorId) return
+  const suffix = receipt.vendorShipmentNo?.split('-').pop()
+  goodsReceipts[i] = { ...receipt, vendorId: vendor.id, vendorShipmentNo: suffix ? `${vendor.code}-${suffix}` : undefined }
+})
+backfillReceiptVendors()
+
+/**
  * 縮率實績（決策160）：種子裡已確認入庫的委外加工入庫單，比照實際流程補成商品主檔的縮率實績，
  * 開表4 時才有推薦值可看。只讀現成數字，不呼叫 faker，不推動亂數序列。
  */
@@ -1541,6 +1583,7 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   // 公司資訊為後續新增的快照欄位；物件不能 splice，改以 assign 覆寫同一個參照
   if (snapshot.companyProfile) Object.assign(companyProfile, snapshot.companyProfile)
   backfillShippingCurrencies()
+  backfillReceiptVendors()
 }
 
 /**

@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/mocks/api'
-import { getAccount, getVendor, productBranchSuffix } from '@/mocks/data'
+import { getAccount, getVendor, productBranchSuffix, receiptSourceVendorId } from '@/mocks/data'
 import {
   setGoodsReceiptStatus,
   updateGoodsReceiptPledgedQty,
@@ -177,6 +177,9 @@ export function GoodsReceiptDetailPage() {
 
   const operator = getAccount(receipt.operatorAccountId)
   const vendor = receipt.vendorId ? getVendor(receipt.vendorId) : undefined
+  // 上游單據（表2／表4／表5）上的廠商：建單時已帶入，這裡用來提示來源與是否被手動改過
+  const sourceVendorId = receiptSourceVendorId(receipt)
+  const sourceVendor = sourceVendorId ? getVendor(sourceVendorId) : undefined
   /**
    * 關聯單據：優先用入庫單記錄的實際單號（成品訂單／胚布訂單／染單／二次加工單），
    * 這樣才分得出委外加工路徑的兩個觸發點（表4染單結案 vs. 表5二次加工單結案）；
@@ -407,6 +410,20 @@ export function GoodsReceiptDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {sourceVendor && (
+                  <p className="text-xs text-muted-foreground">
+                    {vendorId === sourceVendor.id ? (
+                      <>由{receipt.relatedDocType} {receipt.relatedDocId} 帶入，可手動修改</>
+                    ) : (
+                      <>
+                        已手動修改（{receipt.relatedDocType}上為 {sourceVendor.name}）
+                        <button type="button" className="ml-1 text-brand underline" onClick={() => setVendorId(sourceVendor.id)}>
+                          還原
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">廠商出貨單號（OCR）</label>
