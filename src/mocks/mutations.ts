@@ -278,7 +278,10 @@ function embossingDisplay(embossing: PackingNotice['embossing']): string {
  */
 function resolveCustomerByName(name: string): Customer {
   const trimmed = name.trim()
-  const existing = customers.find((c) => c.shortName === trimmed || c.fullNameCN === trimmed)
+  // 表1 客戶欄位選的是客戶代碼，先比代碼；PI 轉表1 等仍帶簡稱的路徑再比簡稱／全名
+  const existing =
+    customers.find((c) => c.code === trimmed) ??
+    customers.find((c) => c.shortName === trimmed || c.fullNameCN === trimmed)
   // 已歇業客戶不可再開新單：畫面已將其排除於選單之外，此處擋下手動輸入名稱的情況
   if (existing?.status === '已歇業') {
     throw new Error(`客戶「${existing.shortName}」主檔狀態為已歇業，不可開立新單據`)

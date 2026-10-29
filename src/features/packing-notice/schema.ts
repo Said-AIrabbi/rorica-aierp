@@ -77,7 +77,7 @@ export const packingNoticeToleranceSchema = z.object({
 export const packingNoticeFormSchema = z
   .object({
     // 客戶欄位開放文字輸入：符合既有客戶簡稱/全稱則沿用，否則單據建立時系統自動建立新客戶主檔並給予編號
-    customerName: z.string().min(1, '請輸入客戶名稱'),
+    customerName: z.string().min(1, '請選擇客戶代碼，或輸入新客戶名稱'),
     customerOrderNo: z.string().min(1, '請輸入客戶訂單號'),
     expectedDeliveryAt: z.string().min(1, '請選擇出貨日期'),
     sampleQty: z.coerce.number().min(0).max(20),

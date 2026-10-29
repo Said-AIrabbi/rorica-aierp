@@ -13,6 +13,8 @@ interface ComboboxProps {
   className?: string
   /** 是否允許輸入清單以外的自由文字（例如全新客戶／品名），預設允許 */
   allowFreeText?: boolean
+  /** 選項旁的灰字補充（例如客戶代碼旁的簡稱），也納入搜尋；選定後輸入框只填選項本身 */
+  optionHints?: Record<string, string>
 }
 
 export function Combobox({
@@ -23,6 +25,7 @@ export function Combobox({
   emptyText = "查無符合選項",
   className,
   allowFreeText = true,
+  optionHints,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   // 是否已在本次開啟中輸入過：僅在輸入後才依內容過濾，
@@ -31,7 +34,9 @@ export function Combobox({
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   const query = typing ? value.trim() : ''
-  const filtered = query ? options.filter((o) => o.toLowerCase().includes(query.toLowerCase())) : options
+  const filtered = query
+    ? options.filter((o) => `${o} ${optionHints?.[o] ?? ""}`.toLowerCase().includes(query.toLowerCase()))
+    : options
   const showFreeTextOption = allowFreeText && query.length > 0 && !options.includes(query)
 
   return (
@@ -111,6 +116,9 @@ export function Combobox({
               >
                 <Check className={cn("size-4 shrink-0", opt === value ? "opacity-100" : "opacity-0")} />
                 <span className="truncate">{opt}</span>
+                {optionHints?.[opt] && (
+                  <span className="truncate text-xs text-muted-foreground">{optionHints[opt]}</span>
+                )}
               </button>
             ))}
             {showFreeTextOption && (

@@ -151,7 +151,7 @@ export function PackingNoticeFormPage() {
     // 讓 RHF 在資料到位後自動同步表單，這是官方建議處理「非同步預設值」的方式。
     values: existing
       ? {
-          customerName: customers.find((c) => c.id === existing.customerId)?.shortName ?? '',
+          customerName: customers.find((c) => c.id === existing.customerId)?.code ?? '',
           customerOrderNo: existing.customerOrderNo,
           expectedDeliveryAt: dayjs(existing.expectedDeliveryAt).format('YYYY-MM-DD'),
           sampleQty: existing.sampleQty,
@@ -343,9 +343,12 @@ export function PackingNoticeFormPage() {
     })
   }
 
-  const matchedCustomer = customers.find(
-    (c) => c.shortName === customerNameValue?.trim() || c.fullNameCN === customerNameValue?.trim(),
-  )
+  // 客戶欄位填的是客戶代碼（簡稱可能重複，代碼不會）；手打簡稱／全名仍認得，與 mutation 層同一套比對
+  const customerText = customerNameValue?.trim()
+  const matchedCustomer =
+    customers.find((c) => c.code === customerText) ??
+    customers.find((c) => c.shortName === customerText || c.fullNameCN === customerText)
+  const selectableCustomers = customers.filter((c) => c.status !== '已歇業')
   const productOptions = matchedCustomer ? products.filter((p) => p.customerId === matchedCustomer.id) : products
 
   /**
@@ -468,8 +471,9 @@ export function PackingNoticeFormPage() {
                   value={customerNameValue}
                   onChange={(v) => setValue('customerName', v, { shouldValidate: true })}
                   // 已歇業客戶不給選：主檔保留、歷史單據照舊，但不再開新單
-                  options={customers.filter((c) => c.status !== '已歇業').map((c) => c.shortName)}
-                  placeholder="輸入或搜尋客戶，全新客戶將於建立單據時自動建檔"
+                  options={selectableCustomers.map((c) => c.code)}
+                  optionHints={Object.fromEntries(selectableCustomers.map((c) => [c.code, c.shortName]))}
+                  placeholder="輸入客戶代碼或簡稱搜尋，全新客戶將於建立單據時自動建檔"
                   emptyText="查無客戶，可直接使用輸入內容建立新客戶"
                 />
                 {errors.customerName && <p className="text-xs text-destructive">{errors.customerName.message}</p>}
