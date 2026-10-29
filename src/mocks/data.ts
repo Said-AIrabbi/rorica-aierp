@@ -1369,11 +1369,15 @@ export const companyProfile: CompanyProfile = {
   name: '皇加布業有限公司',
   nameEn: 'RORICA TEXTILE CO., LTD.',
   taxId: '16784675',
-  address: '新北市泰山區中港西路136巷87-5號',
-  addressEn: 'No. 87-5, Ln. 136, Zhonggang W. Rd., Taishan Dist., New Taipei City 243, Taiwan (R.O.C.)',
-  phone: '02-22968760',
-  // 傳真留空時列印抬頭不印出 FAX 欄位
-  fax: '02-22967385',
+  address: '242 新北市新莊區中央路712號2樓',
+  addressEn: '2F., No. 712, Zhongyang Rd., Xinzhuang Dist., New Taipei City 242, Taiwan (R.O.C.)',
+  phone: '02-2296-8760',
+  // 傳真：皇加確認暫不提供；留空時列印抬頭不印出 FAX 欄位
+  fax: '',
+  // 工廠：表2～表9 列印抬頭使用
+  factoryAddress: '新北市泰山區中港西路136巷87-5號',
+  factoryPhone: '02-22968760',
+  factoryFax: '02-22967385',
   bankAccounts: [
     {
       id: 'BANK-001',

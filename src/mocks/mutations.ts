@@ -5636,7 +5636,7 @@ function assertCanMaintainCompany(): void {
   assertCanMaintainMaster(requireCurrentAccount(), '公司')
 }
 
-/** 公司基本資料（名稱、統編、地址、電話、傳真）。收款帳戶不在此函式範圍內 */
+/** 公司基本資料（名稱、統編、公司與工廠的地址／電話／傳真）。收款帳戶不在此函式範圍內 */
 export function updateCompanyProfile(input: CompanyProfileInput): Promise<CompanyProfile> {
   assertCanMaintainCompany()
   const name = input.name.trim()
@@ -5653,8 +5653,13 @@ export function updateCompanyProfile(input: CompanyProfileInput): Promise<Compan
   companyProfile.addressEn = input.addressEn?.trim() || undefined
   companyProfile.phone = input.phone.trim()
   companyProfile.fax = input.fax?.trim() || undefined
+  companyProfile.factoryAddress = input.factoryAddress?.trim() || undefined
+  companyProfile.factoryPhone = input.factoryPhone?.trim() || undefined
+  companyProfile.factoryFax = input.factoryFax?.trim() || undefined
 
-  const changed = (['name', 'nameEn', 'taxId', 'address', 'addressEn', 'phone', 'fax'] as const).filter(
+  const changed = (
+    ['name', 'nameEn', 'taxId', 'address', 'addressEn', 'phone', 'fax', 'factoryAddress', 'factoryPhone', 'factoryFax'] as const
+  ).filter(
     (key) => (before[key] ?? '') !== (companyProfile[key] ?? ''),
   )
   // 沒有任何欄位實際改變時不留紀錄，否則按一下儲存就多一行雜訊

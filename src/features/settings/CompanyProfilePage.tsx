@@ -44,6 +44,9 @@ function toProfileInput(profile: CompanyProfile): CompanyProfileInput {
     addressEn: profile.addressEn ?? '',
     phone: profile.phone,
     fax: profile.fax ?? '',
+    factoryAddress: profile.factoryAddress ?? '',
+    factoryPhone: profile.factoryPhone ?? '',
+    factoryFax: profile.factoryFax ?? '',
   }
 }
 
@@ -173,8 +176,9 @@ export function CompanyProfilePage() {
             <p className="text-xs text-muted-foreground">對廠商單據上的買方統編由此帶出</p>
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs">地址</Label>
+            <Label className="text-xs">公司地址</Label>
             <Input value={draft.address} onChange={(e) => set('address', e.target.value)} disabled={!editable} />
+            <p className="text-xs text-muted-foreground">表1、PI 的列印抬頭使用</p>
           </div>
           <div className="space-y-1 sm:col-span-2">
             <Label className="text-xs">英文地址</Label>
@@ -186,13 +190,38 @@ export function CompanyProfilePage() {
             <p className="text-xs text-muted-foreground">PI 為英文版面，留空則沿用中文地址</p>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">電話</Label>
+            <Label className="text-xs">公司電話</Label>
             <Input value={draft.phone} onChange={(e) => set('phone', e.target.value)} disabled={!editable} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">傳真</Label>
+            <Label className="text-xs">公司傳真</Label>
             <Input value={draft.fax ?? ''} onChange={(e) => set('fax', e.target.value)} disabled={!editable} />
             <p className="text-xs text-muted-foreground">留空則列印抬頭不印 FAX 欄位</p>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">工廠地址</Label>
+            <Input
+              value={draft.factoryAddress ?? ''}
+              onChange={(e) => set('factoryAddress', e.target.value)}
+              disabled={!editable}
+            />
+            <p className="text-xs text-muted-foreground">表2～表9 的列印抬頭使用；留空則沿用公司地址、電話、傳真</p>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">工廠電話</Label>
+            <Input
+              value={draft.factoryPhone ?? ''}
+              onChange={(e) => set('factoryPhone', e.target.value)}
+              disabled={!editable}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">工廠傳真</Label>
+            <Input
+              value={draft.factoryFax ?? ''}
+              onChange={(e) => set('factoryFax', e.target.value)}
+              disabled={!editable}
+            />
           </div>
           <div className="space-y-1 lg:col-span-2">
             <Label className="text-xs">最後更新</Label>

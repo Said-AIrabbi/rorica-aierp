@@ -105,6 +105,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
 
   return (
     <PrintSheet
+      contact="company"
       formCode={PRINT_TITLES.packingNotice.formCode}
       title={PRINT_TITLES.packingNotice.title}
       docNo={notice.id}

@@ -91,6 +91,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
 
   return (
     <PrintSheet
+      contact="company"
       formCode={PRINT_TITLES.proformaInvoice.formCode}
       title={PRINT_TITLES.proformaInvoice.title}
       docNo={pi.id}

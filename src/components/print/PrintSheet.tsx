@@ -34,6 +34,8 @@ interface PrintSheetProps {
   footNote?: ReactNode
   /** 紙張變體：布卷標籤為標籤紙尺寸，其餘單據皆為 A4 */
   variant?: 'a4' | 'label'
+  /** 抬頭印哪組聯絡資訊：表1 與 PI 為公司，表2～表9 為工廠（預設） */
+  contact?: 'company' | 'factory'
 }
 
 export function PrintSheet({
@@ -47,8 +49,14 @@ export function PrintSheet({
   signatures,
   footNote,
   variant = 'a4',
+  contact = 'factory',
 }: PrintSheetProps) {
   const variantClass = variant === 'label' ? ' pr-label-sheet' : ''
+  // 工廠地址未設定時三欄一起退回公司，避免印出工廠地址配公司電話的混搭
+  const useFactory = contact === 'factory' && !!companyProfile.factoryAddress
+  const address = useFactory ? companyProfile.factoryAddress : companyProfile.address
+  const phone = useFactory ? companyProfile.factoryPhone : companyProfile.phone
+  const fax = useFactory ? companyProfile.factoryFax : companyProfile.fax
   return (
     <section className={`pr-sheet${variantClass}`}>
       <header className="pr-head">
@@ -57,11 +65,11 @@ export function PrintSheet({
           <div className="pr-head-company">{companyProfile.name}</div>
           <div className="pr-head-company-en">{companyProfile.nameEn}</div>
           <div className="pr-head-contact">
-            統一編號 {companyProfile.taxId}　{companyProfile.address}
+            統一編號 {companyProfile.taxId}　{address}
             <br />
-            TEL {companyProfile.phone}
+            TEL {phone}
             {/* 傳真未提供時整段不印，避免紙上出現空的 FAX 欄位 */}
-            {companyProfile.fax && `　FAX ${companyProfile.fax}`}
+            {fax && `　FAX ${fax}`}
           </div>
         </div>
         <div className="pr-head-right">

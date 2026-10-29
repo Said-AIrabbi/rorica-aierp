@@ -306,6 +306,10 @@ export interface CompanyProfile {
   phone: string
   /** 留空時列印抬頭不印 FAX 欄位，不留空白佔位 */
   fax?: string
+  /** 工廠地址：表2～表9 的列印抬頭印工廠聯絡資訊；表1 與 PI 仍印公司地址。留空則退回公司地址 */
+  factoryAddress?: string
+  factoryPhone?: string
+  factoryFax?: string
   bankAccounts: CompanyBankAccount[]
   changes: CompanyProfileChange[]
   updatedAt: string
