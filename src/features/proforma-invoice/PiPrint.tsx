@@ -34,7 +34,6 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
    * 以米報價時單價與數量都印米制（決策134 之一），這一欄仍附上碼數——
    * 皇加內部的布卷、標籤與出貨單都以碼計，客戶日後對帳或追單時用得到。
    */
-  const totalYard = quantityItems.reduce((sum, item) => sum + item.yard, 0)
   /**
    * 單價的列印單位跟著報價基準走（2026/10/05，決策134 之一）。
    * 原本固定印每碼：以米報價的客戶拿「米數 × 每碼單價」會算出一個不等於金額的數字，
@@ -54,18 +53,15 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
     { header: '客戶品名', cell: (row) => printValue(row.customerProductName), width: '34mm' },
     { header: 'COLOR', cell: (row) => row.color, width: '21mm' },
     {
-      // 報價基準為 Meter 時另附碼數：皇加內部與下游單據一律以碼計，客戶對帳時用得到
+      // 只印報價基準那個單位的數量，不附換算值（決策174）
       header: `QTY (${pi.itemUnit})`,
       cell: (row) =>
         // surcharge 只印乘出金額用的數字，不帶單位、不附碼數——它不是布的長度（決策157）
         isSurchargeItem(row)
           ? formatNumber(pi.itemUnit === 'Yard' ? row.yard : row.meter, 2)
-          : pi.itemUnit === 'Yard'
-            ? basisQtyText(row.yard, row.meter, pi.itemUnit)
-            : `${basisQtyText(row.yard, row.meter, pi.itemUnit)}（${formatNumber(row.yard, 1)} Y）`,
+          : basisQtyText(row.yard, row.meter, pi.itemUnit),
       align: 'right',
-      // 以米報價時這一欄要塞「5,070.3 Meter（5,545 Y）」這種內容，實測需 41.3mm
-      width: '42mm',
+      width: '30mm',
     },
     {
       // 標題分兩行：接成一行時它比欄內的數字長得多，欄寬只能遷就標題，
@@ -99,7 +95,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
       date={pi.createdAt}
       meta={[
         { label: '客戶 MESSRS', value: pi.customerName },
-        { label: '收貨地址 DELIVERY TO', value: printValue(pi.shippingAddress), span: 2 },
+        { label: '收貨地址 Address', value: printValue(pi.shippingAddress), span: 2 },
         { label: '幣別 CURRENCY', value: pi.currency },
         { label: '貿易條件 TERMS', value: `${pi.tradeTerm}${pi.tradeTermNote ? `（${pi.tradeTermNote}）` : ''}` },
         { label: '起運地 FROM', value: pi.portOfLoading },
@@ -133,9 +129,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
             null,
             null,
             null,
-            pi.itemUnit === 'Yard'
-              ? `${formatNumber(totalQty, 0)} ${pi.itemUnit}`
-              : `${formatNumber(totalQty, 1)} ${pi.itemUnit}（${formatNumber(totalYard, 1)} Y）`,
+            `${formatNumber(totalQty, pi.itemUnit === 'Yard' ? 0 : 1)} ${pi.itemUnit}`,
             null,
             `${symbol} ${formatAmount(total, pi.currency)}`,
           ]}

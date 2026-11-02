@@ -26,7 +26,7 @@ const LABEL_BARCODE_HEIGHT_MM = 7
  * 單張標籤。非系統畫面／表單，而是貼附於布捲的實體身分標籤：
  * 上方條碼＋人讀碼／中段欄位資訊／下方再印一次相同條碼＋人讀碼
  * （方便布捲不同位置皆可掃描辨識）。
- * 幅寬依定案僅印英吋、不印公分；長度雙單位同時列印。
+ * 幅寬依定案僅印英吋、不印公分；長度只印實測單位，換算值不列印（決策174）。
  */
 function FabricLabelCard({ label }: { label: FabricLabel }) {
   const yard = label.unit === 'Yard' ? label.length : meterToYard(label.length)
@@ -63,9 +63,7 @@ function FabricLabelCard({ label }: { label: FabricLabel }) {
           <dd>{(label.productId ? getProduct(label.productId)?.productCode : undefined) ?? label.productId ?? '—'}</dd>
           <dt>長度</dt>
           <dd>
-            {label.unit === 'Yard'
-              ? `${formatNumber(yard, 1)}yd（≈ ${formatNumber(meter, 1)}m）`
-              : `${formatNumber(meter, 1)}m（≈ ${formatNumber(yard, 1)}yd）`}
+            {label.unit === 'Yard' ? `${formatNumber(yard, 1)}yd` : `${formatNumber(meter, 1)}m`}
           </dd>
         </dl>
       </div>

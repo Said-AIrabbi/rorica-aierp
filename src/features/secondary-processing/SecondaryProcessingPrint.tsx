@@ -10,7 +10,7 @@ import type { SecondaryProcessingItem, SecondaryProcessingOrder } from '@/types'
 import { colorRatioText } from '@/lib/workflow'
 
 /**
- * 數量欄依來源表1 的建單基準排序：主值在前，換算值標 ≈。
+ * 數量欄只印來源表1 建單基準那個單位，換算值不列印（決策174）。
  *
  * 欄寬依實測內容分配，合計 190mm（決策155 起可用寬度為 196mm，多出部分按比例分給各欄）；
  * 加工方法、彩條與備註移到同一項次的第二行（見 itemSubRow）——
@@ -31,7 +31,6 @@ const buildColumns = (unit: QtyBasis): PrintColumn<SecondaryProcessingItem>[] =>
     yard: (r) => r.yard,
     meter: (r) => r.meter,
     width: '23mm',
-    convertedWidth: '15mm',
   }),
   {
     header: '加工單價',
@@ -102,7 +101,6 @@ export function SecondaryProcessingPrint({ order }: { order: SecondaryProcessing
             null,
             null,
             formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.yard : i.meter), 0), 1),
-            formatNumber(order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0), 1),
             null,
             amount ? formatNumber(amount, 0) : null,
           ]}

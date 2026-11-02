@@ -3,8 +3,8 @@ import type { QtyBasis } from '@/components/shared/BasisQty'
 import type { PrintColumn } from './PrintSheet'
 
 /**
- * 列印版面的數量欄：主值欄依來源表1 的建單基準命名（(Y)／(M)），換算值欄標 ≈。
- * 與畫面同一套規則（見 BasisQty），差別只在紙張欄寬有限，單位縮寫為 (Y)／(M)。
+ * 列印版面的數量欄：依來源表1 的建單基準只印一欄（(Y)／(M)）。
+ * 換算值不列印（決策174）——紙上只留客戶實際下單的單位；畫面上仍以 ≈ 附另一單位。
  */
 export function basisQtyColumns<T>(options: {
   unit: QtyBasis
@@ -13,9 +13,8 @@ export function basisQtyColumns<T>(options: {
   yard: (row: T) => number
   meter: (row: T) => number
   width?: string
-  convertedWidth?: string
 }): PrintColumn<T>[] {
-  const { unit, label, yard, meter, width = '18mm', convertedWidth = '16mm' } = options
+  const { unit, label, yard, meter, width = '18mm' } = options
   return [
     {
       header: unit === 'Yard' ? `${label} (Y)` : `${label} (M)`,
@@ -23,16 +22,10 @@ export function basisQtyColumns<T>(options: {
       align: 'right',
       width,
     },
-    {
-      header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
-      cell: (r) => formatNumber(unit === 'Yard' ? meter(r) : yard(r), 1),
-      align: 'right',
-      width: convertedWidth,
-    },
   ]
 }
 
-/** 表頭欄位：載明這張單的數量是以哪個單位下的，另一個是換算值 */
+/** 表頭欄位：載明這張單的數量是以哪個單位下的（換算值不列印，決策174） */
 export function basisMetaValue(unit: QtyBasis): string {
-  return `${unit}（另一單位為換算值）`
+  return unit
 }

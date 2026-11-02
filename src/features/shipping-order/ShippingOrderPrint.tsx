@@ -7,7 +7,7 @@ import { formatNumber } from '@/lib/units'
 import { getAccount, getCustomer, getPackingNotice } from '@/mocks/data'
 import type { ShippingOrder, ShippingOrderItem } from '@/types'
 
-/** 數量欄依來源表1 的輸入基準排序：主值在前，換算值標 ≈，避免對外單據看不出客戶實際下的數字 */
+/** 數量欄只印來源表1 輸入基準那個單位（客戶實際下的數字），換算值不列印（決策174） */
 /*
  * 欄寬以實測內容分配（2026/10/05）：逐欄量出種子資料裡最長的內容需要幾毫米，
  * 再把剩餘寬度分給可能變長的文字欄，合計 190mm；決策155 起可用寬度為 196mm（210 − 左右各 7mm），多出的 6mm 由瀏覽器按比例分給各欄。
@@ -29,14 +29,8 @@ const buildColumns = (unit: 'Yard' | 'Meter'): PrintColumn<ShippingOrderItem>[] 
     align: 'right',
     width: '19mm',
   },
-  {
-    header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
-    cell: (r) => formatNumber(unit === 'Yard' ? r.meter : r.yard, 1),
-    align: 'right',
-    width: '16mm',
-  },
   // 售價與金額不列印：本單隨貨交付客戶，價格資訊不隨貨外流，僅保留於系統畫面
-  { header: '備註', cell: (r) => r.note ?? ' ', width: '33mm' },
+  { header: '備註', cell: (r) => r.note ?? ' ', width: '49mm' },
 ]
 
 /**
@@ -80,7 +74,7 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
     { label: '出倉部門', value: operator?.name ?? ' ' },
     addressMeta,
     { label: '用途', value: order.purpose ?? ' ' },
-    { label: '數量輸入基準', value: `${itemUnit}（另一單位為換算值）` },
+    { label: '數量輸入基準', value: itemUnit },
     { label: '狀態', value: order.status },
   ]
 
@@ -106,10 +100,6 @@ export function ShippingOrderPrint({ order }: { order: ShippingOrder }) {
             null,
             formatNumber(
               order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.yard : i.meter), 0),
-              1,
-            ),
-            formatNumber(
-              order.items.reduce((s, i) => s + (itemUnit === 'Yard' ? i.meter : i.yard), 0),
               1,
             ),
             null,

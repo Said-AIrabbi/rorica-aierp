@@ -17,8 +17,7 @@ export function toleranceText(notice: PackingNotice): string {
 }
 
 /**
- * 明細欄位：數量以建單時的輸入基準為主值，另一單位標為換算值（≈）——
- * 兩欄等重並列會看不出哪個數字是客戶實際下的、哪個是系統換算的。
+ * 明細欄位：數量只印建單時的輸入基準那個單位，換算值不列印（決策174）。
  *
  * **欄寬依實測內容分配**（2026/10/05）：以種子資料逐欄量出最長內容需要的寬度，
  * 再把紙面剩餘寬度分給可能變長的文字欄，合計 190mm（決策155 起可用寬度為 196mm，多出部分按比例分給各欄）
@@ -44,12 +43,6 @@ const buildItemColumns = (unit: 'Yard' | 'Meter'): PrintColumn<PackingNoticeItem
     width: '23mm',
   },
   {
-    header: unit === 'Yard' ? '≈ (M)' : '≈ (Y)',
-    cell: (r) => formatNumber(unit === 'Yard' ? r.meter : r.yard, 1),
-    align: 'right',
-    width: '15mm',
-  },
-  {
     header: '包裝方式',
     cell: (r) => (
       <>
@@ -57,7 +50,7 @@ const buildItemColumns = (unit: 'Yard' | 'Meter'): PrintColumn<PackingNoticeItem
         {r.fixedLengthMeter ? <div>定碼 {formatNumber(r.fixedLengthMeter, 1)}M</div> : null}
       </>
     ),
-    width: '56mm',
+    width: '71mm',
   },
 ]
 
@@ -99,7 +92,7 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
     { label: '出貨日期', value: formatDate(notice.expectedDeliveryAt) },
     { label: '狀態', value: notice.status },
     { label: '可接疋', value: notice.allowSplicing ? '可接疋' : '不可接疋' },
-    { label: '數量輸入基準', value: `${itemUnit}（另一單位為換算值）` },
+    { label: '數量輸入基準', value: itemUnit },
   ]
 
   const totalYard = notice.items.reduce((sum, i) => sum + i.yard, 0)
@@ -127,7 +120,6 @@ export function PackingNoticePrint({ notice }: { notice: PackingNotice }) {
             null,
             null,
             formatNumber(itemUnit === 'Yard' ? totalYard : totalMeter, 1),
-            formatNumber(itemUnit === 'Yard' ? totalMeter : totalYard, 1),
             null,
           ]}
         />
