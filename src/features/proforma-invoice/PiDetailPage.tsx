@@ -30,6 +30,8 @@ import {
 } from '@/mocks/mutations'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { formatNumber, yardPriceToMeterPrice } from '@/lib/units'
+import { formatAmount } from '@/lib/money'
+import { ConvertedNtd } from '@/components/shared/ConvertedNtd'
 import { BasisQty } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
 import {
@@ -126,7 +128,7 @@ export function PiDetailPage() {
             <span>{pi.customerName}</span>
             <span>·</span>
             <span>
-              {symbol} {formatNumber(total, 2)}
+              {symbol} {formatAmount(total, pi.currency)}
             </span>
             {onHold && (
               <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
@@ -488,13 +490,13 @@ export function PiDetailPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatNumber(
+                          {formatAmount(
                             pi.itemUnit === 'Yard' ? item.unitPrice : yardPriceToMeterPrice(item.unitPrice),
-                            2,
+                            pi.currency,
                           )}
                         </TableCell>
                         {/* 金額＝每碼單價 × 碼數，與顯示單位無關 */}
-                        <TableCell className="text-right">{formatNumber(item.unitPrice * item.yard, 2)}</TableCell>
+                        <TableCell className="text-right">{formatAmount(item.unitPrice * item.yard, pi.currency)}</TableCell>
                         <TableCell>
                           {item.packingMethod}
                           {item.fixedLengthMeter ? `（定碼 ${formatNumber(item.fixedLengthMeter, 1)}M）` : ''}
@@ -508,7 +510,8 @@ export function PiDetailPage() {
               </Table>
             </div>
             <div className="mt-3 text-right text-sm font-medium">
-              總金額 {symbol} {formatNumber(total, 2)}
+              總金額 {symbol} {formatAmount(total, pi.currency)}
+              <ConvertedNtd amount={total} currency={pi.currency} />
             </div>
           </CardContent>
         </Card>

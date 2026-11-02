@@ -23,11 +23,16 @@ import { api } from '@/mocks/api'
 import {
   saveCompanyBankAccount,
   setCompanyBankAccountStatus,
+  updateCompanyFxRates,
   updateCompanyProfile,
   type CompanyBankAccountInput,
   type CompanyProfileInput,
 } from '@/mocks/mutations'
+import { companyFxRates, FX_NOTE } from '@/lib/money'
 import { PI_CURRENCIES, type CompanyBankAccount, type CompanyProfile, type PiCurrency } from '@/types'
+
+type FxCurrency = Exclude<PiCurrency, 'NTD'>
+const FX_CURRENCIES = PI_CURRENCIES.filter((c): c is FxCurrency => c !== 'NTD')
 
 /**
  * 系統設定／公司資訊（決策136）。
@@ -102,6 +107,25 @@ export function CompanyProfilePage() {
       await invalidate()
       setEditing(null)
       toast.success(`已儲存收款帳戶 ${saved.bankName}`)
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  // 匯率草稿：輸入框以字串暫存，按「儲存匯率」才寫入（決策172）
+  const [fxDraft, setFxDraft] = useState<Partial<Record<FxCurrency, string>>>({})
+  useEffect(() => {
+    if (!profile) return
+    const rates = companyFxRates(profile)
+    setFxDraft(Object.fromEntries(FX_CURRENCIES.map((c) => [c, String(rates[c])])))
+  }, [profile])
+  const fxDirty =
+    !!profile && FX_CURRENCIES.some((c) => Number(fxDraft[c]) !== companyFxRates(profile)[c])
+  const saveFx = useMutation({
+    mutationFn: () =>
+      updateCompanyFxRates(Object.fromEntries(FX_CURRENCIES.map((c) => [c, Number(fxDraft[c])]))),
+    onSuccess: async () => {
+      await invalidate()
+      toast.success('匯率已更新')
     },
     onError: (error: Error) => toast.error(error.message),
   })
@@ -227,6 +251,47 @@ export function CompanyProfilePage() {
             <Label className="text-xs">最後更新</Label>
             <Input value={`${formatDateTime(profile.updatedAt)}　${profile.updatedBy}`} disabled />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 匯率（決策172）：儀表板換算與 PI／表1／表8 的「≈ NT$」參考金額都用這一組 */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>匯率</CardTitle>
+          {editable && (
+            <Button
+              size="sm"
+              onClick={() => saveFx.mutate()}
+              disabled={!fxDirty || saveFx.isPending}
+            >
+              <Save className="mr-1 h-4 w-4" />
+              儲存匯率
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            以「1 單位外幣 = ? 新台幣」設定。全系統只有一組現行匯率，用於儀表板換算與單據上的新台幣參考金額；
+            不改任何單據的原幣金額。換算後的金額會標示「{FX_NOTE}」。
+          </p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {FX_CURRENCIES.map((currency) => (
+              <div key={currency} className="space-y-1">
+                <Label className="text-xs">1 {currency} ＝ ? NTD</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={fxDraft[currency] ?? ''}
+                  onChange={(e) => setFxDraft((prev) => ({ ...prev, [currency]: e.target.value }))}
+                  disabled={!editable}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            最後更新：{profile.fxUpdatedAt ? `${formatDateTime(profile.fxUpdatedAt)}　${profile.fxUpdatedBy ?? ''}` : '尚未更新（使用預設值）'}
+          </p>
         </CardContent>
       </Card>
 

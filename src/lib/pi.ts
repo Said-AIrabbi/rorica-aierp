@@ -50,19 +50,6 @@ export const PI_TRADE_TERM_HINTS: Record<string, string> = {
   'EXPRESS COURIER': '快遞',
 }
 
-/**
- * 簡易匯率參照（決策41）：商品主檔價格一律以 NTD 為主，選用外幣時僅供業務報價時換算參考。
- * 不入帳、不追溯歷史匯率——換算損益屬 Phase 3，故此處是固定參照值而非即時匯率。
- */
-export const PI_FX_REFERENCE: Record<PiCurrency, number> = {
-  NTD: 1,
-  USD: 32,
-  RMB: 4.5,
-  // 2026/10/05 新增：歐元與港幣。同樣是固定參照值，不是即時匯率
-  EUR: 34.5,
-  HKD: 4.1,
-}
-
 export const PI_CURRENCY_SYMBOL: Record<PiCurrency, string> = {
   NTD: 'NT$',
   USD: 'US$',
@@ -88,10 +75,6 @@ export function piQuantityItems<T extends { roricaProductName: string }>(items: 
   return items.filter((item) => !isSurchargeItem(item))
 }
 
-/** 主檔牌價（NTD）換算為該幣別的參照金額 */
-export function ntdToCurrency(ntd: number, currency: PiCurrency): number {
-  return ntd / PI_FX_REFERENCE[currency]
-}
 
 /** PI 總金額：單價 × 數量逐列加總（決策13）；surcharge 列的金額照樣計入（決策157） */
 /**

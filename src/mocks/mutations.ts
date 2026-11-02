@@ -5856,6 +5856,29 @@ function assertCanMaintainCompany(): void {
   assertCanMaintainMaster(requireCurrentAccount(), '公司')
 }
 
+/**
+ * 匯率（決策172）：1 單位外幣 = ? NTD，全系統一組現行匯率。改動留痕並通知所有人（同公司資訊異動）。
+ * 只是換算參考：不改任何單據上的原幣金額。
+ */
+export function updateCompanyFxRates(
+  rates: Partial<Record<Exclude<PiCurrency, 'NTD'>, number>>,
+): Promise<CompanyProfile> {
+  assertCanMaintainCompany()
+  const before = { ...(companyProfile.fxRates ?? {}) }
+  const next: Partial<Record<Exclude<PiCurrency, 'NTD'>, number>> = { ...before }
+  for (const [currency, value] of Object.entries(rates) as [Exclude<PiCurrency, 'NTD'>, number][]) {
+    if (!(value > 0)) throw new Error(`${currency} 匯率需大於 0`)
+    next[currency] = value
+  }
+  const changed = (Object.keys(next) as Exclude<PiCurrency, 'NTD'>[]).filter((c) => before[c] !== next[c])
+  if (changed.length === 0) return delay(companyProfile)
+  companyProfile.fxRates = next
+  recordCompanyChange(`修改匯率：${changed.map((c) => `${c} ${before[c] ?? '-'} → ${next[c]}`).join('、')}`)
+  companyProfile.fxUpdatedAt = companyProfile.updatedAt
+  companyProfile.fxUpdatedBy = companyProfile.updatedBy
+  return delay(companyProfile)
+}
+
 /** 公司基本資料（名稱、統編、公司與工廠的地址／電話／傳真）。收款帳戶不在此函式範圍內 */
 export function updateCompanyProfile(input: CompanyProfileInput): Promise<CompanyProfile> {
   assertCanMaintainCompany()

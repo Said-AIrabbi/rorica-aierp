@@ -15,6 +15,7 @@ import { getCustomer } from '@/mocks/data'
 import { createShippingOrder } from '@/mocks/mutations'
 import { shippingOrderFormSchema, type ShippingOrderFormValues } from './schema'
 import { formatNumber, yardToMeter } from '@/lib/units'
+import { formatAmount } from '@/lib/money'
 import { noticeItemRemainingYard, shippingItemNoticeId } from '@/lib/workflow'
 import { GOODS_RECEIPT_PURPOSES } from '@/types'
 
@@ -293,7 +294,7 @@ export function ShippingOrderFormPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">金額（自動計算）</Label>
-                    <Input value={amount != null ? amount.toFixed(2) : ''} disabled placeholder="-" />
+                    <Input value={amount != null ? formatAmount(amount, selectedNotice?.currency ?? 'NTD') : ''} disabled placeholder="-" />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs">備註</Label>

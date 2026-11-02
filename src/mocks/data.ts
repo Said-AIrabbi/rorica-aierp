@@ -1420,6 +1420,8 @@ export const companyProfile: CompanyProfile = {
   factoryAddress: '新北市泰山區中港西路136巷87-5號',
   factoryPhone: '02-22968760',
   factoryFax: '02-22967385',
+  // 匯率（決策172）：沿用原 PI 報價參照值為初值，由管理層／財務在公司資訊維護
+  fxRates: { USD: 32, RMB: 4.5, EUR: 34.5, HKD: 4.1 },
   bankAccounts: [
     {
       id: 'BANK-001',

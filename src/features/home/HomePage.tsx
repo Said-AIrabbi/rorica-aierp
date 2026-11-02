@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -18,6 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { effectivePurchaseOrderStatus } from '@/lib/workflow'
 import { PendingApprovals } from './PendingApprovals'
+
+// 儀表板含圖表套件，單獨拆包延後載入，不拖慢其他頁面的首次開啟
+const Dashboard = lazy(() => import('./Dashboard').then((m) => ({ default: m.Dashboard })))
 import { isRemoteStorage, workspaceId } from '@/prototype-storage'
 
 interface DocCardConfig<T> {
@@ -121,6 +125,11 @@ export function HomePage() {
 
       {/* 核決者的入口：有待簽的單才出現，故放在最上方；其餘角色首頁不變 */}
       <PendingApprovals />
+
+      {/* 營運儀表板（決策171）：待簽核之下、各單據入口之上 */}
+      <Suspense fallback={<div className="mb-6 text-sm text-muted-foreground">儀表板載入中…</div>}>
+        <Dashboard />
+      </Suspense>
 
       {/*
         原型使用說明：客戶很容易把這個原型當成已上線的系統，

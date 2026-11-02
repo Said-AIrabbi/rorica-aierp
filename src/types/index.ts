@@ -310,6 +310,13 @@ export interface CompanyProfile {
   factoryAddress?: string
   factoryPhone?: string
   factoryFax?: string
+  /**
+   * 匯率（決策172）：1 單位外幣 = ? NTD。全系統一組現行匯率、不留歷史；
+   * 儀表板換算、PI／表1／表8 的「≈ NT$」參考金額都用它。未設定的幣別沿用預設值
+   */
+  fxRates?: Partial<Record<Exclude<PiCurrency, 'NTD'>, number>>
+  fxUpdatedAt?: string
+  fxUpdatedBy?: string
   bankAccounts: CompanyBankAccount[]
   changes: CompanyProfileChange[]
   updatedAt: string

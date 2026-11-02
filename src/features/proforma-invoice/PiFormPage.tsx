@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/mocks/api'
+import { formatAmount } from '@/lib/money'
+import { ConvertedNtd } from '@/components/shared/ConvertedNtd'
 import { productBranchLabel, resolveProduct } from '@/mocks/data'
 import { createProformaInvoice, updateProformaInvoice } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
@@ -235,27 +237,28 @@ export function PiFormPage() {
     if (draft !== undefined) return draft
     const perYard = Number(values.items?.[index]?.unitPrice ?? 0)
     if (!perYard) return ''
-    return itemUnit === 'Yard' ? String(perYard) : String(Number(yardPriceToMeterPrice(perYard).toFixed(2)))
+    return itemUnit === 'Yard' ? String(perYard) : String(Number(yardPriceToMeterPrice(perYard).toFixed(4)))
   }
   const onPriceChange = (index: number, raw: string) => {
     setPriceDraft((prev) => ({ ...prev, [index]: raw }))
     const parsed = Number(raw)
     const perYard = !raw || !Number.isFinite(parsed) ? 0 : itemUnit === 'Yard' ? parsed : meterPriceToYardPrice(parsed)
-    // 小數留到第 4 位：每米單價換回每碼會除不盡，截到 2 位會讓金額對不上客戶算的數字
-    setValue(`items.${index}.unitPrice`, Number(perYard.toFixed(4)), { shouldValidate: true })
+    // 以完整精度存放（決策171）：每米單價換回每碼除不盡，先進位再乘數量，金額就對不上客戶算的數字；只在顯示時四捨五入
+    setValue(`items.${index}.unitPrice`, perYard, { shouldValidate: true })
   }
   const qtyValue = (index: number) => {
     const draft = qtyDraft[index]
     if (draft !== undefined) return draft
     const yard = Number(values.items?.[index]?.yard ?? 0)
     if (!yard) return ''
-    return itemUnit === 'Yard' ? String(yard) : String(Number(yardToMeter(yard).toFixed(1)))
+    return itemUnit === 'Yard' ? String(yard) : String(Number(yardToMeter(yard).toFixed(4)))
   }
   const onQtyChange = (index: number, raw: string) => {
     setQtyDraft((prev) => ({ ...prev, [index]: raw }))
     const parsed = Number(raw)
     const yard = !raw || !Number.isFinite(parsed) ? 0 : itemUnit === 'Yard' ? parsed : meterToYard(parsed)
-    setValue(`items.${index}.yard`, Number(yard.toFixed(1)), { shouldValidate: true })
+    // 以米下單換算成碼：保留完整精度（決策171），否則「每米單價 × 米數」與金額會差幾分錢
+    setValue(`items.${index}.yard`, yard, { shouldValidate: true })
   }
 
   const totalAmount = (values.items ?? []).reduce(
@@ -670,11 +673,11 @@ export function PiFormPage() {
                       />
                       <p className="text-[11px] text-muted-foreground">
                         {/* 金額一律＝每碼單價 × 碼數，與輸入單位無關；另附另一個單位的單價供核對 */}
-                        金額 {formatNumber(Number(item?.unitPrice ?? 0) * Number(item?.yard ?? 0), 2)}
+                        金額 {formatAmount(Number(item?.unitPrice ?? 0) * Number(item?.yard ?? 0), values.currency)}
                         {Number(item?.unitPrice ?? 0) > 0 &&
                           (itemUnit === 'Yard'
-                            ? `　≈ ${formatNumber(yardPriceToMeterPrice(Number(item?.unitPrice ?? 0)), 2)} / 米`
-                            : `　≈ ${formatNumber(Number(item?.unitPrice ?? 0), 2)} / 碼`)}
+                            ? `　≈ ${formatAmount(yardPriceToMeterPrice(Number(item?.unitPrice ?? 0)), values.currency)} / 米`
+                            : `　≈ ${formatAmount(Number(item?.unitPrice ?? 0), values.currency)} / 碼`)}
                       </p>
                     </div>
 
@@ -775,7 +778,8 @@ export function PiFormPage() {
               )
             })}
             <div className="text-right text-sm font-medium text-ink">
-              總金額 {PI_CURRENCY_SYMBOL[values.currency]} {formatNumber(totalAmount, 2)}
+              總金額 {PI_CURRENCY_SYMBOL[values.currency]} {formatAmount(totalAmount, values.currency)}
+              <ConvertedNtd amount={totalAmount} currency={values.currency} />
             </div>
           </CardContent>
         </Card>

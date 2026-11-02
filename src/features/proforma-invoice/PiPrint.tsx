@@ -4,6 +4,7 @@ import { PI_SIGNATURE_LABELS, PRINT_TITLES, printValue } from '@/lib/print'
 import { resolvePiBankAccount } from '@/lib/company'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, yardPriceToMeterPrice } from '@/lib/units'
+import { formatAmount } from '@/lib/money'
 import { PI_CURRENCY_SYMBOL, isSurchargeItem, piQuantityItems, piTotalAmount } from '@/lib/pi'
 import { basisQtyText } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
@@ -77,13 +78,13 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
           </div>
         </>
       ),
-      cell: (row) => formatNumber(pricePerDisplayUnit(row), 2),
+      cell: (row) => formatAmount(pricePerDisplayUnit(row), pi.currency),
       align: 'right',
       width: '20mm',
     },
     {
       header: `AMOUNT (${symbol})`,
-      cell: (row) => formatNumber(row.unitPrice * row.yard, 2),
+      cell: (row) => formatAmount(row.unitPrice * row.yard, pi.currency),
       align: 'right',
       width: '26mm',
     },
@@ -136,7 +137,7 @@ export function PiPrint({ pi }: { pi: ProformaInvoice }) {
               ? `${formatNumber(totalQty, 0)} ${pi.itemUnit}`
               : `${formatNumber(totalQty, 1)} ${pi.itemUnit}（${formatNumber(totalYard, 1)} Y）`,
             null,
-            `${symbol} ${formatNumber(total, 2)}`,
+            `${symbol} ${formatAmount(total, pi.currency)}`,
           ]}
           subRow={(row) => {
             // surcharge 沒有規格、包裝與彩條可印（決策157）

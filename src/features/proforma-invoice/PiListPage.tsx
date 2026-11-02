@@ -8,8 +8,8 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { api } from '@/mocks/api'
 import { formatDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/units'
 import { PI_CURRENCY_SYMBOL, effectivePiStatus, piDueDate, piTotalAmount } from '@/lib/pi'
+import { formatAmount } from '@/lib/money'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import type { ProformaInvoice } from '@/types'
 
@@ -33,7 +33,7 @@ export function PiListPage() {
       {
         id: 'amount',
         header: '總金額',
-        accessorFn: (row) => `${PI_CURRENCY_SYMBOL[row.currency]} ${formatNumber(piTotalAmount(row), 2)}`,
+        accessorFn: (row) => `${PI_CURRENCY_SYMBOL[row.currency]} ${formatAmount(piTotalAmount(row), row.currency)}`,
       },
       { id: 'tradeTerm', header: '貿易條件', accessorFn: (row) => row.tradeTerm },
       { id: 'leadTime', header: '交期', accessorFn: (row) => `${row.leadTimeDays} 天` },

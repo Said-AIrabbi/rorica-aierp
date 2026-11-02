@@ -46,7 +46,9 @@ import {
   updateShippingOrderSignatures,
 } from '@/mocks/mutations'
 import { formatDate } from '@/lib/dates'
-import { formatNumber, meterToYard, yardToMeter } from '@/lib/units'
+import { formatNumber, meterPriceToYardPrice, meterToYard, yardPriceToMeterPrice, yardToMeter } from '@/lib/units'
+import { formatAmount } from '@/lib/money'
+import { ConvertedNtd } from '@/components/shared/ConvertedNtd'
 import { buildSecondaryProcessingPackaging } from '@/lib/workflow'
 import type { PackingNoticeMarking, ShippingOrder, ShippingOrderItem, ShippingOrderSignatures } from '@/types'
 
@@ -309,6 +311,9 @@ export function ShippingOrderDetailPage() {
   const itemUnit = notice?.itemUnit ?? 'Yard'
   const toBasis = (yard: number) => (itemUnit === 'Yard' ? yard : yardToMeter(yard))
   const fromBasis = (value: number) => (itemUnit === 'Yard' ? value : meterToYard(value))
+  // 售價依下單單位顯示與輸入（決策171），資料仍以每碼存放
+  const priceToBasis = (perYard: number) => (itemUnit === 'Yard' ? perYard : yardPriceToMeterPrice(perYard))
+  const priceFromBasis = (value: number) => (itemUnit === 'Yard' ? value : meterPriceToYardPrice(value))
 
   return (
     <div>
@@ -606,7 +611,7 @@ export function ShippingOrderDetailPage() {
                   <TableHead>色號</TableHead>
                   <TableHead>布卷條碼（拼接時為捲號組合）</TableHead>
                   <TableHead className="text-right">數量 ({itemUnit})</TableHead>
-                  <TableHead className="text-right">售價 ({priceCurrency}/Y)</TableHead>
+                  <TableHead className="text-right">售價 ({priceCurrency}/{itemUnit === 'Yard' ? 'Y' : 'M'})</TableHead>
                   <TableHead className="text-right">金額 ({priceCurrency})</TableHead>
                   <TableHead>備註</TableHead>
                   {itemsEditable && <TableHead />}
@@ -683,7 +688,7 @@ export function ShippingOrderDetailPage() {
                           onChange={(e) =>
                             setItemDraft((prev) =>
                               prev.map((x, xi) =>
-                                xi === i ? { ...x, yard: Number(fromBasis(Number(e.target.value) || 0).toFixed(2)) } : x,
+                                xi === i ? { ...x, yard: fromBasis(Number(e.target.value) || 0) } : x,
                               ),
                             )
                           }
@@ -704,23 +709,25 @@ export function ShippingOrderDetailPage() {
                           step="0.01"
                           min="0"
                           className="w-24 text-right"
-                          value={item.unitPrice ?? ''}
+                          value={item.unitPrice == null ? '' : Number(priceToBasis(item.unitPrice).toFixed(4))}
                           onChange={(e) =>
                             setItemDraft((prev) =>
                               prev.map((x, xi) =>
-                                xi === i ? { ...x, unitPrice: e.target.value === '' ? undefined : Number(e.target.value) } : x,
+                                xi === i
+                                  ? { ...x, unitPrice: e.target.value === '' ? undefined : priceFromBasis(Number(e.target.value)) }
+                                  : x,
                               ),
                             )
                           }
                         />
                       ) : item.unitPrice != null ? (
-                        formatNumber(item.unitPrice, 2)
+                        formatAmount(priceToBasis(item.unitPrice), priceCurrency)
                       ) : (
                         '-'
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {item.unitPrice != null ? formatNumber(item.yard * item.unitPrice, 2) : '-'}
+                      {item.unitPrice != null ? formatAmount(item.yard * item.unitPrice, priceCurrency) : '-'}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {itemsEditable ? (
@@ -755,6 +762,18 @@ export function ShippingOrderDetailPage() {
               </TableBody>
             </Table>
           </div>
+          {/* 出貨金額合計（決策171）：任一列未定價或看不到售價時不顯示 */}
+          {(() => {
+            const lines = itemsEditable ? itemDraft : order.items
+            if (lines.length === 0 || lines.some((l) => l.unitPrice == null)) return null
+            const total = lines.reduce((s, l) => s + (l.unitPrice ?? 0) * l.yard, 0)
+            return (
+              <div className="mt-3 px-4 text-right text-sm font-medium">
+                合計 {priceCurrency} {formatAmount(total, priceCurrency)}
+                <ConvertedNtd amount={total} currency={priceCurrency} />
+              </div>
+            )
+          })()}
           {rollsEditable && (
             <div className="mt-3 flex justify-end px-4">
               <Button

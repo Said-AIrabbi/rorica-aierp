@@ -32,6 +32,8 @@ import { ColorLookupBadge } from '@/components/shared/ColorLookupBadge'
 import { ColorSwatch } from '@/components/shared/ColorSwatch'
 import { digitalColorFor } from '@/lib/digital-color'
 import { formatNumber, meterToYard, yardPriceToMeterPrice, yardToMeter } from '@/lib/units'
+import { formatAmount } from '@/lib/money'
+import { ConvertedNtd } from '@/components/shared/ConvertedNtd'
 import { effectiveReservationStatus, isExactMultipleOfStandard, isReservationHolding } from '@/lib/inventory'
 import {
   colorRatioText,
@@ -513,13 +515,13 @@ export function PackingNoticeDetailPage() {
                       ) : (
                         <>
                           <div>
-                            {formatNumber(
+                            {formatAmount(
                               itemUnit === 'Yard' ? item.unitPrice : yardPriceToMeterPrice(item.unitPrice),
-                              2,
+                              priceCurrency,
                             )}
                           </div>
                           {itemUnit === 'Meter' && (
-                            <div className="text-xs text-muted-foreground">≈ {formatNumber(item.unitPrice, 2)} ／碼</div>
+                            <div className="text-xs text-muted-foreground">≈ {formatAmount(item.unitPrice, priceCurrency)} ／碼</div>
                           )}
                         </>
                       )}
@@ -577,6 +579,17 @@ export function PackingNoticeDetailPage() {
               </TableBody>
             </Table>
           </div>
+          {/* 訂單金額（決策171）：單價 × 碼數逐列加總；有任一列未定價或看不到售價時不顯示 */}
+          {notice.items.length > 0 && notice.items.every((i) => i.unitPrice != null) && (
+            <div className="mt-3 px-4 text-right text-sm font-medium">
+              訂單金額 {priceCurrency}{' '}
+              {formatAmount(notice.items.reduce((s, i) => s + (i.unitPrice ?? 0) * i.yard, 0), priceCurrency)}
+              <ConvertedNtd
+                amount={notice.items.reduce((s, i) => s + (i.unitPrice ?? 0) * i.yard, 0)}
+                currency={priceCurrency}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

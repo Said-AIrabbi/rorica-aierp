@@ -36,6 +36,7 @@ import {
 import { freezeDate, isPackingNoticeEditable } from '@/lib/workflow'
 import { formatDate } from '@/lib/dates'
 import { formatNumber, meterPriceToYardPrice, meterToYard, yardPriceToMeterPrice, yardToMeter } from '@/lib/units'
+import { formatAmount } from '@/lib/money'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { lookupColorSample } from '@/lib/colors'
 import { MarkingPreview, SmallMarkingPreview } from './MarkingPrint'
@@ -270,7 +271,7 @@ export function PackingNoticeFormPage() {
     if (draft !== undefined) return draft
     const perYard = itemValues[index]?.unitPrice
     if (perYard == null) return ''
-    return itemUnit === 'Yard' ? String(perYard) : String(Number(yardPriceToMeterPrice(perYard).toFixed(2)))
+    return itemUnit === 'Yard' ? String(perYard) : String(Number(yardPriceToMeterPrice(perYard).toFixed(4)))
   }
 
   function changePrice(index: number, raw: string) {
@@ -282,8 +283,8 @@ export function PackingNoticeFormPage() {
       return
     }
     const perYard = itemUnit === 'Yard' ? parsed : meterPriceToYardPrice(parsed)
-    // 小數留到第 4 位：每米單價換回每碼會除不盡，截到 2 位會讓金額對不上
-    setValue(`items.${index}.unitPrice`, Number(perYard.toFixed(4)), { shouldValidate: true })
+    // 以完整精度存放（決策171），只在顯示時四捨五入
+    setValue(`items.${index}.unitPrice`, perYard, { shouldValidate: true })
   }
 
   function displayQty(index: number): string {
@@ -291,14 +292,15 @@ export function PackingNoticeFormPage() {
     if (draft !== undefined) return draft
     const yard = itemValues[index]?.yard
     if (!yard) return yard === 0 ? '0' : ''
-    return itemUnit === 'Yard' ? String(yard) : String(Number(yardToMeter(yard).toFixed(1)))
+    return itemUnit === 'Yard' ? String(yard) : String(Number(yardToMeter(yard).toFixed(4)))
   }
 
   function changeQty(index: number, raw: string) {
     setQtyDraft((prev) => ({ ...prev, [index]: raw }))
     const parsed = Number(raw)
     const yard = !raw || !Number.isFinite(parsed) ? 0 : itemUnit === 'Yard' ? parsed : meterToYard(parsed)
-    setValue(`items.${index}.yard`, Number(yard.toFixed(2)), { shouldValidate: true })
+    // 以米下單換算成碼：保留完整精度（決策171）
+    setValue(`items.${index}.yard`, yard, { shouldValidate: true })
   }
 
   function displayFixedLength(index: number): string {
@@ -630,8 +632,8 @@ export function PackingNoticeFormPage() {
                       {itemValues[index]?.unitPrice != null ? (
                         <p className="text-xs text-muted-foreground">
                           {itemUnit === 'Yard'
-                            ? `≈ ${formatNumber(yardPriceToMeterPrice(itemValues[index].unitPrice!), 2)} ／米`
-                            : `≈ ${formatNumber(itemValues[index].unitPrice!, 2)} ／碼`}
+                            ? `≈ ${formatAmount(yardPriceToMeterPrice(itemValues[index].unitPrice!), priceCurrency)} ／米`
+                            : `≈ ${formatAmount(itemValues[index].unitPrice!, priceCurrency)} ／碼`}
                         </p>
                       ) : null}
                     </div>
