@@ -71,7 +71,8 @@ function useList<T>(key: string, fn: () => Promise<T[]>): T[] {
   return useQuery({ queryKey: [key], queryFn: fn }).data ?? []
 }
 
-const selectClass = 'h-9 rounded-md border border-input bg-background px-2 text-sm'
+// 篩選欄位一律白底：頁面背景是米色，用 bg-background 會和背景融在一起、容易被忽略
+const selectClass = 'h-9 rounded-md border border-input bg-white px-2 text-sm text-ink shadow-xs'
 
 export function Dashboard() {
   const perms = useCurrentAccount()
@@ -98,6 +99,7 @@ export function Dashboard() {
   const [customTo, setCustomTo] = useState('')
   const [customerId, setCustomerId] = useState('')
   const [productKey, setProductKey] = useState('')
+  const [color, setColor] = useState('')
   const [currency, setCurrency] = useState<PiCurrency>('NTD')
   const [unit, setUnit] = useState<Unit>('Yard')
   const [demo, setDemo] = useState(false)
@@ -135,7 +137,10 @@ export function Dashboard() {
   }, [demo, shippingOrders, fabricLabels, goodsReceipts, purchaseOrders, dyeOrders, secondaryProcessingOrders, packingNotices, products, customers, abnormalNotices, rates, period.from.valueOf(), period.to.valueOf()])
 
   const filtered = allLines.filter(
-    (l) => (!customerId || l.customerId === customerId) && (!productKey || l.productKey === productKey),
+    (l) =>
+      (!customerId || l.customerId === customerId) &&
+      (!productKey || l.productKey === productKey) &&
+      (!color || l.color === color),
   )
   const inRange = (l: ShipmentLine, p: Period) => {
     const d = dayjs(l.shipDate)
@@ -169,7 +174,9 @@ export function Dashboard() {
   const productLine = allLines.find((l) => l.productKey === productKey)
   const stock = stockTotals(
     fabricLabels,
-    (l) => !productKey || l.productId === productKey || l.productName === productLine?.productName,
+    (l) =>
+      (!productKey || l.productId === productKey || l.productName === productLine?.productName) &&
+      (!color || l.color === color),
   )
   const abnormal = abnormalTotals(abnormalNotices, period)
   const abnormalRate = totals.yard > 0 ? abnormal.abnormalYard / totals.yard : undefined
@@ -198,6 +205,10 @@ export function Dashboard() {
 
   const customerOptions = [...new Set(allLines.map((l) => l.customerId))].map((id) => ({ id, name: customerName(id) }))
   const productOptions = [...new Map(allLines.map((l) => [l.productKey, l.productName])).entries()]
+  // 顏色選項跟著產品走：選了產品只列該產品出過貨的顏色
+  const colorOptions = [
+    ...new Set(allLines.filter((l) => l.color && (!productKey || l.productKey === productKey)).map((l) => l.color)),
+  ].sort((a, b) => a.localeCompare(b, 'zh-Hant'))
 
   const sparse = !demo && current.length < 5
 
@@ -222,9 +233,9 @@ export function Dashboard() {
           </select>
           {preset === 'custom' && (
             <>
-              <Input type="date" className="h-9 w-36" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              <Input type="date" className="h-9 w-36 bg-white" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
               <span className="pb-2 text-xs text-muted-foreground">～</span>
-              <Input type="date" className="h-9 w-36" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              <Input type="date" className="h-9 w-36 bg-white" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
             </>
           )}
           <select className={selectClass} value={customerId} onChange={(e) => setCustomerId(e.target.value)} aria-label="客戶">
@@ -235,11 +246,28 @@ export function Dashboard() {
               </option>
             ))}
           </select>
-          <select className={selectClass} value={productKey} onChange={(e) => setProductKey(e.target.value)} aria-label="產品">
+          <select
+            className={selectClass}
+            value={productKey}
+            onChange={(e) => {
+              setProductKey(e.target.value)
+              // 換產品時清掉顏色：原本選的顏色在新產品底下可能不存在，留著會篩出空畫面
+              setColor('')
+            }}
+            aria-label="產品"
+          >
             <option value="">全部產品</option>
             {productOptions.map(([k, name]) => (
               <option key={k} value={k}>
                 {name}
+              </option>
+            ))}
+          </select>
+          <select className={selectClass} value={color} onChange={(e) => setColor(e.target.value)} aria-label="顏色">
+            <option value="">全部顏色</option>
+            {colorOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
               </option>
             ))}
           </select>
@@ -256,7 +284,7 @@ export function Dashboard() {
               ))}
             </select>
           )}
-          <label className="flex h-9 items-center gap-1.5 rounded-md border border-input px-2 text-sm">
+          <label className="flex h-9 items-center gap-1.5 rounded-md border border-input bg-white px-2 text-sm text-ink shadow-xs">
             <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
             示範數據
           </label>

@@ -353,6 +353,7 @@ export function demoShipmentLines(
   }
   const pick = <T,>(xs: T[]) => xs[Math.floor(rand() * xs.length)]
   const currencies = ['NTD', 'NTD', 'NTD', 'USD', 'USD', 'RMB', 'EUR', 'HKD']
+  const colors = ['正黑', '象牙白', '天空藍', '丁香紫', '奶油白', '香檳金']
   const fx: Record<string, number> = { NTD: 1, USD: 32, RMB: 4.5, EUR: 34.5, HKD: 4.1 }
   const lines: ShipmentLine[] = []
   if (products.length === 0 || customerIds.length === 0) return lines
@@ -377,7 +378,7 @@ export function demoShipmentLines(
         customerId: pick(customerIds),
         productKey: p.key,
         productName: p.name,
-        color: '',
+        color: pick(colors),
         yard,
         // 營收先依幣別換算成 NTD（示範固定匯率），與正式資料同一條算法
         revenueNtd: ((priceNtd / fx[currency]) * yard) * fx[currency],
