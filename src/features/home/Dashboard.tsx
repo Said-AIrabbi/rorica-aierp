@@ -397,6 +397,11 @@ export function Dashboard() {
         qty={qty}
         unitLabel={unitLabel}
         moneyTitle={moneyTitle}
+        toPerUnit={(ntdPerYard) => fromNtd(unit === 'Meter' ? ntdPerYard / YARD_TO_METER : ntdPerYard, currency, rates)}
+        toMoney={(ntd) => fromNtd(ntd, currency, rates)}
+        toQty={(yard) => (unit === 'Meter' ? yard * YARD_TO_METER : yard)}
+        formatMoneyValue={(v) => formatMoney(v, currency)}
+        qtyUnit={unit === 'Meter' ? 'M' : 'Y'}
         stockOf={(key) => {
           const name = productName(key)
           return stockTotals(fabricLabels, (l) => l.productId === key || l.productName === name).availableYard
@@ -614,6 +619,167 @@ function StockBar({ stock, qty }: { stock: { availableYard: number; reservedYard
   )
 }
 
+type ChartMetric = 'revenue' | 'yard' | 'margin' | 'cost'
+
+interface ProductRow {
+  key: string
+  name: string
+  t: Totals
+  yard: number
+  revenue: number
+  price?: number
+  cost?: number
+  margin?: number
+  stock: number
+  abnormal: number
+}
+
+const CHART_TOP = 15
+const COST_PARTS = [
+  { key: 'greige', label: '胚布', color: 'var(--viz-1)' },
+  { key: 'dye', label: '染整', color: 'var(--viz-2)' },
+  { key: 'secondary', label: '二次加工', color: 'var(--viz-3)' },
+  { key: 'finished', label: '成品直採', color: 'var(--viz-4)' },
+] as const
+
+/**
+ * 產品明細的圖表檢視：前 15 名橫條圖，單一顏色、由大到小。
+ * 「每碼成本」改為堆疊條，拆成胚布／染整／二次加工／成品直採，看得出成本結構；滑鼠移上去看該產品完整數字。
+ */
+function ProductChart(props: {
+  rows: ProductRow[]
+  metric: ChartMetric
+  canPrice: boolean
+  canCost: boolean
+  money: (ntd: number | undefined) => string
+  perUnit: (ntdPerYard: number | undefined) => string
+  qty: (yard: number) => string
+  moneyTitle?: string
+  toPerUnit: (ntdPerYard: number) => number
+  toMoney: (ntd: number) => number
+  toQty: (yard: number) => number
+  formatMoneyValue: (v: number) => string
+  qtyUnit: string
+}) {
+  const { rows, metric, canPrice, canCost, money, perUnit, qty, moneyTitle, toPerUnit, toMoney, toQty, formatMoneyValue, qtyUnit } = props
+  const valueOf = (r: ProductRow) =>
+    metric === 'revenue' ? r.revenue : metric === 'yard' ? r.yard : metric === 'margin' ? (r.margin ?? -Infinity) : (r.cost ?? -Infinity)
+  const ranked = rows.filter((r) => Number.isFinite(valueOf(r))).sort((a, b) => valueOf(b) - valueOf(a))
+  const top = ranked.slice(0, CHART_TOP)
+  const perPart = (part: number, t: Totals) => (t.costedYard > 0 ? toPerUnit(part / t.costedYard) : 0)
+  const data = top.map((r) => ({
+    name: r.name,
+    row: r,
+    value:
+      metric === 'revenue'
+        ? toMoney(r.revenue)
+        : metric === 'yard'
+          ? toQty(r.yard)
+          : metric === 'margin'
+            ? Math.round((r.margin ?? 0) * 100)
+            : 0,
+    greige: perPart(r.t.costParts.greige, r.t),
+    dye: perPart(r.t.costParts.dye, r.t),
+    secondary: perPart(r.t.costParts.secondary, r.t),
+    finished: perPart(r.t.costParts.finished, r.t),
+  }))
+  const fmt = (v: number) =>
+    metric === 'revenue' || metric === 'cost'
+      ? formatMoneyValue(v)
+      : metric === 'yard'
+        ? `${Math.round(v).toLocaleString('zh-TW')} ${qtyUnit}`
+        : `${v}%`
+  const height = Math.max(160, top.length * 26 + 40)
+  if (top.length === 0) return <p className="py-6 text-center text-sm text-muted-foreground">這段期間沒有可排名的資料</p>
+  return (
+    <div className="px-2 pb-2" title={metric === 'revenue' ? moneyTitle : undefined}>
+      {metric === 'cost' && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 pb-1 text-xs text-muted-foreground">
+          {COST_PARTS.map((p) => (
+            <span key={p.key} className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: p.color }} />
+              {p.label}
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} layout="vertical" margin={{ top: 4, right: 80, bottom: 4, left: 8 }} barCategoryGap={4}>
+            <CartesianGrid horizontal={false} stroke="var(--viz-grid)" />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 11, fill: 'var(--viz-axis)' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v: number) => (metric === 'margin' ? `${v}%` : compact(v))}
+            />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={96}
+              tick={{ fontSize: 11, fill: 'var(--foreground, #0b0b0b)' }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+            />
+            <Tooltip
+              cursor={{ fill: 'var(--viz-grid)', opacity: 0.5 }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const r = (payload[0].payload as { row: ProductRow }).row
+                return (
+                  <div className="rounded-md border border-border bg-white px-3 py-2 text-xs shadow-md">
+                    <div className="mb-1 font-semibold text-ink">{r.name}</div>
+                    <div className="text-ink-body">銷量 {qty(r.yard)}</div>
+                    {canPrice && (
+                      <div className="text-ink-body">
+                        營收 {money(r.revenue)}　平均售價 {perUnit(r.price)}
+                      </div>
+                    )}
+                    {canCost && <div className="text-ink-body">每碼成本 {perUnit(r.cost)}</div>}
+                    {canPrice && canCost && <div className="text-ink-body">毛利率 {formatPct(r.margin)}</div>}
+                    <div className="text-muted-foreground">
+                      可用庫存 {qty(r.stock)}　異常 {r.abnormal} 件
+                    </div>
+                  </div>
+                )
+              }}
+            />
+            {metric === 'cost' ? (
+              COST_PARTS.map((p, i) => (
+                <Bar
+                  key={p.key}
+                  dataKey={p.key}
+                  stackId="cost"
+                  fill={p.color}
+                  stroke="#fff"
+                  strokeWidth={1}
+                  radius={i === COST_PARTS.length - 1 ? [0, 4, 4, 0] : 0}
+                  maxBarSize={18}
+                />
+              ))
+            ) : (
+              <Bar
+                dataKey="value"
+                fill="var(--viz-1)"
+                radius={[0, 4, 4, 0]}
+                maxBarSize={18}
+                label={{ position: 'right', fontSize: 11, fill: 'var(--foreground, #0b0b0b)', formatter: (v: unknown) => fmt(Number(v)) }}
+              />
+            )}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {ranked.length > CHART_TOP && (
+        <p className="px-2 text-xs text-muted-foreground">
+          共 {ranked.length} 項，只列前 {CHART_TOP} 名；其餘 {ranked.length - CHART_TOP} 項請切換到「表格」。
+        </p>
+      )}
+    </div>
+  )
+}
+
 type SortKey = 'name' | 'yard' | 'revenue' | 'price' | 'cost' | 'margin' | 'stock' | 'abnormal'
 
 function ProductTable(props: {
@@ -626,10 +792,24 @@ function ProductTable(props: {
   qty: (yard: number) => string
   unitLabel: string
   moneyTitle?: string
+  toPerUnit: (ntdPerYard: number) => number
+  toMoney: (ntd: number) => number
+  toQty: (yard: number) => number
+  formatMoneyValue: (v: number) => string
+  qtyUnit: string
   stockOf: (key: string) => number
   abnormalOf: (key: string) => number
 }) {
   const { lines, productName, canPrice, canCost, money, perUnit, qty, unitLabel, moneyTitle, stockOf, abnormalOf } = props
+  // 預設圖表檢視：產品一多，表格會把頁面撐得很長（表格檢視則固定高度、內部捲動）
+  const [view, setView] = useState<'chart' | 'table'>('chart')
+  const metricOptions: { key: ChartMetric; label: string }[] = [
+    ...(canPrice ? [{ key: 'revenue' as const, label: '營收' }] : []),
+    { key: 'yard', label: '銷量' },
+    ...(canPrice && canCost ? [{ key: 'margin' as const, label: '毛利率' }] : []),
+    ...(canCost ? [{ key: 'cost' as const, label: `每${unitLabel}成本` }] : []),
+  ]
+  const [metric, setMetric] = useState<ChartMetric>(canPrice ? 'revenue' : 'yard')
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: canPrice ? 'revenue' : 'yard', desc: true })
   const rows = [...groupTotals(lines, (l) => l.productKey)].map(([key, t]) => {
     const marginRev = t.marginRevenueNtd
@@ -664,16 +844,61 @@ function ProductTable(props: {
   const per = (part: number, t: Totals) => (t.costedYard > 0 ? part / t.costedYard : undefined)
   return (
     <div className="rounded-lg border border-border">
-      <div className="px-3 pt-2.5 pb-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-2.5 pb-1">
         <h3 className="text-sm font-semibold text-ink">產品明細</h3>
+        <div className="flex items-center gap-2">
+          {view === 'chart' && (
+            <select
+              className={`${selectClass} h-8`}
+              value={metric}
+              onChange={(e) => setMetric(e.target.value as ChartMetric)}
+              aria-label="排名依據"
+            >
+              {metricOptions.map((m) => (
+                <option key={m.key} value={m.key}>
+                  依{m.label}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="flex overflow-hidden rounded-md border border-input bg-white text-sm shadow-xs">
+            {(['chart', 'table'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`h-8 px-3 ${view === v ? 'bg-brand text-white' : 'text-ink hover:bg-muted'}`}
+              >
+                {v === 'chart' ? '圖表' : '表格'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="pb-1">
         {rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">這段期間沒有出貨</p>
+        ) : view === 'chart' ? (
+          <ProductChart
+            rows={rows}
+            metric={metric}
+            canPrice={canPrice}
+            canCost={canCost}
+            money={money}
+            perUnit={perUnit}
+            qty={qty}
+            moneyTitle={moneyTitle}
+            toPerUnit={props.toPerUnit}
+            toMoney={props.toMoney}
+            toQty={props.toQty}
+            formatMoneyValue={props.formatMoneyValue}
+            qtyUnit={props.qtyUnit}
+          />
         ) : (
-          <div className="overflow-x-auto">
+          // 表格固定高度、內部捲動，表頭固定
+          <div className="max-h-[22rem] overflow-auto">
             <table className="w-full min-w-[56rem] text-sm">
-              <thead className="bg-muted text-xs text-muted-foreground">
+              <thead className="sticky top-0 z-10 bg-muted text-xs text-muted-foreground">
                 <tr>
                   {head('name', '產品', false)}
                   {head('yard', '銷量')}
