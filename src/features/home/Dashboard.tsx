@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { ArrowDown, ArrowUp, BarChart3, FlaskConical } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { api } from '@/mocks/api'
 import { useCurrentAccount } from '@/lib/current-account-context'
@@ -213,8 +212,9 @@ export function Dashboard() {
   const sparse = !demo && current.length < 5
 
   return (
-    <section className="mb-6 space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="mb-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      {/* 儀表板整體是一張卡片：標題與篩選列在上方，內容區塊用細框分隔、間距收緊 */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-brand-dark" />
           <h2 className="text-lg font-semibold text-ink">營運儀表板</h2>
@@ -291,8 +291,9 @@ export function Dashboard() {
         </div>
       </div>
 
+      <div className="space-y-3 p-4">
       {demo && (
-        <div className="flex items-start gap-2 rounded-lg border border-accent-blue/30 bg-accent-blue/10 p-3 text-sm text-ink-body">
+        <div className="flex items-start gap-2 rounded-lg border border-accent-blue/30 bg-accent-blue/10 px-3 py-2 text-sm text-ink-body">
           <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-accent-blue" />
           <span>
             目前顯示的是<strong>示範數據</strong>：以固定規則產生的近 12 個月出貨（出貨量、營收、成本、毛利、排名與產品明細），只用來檢視版面與算法，<strong>不影響任何單據</strong>；庫存與表9 仍為實際資料。關閉右上角「示範數據」即回到實際資料。
@@ -300,13 +301,13 @@ export function Dashboard() {
         </div>
       )}
       {sparse && (
-        <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
           這段期間已完成的出貨只有 {current.length} 筆，圖表會很空。可以調整期間，或勾選右上角「示範數據」看完整版面。
         </p>
       )}
 
       {/* 重點數字 */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-4 xl:grid-cols-7">
         <Kpi label="出貨量" value={qty(totals.yard)} delta={change(totals.yard, prevTotals.yard)} />
         {canPrice && (
           <Kpi label="營收" value={money(totals.revenueNtd)} title={moneyTitle} delta={change(totals.revenueNtd, prevTotals.revenueNtd)} />
@@ -342,7 +343,7 @@ export function Dashboard() {
       )}
 
       {/* 趨勢：兩個量級不同的數字分成兩張圖，不做雙軸 */}
-      <div className={`grid grid-cols-1 gap-4 ${canPrice ? 'lg:grid-cols-2' : ''}`}>
+      <div className={`grid grid-cols-1 gap-3 ${canPrice ? 'lg:grid-cols-2' : ''}`}>
         <TrendChart title={`每月出貨量（${unit === 'Meter' ? 'M' : 'Y'}）`} data={trend} dataKey="qty" format={(v) => qty(unit === 'Meter' ? v / YARD_TO_METER : v)} />
         {canPrice && (
           <TrendChart
@@ -356,7 +357,7 @@ export function Dashboard() {
       </div>
 
       {/* 前 10 名：圓餅（環狀）＋清單 */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <RankingPie
           title={canPrice ? '營收前 10 名產品' : '出貨量前 10 名產品'}
           ranking={productRanking}
@@ -371,19 +372,19 @@ export function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <StockBar stock={stock} qty={qty} />
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">表9 異常（期間內客訴）</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-3 text-sm">
+        <div className="rounded-lg border border-border">
+          <div className="px-3 pt-2.5 pb-1">
+            <h3 className="text-sm font-semibold text-ink">表9 異常（期間內客訴）</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-3 px-3 pb-3 text-sm">
             <Stat label="件數" value={`${abnormal.count} 件`} />
             <Stat label="退貨" value={qty(abnormal.returnYard)} />
             <Stat label="扣款金額" value={abnormal.hasDeductionAmount ? formatMoney(fromNtd(abnormal.deductionNtd, currency, rates), currency) : '-'} />
             <p className="col-span-3 text-xs text-muted-foreground">另列，不影響營收與毛利。</p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <ProductTable
@@ -408,6 +409,7 @@ export function Dashboard() {
           }).length
         }}
       />
+      </div>
     </section>
   )
 }
@@ -428,8 +430,8 @@ function Kpi(props: { label: string; value: string; sub?: string; title?: string
   // 成本、異常率上升是壞事：箭頭方向照實際增減，顏色反過來
   const good = delta == null ? undefined : invert ? delta < 0 : delta > 0
   return (
-    <Card className="gap-0 py-3">
-      <CardContent className="px-4">
+    <div className="bg-card px-3 py-2.5">
+      <div>
         <div className="text-xs text-muted-foreground">{label}</div>
         <div
           className={`mt-1 whitespace-nowrap text-lg font-semibold text-ink ${title ? 'cursor-help underline decoration-muted-foreground decoration-dotted underline-offset-4' : ''}`}
@@ -445,8 +447,8 @@ function Kpi(props: { label: string; value: string; sub?: string; title?: string
             <span className="ml-1 text-muted-foreground">較上一期</span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -468,14 +470,14 @@ function TrendChart(props: {
 }) {
   const { title, data, dataKey, format, note } = props
   return (
-    <Card>
-      <CardHeader className="pb-0">
-        <CardTitle className="text-base" title={note}>
+    <div className="rounded-lg border border-border">
+      <div className="px-3 pt-2.5">
+        <h3 className="text-sm font-semibold text-ink" title={note}>
           {title}
           {note && <span className="ml-1 cursor-help text-xs font-normal text-muted-foreground">ⓘ</span>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="h-56">
+        </h3>
+      </div>
+      <div className="h-52 px-2 pb-2">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <CartesianGrid vertical={false} stroke="var(--viz-grid)" />
@@ -496,8 +498,8 @@ function TrendChart(props: {
             <Bar dataKey={dataKey} fill="var(--viz-1)" radius={[4, 4, 0, 0]} maxBarSize={28} />
           </BarChart>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -520,14 +522,14 @@ function RankingPie(props: { title: string; ranking: { name: string; value: numb
   const slices = [...top.map((r, i) => ({ ...r, color: SLICE_COLORS[i] })), ...(restValue > 0 ? [{ name: '其他', value: restValue, color: OTHER_COLOR }] : [])]
   const shares = integerShares(slices.map((s) => s.value))
   return (
-    <Card>
-      <CardHeader className="pb-0">
-        <CardTitle className="text-base" title={note}>
+    <div className="rounded-lg border border-border">
+      <div className="px-3 pt-2.5">
+        <h3 className="text-sm font-semibold text-ink" title={note}>
           {title}
           {note && <span className="ml-1 cursor-help text-xs font-normal text-muted-foreground">ⓘ</span>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </h3>
+      </div>
+      <div className="px-3 pb-3">
         {total <= 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">這段期間沒有資料</p>
         ) : (
@@ -569,8 +571,8 @@ function RankingPie(props: { title: string; ranking: { name: string; value: numb
             </ol>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -583,11 +585,11 @@ function StockBar({ stock, qty }: { stock: { availableYard: number; reservedYard
   const total = parts.reduce((s, p) => s + p.value, 0)
   const shares = integerShares(parts.map((p) => p.value))
   return (
-    <Card className="lg:col-span-2">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">庫存組成（目前）</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="rounded-lg border border-border lg:col-span-2">
+      <div className="px-3 pt-2.5 pb-1">
+        <h3 className="text-sm font-semibold text-ink">庫存組成（目前）</h3>
+      </div>
+      <div className="space-y-2 px-3 pb-3">
         {/* 堆疊條：段與段之間留 2px 間隙 */}
         <div className="flex h-5 w-full gap-[2px] overflow-hidden rounded">
           {total > 0 &&
@@ -607,8 +609,8 @@ function StockBar({ stock, qty }: { stock: { availableYard: number; reservedYard
             </span>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -661,11 +663,11 @@ function ProductTable(props: {
   )
   const per = (part: number, t: Totals) => (t.costedYard > 0 ? part / t.costedYard : undefined)
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">產品明細</CardTitle>
-      </CardHeader>
-      <CardContent className="px-0">
+    <div className="rounded-lg border border-border">
+      <div className="px-3 pt-2.5 pb-1">
+        <h3 className="text-sm font-semibold text-ink">產品明細</h3>
+      </div>
+      <div className="pb-1">
         {rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">這段期間沒有出貨</p>
         ) : (
@@ -718,7 +720,7 @@ function ProductTable(props: {
             </table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
