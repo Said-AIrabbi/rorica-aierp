@@ -71,7 +71,7 @@ function useList<T>(key: string, fn: () => Promise<T[]>): T[] {
 }
 
 // 篩選欄位一律白底：頁面背景是米色，用 bg-background 會和背景融在一起、容易被忽略
-const selectClass = 'h-9 rounded-md border border-input bg-white px-2 text-sm text-ink shadow-xs'
+const selectClass = 'h-9 rounded-md border border-input bg-card px-2 text-sm text-ink shadow-xs'
 
 export function Dashboard() {
   const perms = useCurrentAccount()
@@ -233,9 +233,9 @@ export function Dashboard() {
           </select>
           {preset === 'custom' && (
             <>
-              <Input type="date" className="h-9 w-36 bg-white" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+              <Input type="date" className="h-9 w-36 bg-card" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
               <span className="pb-2 text-xs text-muted-foreground">～</span>
-              <Input type="date" className="h-9 w-36 bg-white" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              <Input type="date" className="h-9 w-36 bg-card" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
             </>
           )}
           <select className={selectClass} value={customerId} onChange={(e) => setCustomerId(e.target.value)} aria-label="客戶">
@@ -284,7 +284,7 @@ export function Dashboard() {
               ))}
             </select>
           )}
-          <label className="flex h-9 items-center gap-1.5 rounded-md border border-input bg-white px-2 text-sm text-ink shadow-xs">
+          <label className="flex h-9 items-center gap-1.5 rounded-md border border-input bg-card px-2 text-sm text-ink shadow-xs">
             <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
             示範數據
           </label>
@@ -542,7 +542,7 @@ function RankingPie(props: { title: string; ranking: { name: string; value: numb
             <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={slices} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="95%" paddingAngle={1} stroke="var(--background, #fff)" strokeWidth={2}>
+                  <Pie data={slices} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="95%" paddingAngle={1} stroke="var(--card)" strokeWidth={2}>
                     {slices.map((s) => (
                       <Cell key={s.name} fill={s.color} />
                     ))}
@@ -729,7 +729,7 @@ function ProductChart(props: {
                 if (!active || !payload?.length) return null
                 const r = (payload[0].payload as { row: ProductRow }).row
                 return (
-                  <div className="rounded-md border border-border bg-white px-3 py-2 text-xs shadow-md">
+                  <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
                     <div className="mb-1 font-semibold text-ink">{r.name}</div>
                     <div className="text-ink-body">銷量 {qty(r.yard)}</div>
                     {canPrice && (
@@ -753,7 +753,7 @@ function ProductChart(props: {
                   dataKey={p.key}
                   stackId="cost"
                   fill={p.color}
-                  stroke="#fff"
+                  stroke="var(--card)"
                   strokeWidth={1}
                   radius={i === COST_PARTS.length - 1 ? [0, 4, 4, 0] : 0}
                   maxBarSize={18}
@@ -861,7 +861,7 @@ function ProductTable(props: {
               ))}
             </select>
           )}
-          <div className="flex overflow-hidden rounded-md border border-input bg-white text-sm shadow-xs">
+          <div className="flex overflow-hidden rounded-md border border-input bg-card text-sm shadow-xs">
             {(['chart', 'table'] as const).map((v) => (
               <button
                 key={v}

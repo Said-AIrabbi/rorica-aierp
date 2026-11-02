@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { NotificationBell } from './NotificationBell'
+import { ThemeMenu } from './ThemeMenu'
 import { accounts, buildSessionSnapshot } from '@/mocks/data'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import { isRemoteStorage, workspaceId } from '@/prototype-storage'
@@ -66,6 +67,7 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
         >
           <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">匯出目前資料</span>
         </button>
+        <ThemeMenu />
         <NotificationBell />
         {/*
           身分切換：原型沒有登入頁，改由此處切換帳號，

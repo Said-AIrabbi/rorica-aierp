@@ -10,6 +10,10 @@ import App from './App.tsx'
 import { initPrototypeStorage, onRemoteSnapshotApplied } from '@/prototype-storage/boot'
 import { resetDocumentEventBaseline } from '@/mocks/document-events'
 import './index.css'
+import { applyTheme, loadThemeId } from '@/lib/theme'
+
+// 顏色主題（決策173）在畫面出來之前就套上，避免先閃一下預設的淺色
+applyTheme(loadThemeId())
 
 const queryClient = new QueryClient({
   defaultOptions: {

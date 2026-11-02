@@ -54,6 +54,118 @@
   --ring: var(--brand);
 }
 
+/*
+ * 顏色主題（決策173）：html[data-theme] 切換整組變數。未設定時即為上方 :root 的「皇加綠（淺色）」。
+ * 深色主題的狀態色、圖表色另有一組亮度較高的值——直接沿用淺色的深色字，在深底上讀不到。
+ * 列印版面寫死黑字白底，不受影響。
+ */
+:root[data-theme='light-ocean'] {
+  --brand: #3f88c5;
+  --brand-dark: #2c6a9e;
+  --accent-blue: #2f6f9f;
+  --accent-tan: #c9d9e8;
+  --background: #f5f8fb;
+  --secondary: #e8f0f8;
+  --muted: #edf2f7;
+  --border: #dbe3ec;
+  --input: #dbe3ec;
+}
+
+:root[data-theme='light-clay'] {
+  --brand: #c47a52;
+  --brand-dark: #a35d38;
+  --accent-blue: #3f7a8c;
+  --accent-tan: #e6cdb9;
+  --background: #fbf7f3;
+  --secondary: #f6ece4;
+  --muted: #f3ede7;
+  --border: #e9dfd5;
+  --input: #e9dfd5;
+}
+
+/* 三套深色共用：卡片、文字、狀態色、圖表色 */
+:root.dark {
+  color-scheme: dark;
+  --foreground: #e8eae6;
+  --card-foreground: #e8eae6;
+  --popover-foreground: #e8eae6;
+  --secondary-foreground: #e8eae6;
+  --accent-foreground: #e8eae6;
+  --primary-foreground: #ffffff;
+  --muted-foreground: #9aa19a;
+  --destructive: #e07a7a;
+  --destructive-foreground: #1a0d0d;
+  --success: #9fbf6f;
+  --success-foreground: #121a0a;
+  --warning: #e0ac57;
+  --warning-foreground: #1f1505;
+  --reject: #e0857e;
+  --reject-foreground: #1f0c0b;
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  --viz-6: #008300;
+  --viz-7: #9085e9;
+  --viz-8: #e66767;
+  --viz-other: #5c5b56;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #8f8d86;
+}
+
+:root[data-theme='dark-forest'] {
+  /* 品牌色取中間調：按鈕上的白字要讀得到；當文字用的品牌色另取亮色（--brand-soft） */
+  --brand: #4a8a37;
+  --brand-dark: #3c742c;
+  --brand-soft: #9dd486;
+  --accent-blue: #6fb1d6;
+  --accent-tan: #3a3a2c;
+  --background: #121612;
+  --card: #1b201b;
+  --popover: #1f251f;
+  --secondary: #232a22;
+  --muted: #222822;
+  --border: #2f372e;
+  --input: #354034;
+}
+
+:root[data-theme='dark-navy'] {
+  --brand: #2f74b5;
+  --brand-dark: #255f96;
+  --brand-soft: #8cc3f2;
+  --accent-blue: #7cc0e8;
+  --accent-tan: #263547;
+  --background: #0f151c;
+  --card: #17202a;
+  --popover: #1b2531;
+  --secondary: #1d2834;
+  --muted: #1c2631;
+  --border: #2a3746;
+  --input: #314052;
+}
+
+:root[data-theme='dark-graphite'] {
+  --brand: #8c7536;
+  --brand-dark: #745f29;
+  --brand-soft: #e0cc93;
+  --accent-blue: #8ab4c9;
+  --accent-tan: #3a3428;
+  --background: #151515;
+  --card: #1f1f1f;
+  --popover: #242424;
+  --secondary: #262626;
+  --muted: #252525;
+  --border: #353535;
+  --input: #3d3d3d;
+}
+
+/* 深色模式下，品牌色當「文字」時改用亮色版：中間調的品牌色在深底上太暗 */
+:root.dark .text-brand-dark,
+:root.dark .text-brand {
+  color: var(--brand-soft);
+}
+
 @theme inline {
   --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", ui-sans-serif, system-ui, sans-serif;
 
