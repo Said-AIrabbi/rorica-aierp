@@ -13,6 +13,8 @@ import {
   suggestSplicingCombination,
 } from '@/lib/inventory'
 import {
+  distinctPoNos,
+  piItemsForNotice,
   canConvertPi,
   effectivePiStatus,
   isPiOnManualHold,
@@ -706,7 +708,7 @@ export function createPackingNotice(input: PackingNoticeInput): Promise<PackingN
   const notice: PackingNotice = {
     id,
     customerId: customer.id,
-    customerOrderNo: input.customerOrderNo,
+    customerOrderNo: input.customerOrderNo.trim(),
     status: '草稿',
     // 決策118：新建的表1 一律從「未送簽」起步，要業務按送簽才進管理層的待簽清單
     approvalState: '未送簽',
@@ -936,7 +938,7 @@ export function updatePackingNotice(id: string, input: PackingNoticeInput): Prom
   const updated: PackingNotice = {
     ...packingNotices[idx],
     customerId: customer.id,
-    customerOrderNo: input.customerOrderNo,
+    customerOrderNo: input.customerOrderNo.trim(),
     expectedDeliveryAt: input.expectedDeliveryAt,
     sampleQty: input.sampleQty,
     sampleQtyNote: input.sampleQtyNote?.trim() || undefined,
@@ -5200,6 +5202,8 @@ function resolvePiBankAccountId(
 function buildPiItems(id: string, items: ProformaInvoiceItemInput[]): ProformaInvoiceItem[] {
   return items.map((item, i) => ({
     ...item,
+    // 去前後空白（決策175）：畫面的 schema 已處理，這裡擋其他寫入路徑
+    poNo: item.poNo.trim(),
     id: `${id}-L${i + 1}`,
     meter: Number(yardToMeter(item.yard).toFixed(1)),
     colorRatios: (item.colorRatios ?? []).map((v) => v.trim()).filter(Boolean).slice(0, COLOR_RATIO_MAX),
@@ -5574,7 +5578,7 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
   // 只有 surcharge 的 PO 也就不會產生表1
   const goods = piQuantityItems(current.items)
   if (goods.length === 0) throw new Error('本張 PI 只有 surcharge，沒有可轉入包裝通知單的商品明細')
-  const poNos = [...new Set(goods.map((item) => item.poNo))]
+  const poNos = distinctPoNos(goods)
   const notices: PackingNotice[] = []
 
   poNos.forEach((poNo, i) => {
@@ -5590,7 +5594,7 @@ export function convertPiToPackingNotices(id: string): Promise<{ pi: ProformaInv
       // 暫定值：交期的 Day 0 是「第一張表1 的生效日」（決策36），此刻表1 還是草稿、尚未起算，
       // 故先以今天推算；待第一張表1 轉生效時由 applyPiDueDateOnEffective 統一改寫為正式的應出貨日
       expectedDeliveryAt: today.add(current.leadTimeDays, 'day').format('YYYY-MM-DD'),
-      items: goods.filter((item) => item.poNo === poNo).map((item, j) => piItemToPackingItem(item, noticeId, j)),
+      items: goods.filter((item) => item.poNo.trim() === poNo).map((item, j) => piItemToPackingItem(item, noticeId, j)),
       itemUnit: current.itemUnit,
       markings: current.markings,
       sourcePiId: current.id,
@@ -5728,9 +5732,12 @@ export function applyReplacementPi(id: string): Promise<PiOverwriteResult> {
   }
 
   // 第二階段：確定沒有任何一張被擋下，才實際覆蓋
+  const previousNotices = packingNotices.filter((n) => previous.packingNoticeIds.includes(n.id))
   pending.forEach(({ nIdx, notice }) => {
     // surcharge 不轉入表1（決策157），覆蓋時同樣略過
-    const items = piQuantityItems(current.items).filter((item) => item.poNo === notice.customerOrderNo)
+    const po = notice.customerOrderNo.trim()
+    const fallback = pending.find((p) => p.notice.customerOrderNo.trim() === po)!.notice
+    const items = piItemsForNotice(piQuantityItems(current.items), notice, previousNotices, fallback.id)
     if (items.length === 0) return
     const updatedNotice: PackingNotice = {
       ...notice,

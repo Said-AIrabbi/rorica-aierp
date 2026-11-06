@@ -70,6 +70,38 @@ export function isSurchargeItem(item: { roricaProductName: string }): boolean {
   return item.roricaProductName.trim().toLowerCase() === 'surcharge'
 }
 
+/**
+ * 一張 PI 上不重複的 PO NO.（決策175）：先去前後空白再比對。
+ * 拆單以 PO 為界（決策43），「NO」和「NO 」被當成兩個 PO 就會多拆一張表1。
+ */
+export function distinctPoNos(items: { poNo: string }[]): string[] {
+  return [...new Set(items.map((item) => item.poNo.trim()))]
+}
+
+/**
+ * 取代版 PI 覆蓋表1 時，這張表1 該拿哪些明細（決策175）。
+ *
+ * 平常一個 PO 對一張表1，比對 PO NO. 即可。但 PO NO. 曾因尾端空白被拆成兩張表1，清理後兩張的客戶訂單號相同；
+ * 只比 PO NO. 的話兩張都會拿到全部明細，貨就重複了。同 PO 有多張時，改依原明細的品名＋顏色歸到原本那張，
+ * 對不到的（取代版新增的品項）歸給 fallback（同 PO 第一張可覆蓋的表1）。
+ */
+export function piItemsForNotice<T extends { poNo: string; roricaProductName: string; color: string }>(
+  items: T[],
+  notice: Pick<PackingNotice, 'id' | 'customerOrderNo'>,
+  siblings: Pick<PackingNotice, 'id' | 'customerOrderNo' | 'items'>[],
+  fallbackId: string,
+): T[] {
+  const po = notice.customerOrderNo.trim()
+  const samePo = siblings.filter((n) => n.customerOrderNo.trim() === po)
+  return items.filter((item) => {
+    if (item.poNo.trim() !== po) return false
+    const owner = samePo.find((n) =>
+      n.items.some((i) => i.roricaProductName === item.roricaProductName && i.color === item.color),
+    )
+    return (owner?.id ?? fallbackId) === notice.id
+  })
+}
+
 /** 計入數量合計的明細：排除 surcharge（決策157） */
 export function piQuantityItems<T extends { roricaProductName: string }>(items: T[]): T[] {
   return items.filter((item) => !isSurchargeItem(item))

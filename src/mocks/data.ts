@@ -1299,6 +1299,21 @@ export function receiptSourceVendorId(
   return undefined
 }
 
+/**
+ * 清理 PO NO. 與客戶訂單號的前後空白（決策175）：載入外部快照（本機暫存、伺服器資料）時跑，只改有空白的列。
+ * 已因空白被多拆出來的表1 不合併——它們可能已有下游單據，兩張的客戶訂單號會變成相同。
+ */
+function trimPoNumbers(): void {
+  proformaInvoices.forEach((pi, i) => {
+    if (pi.items.every((item) => item.poNo === item.poNo.trim())) return
+    proformaInvoices[i] = { ...pi, items: pi.items.map((item) => ({ ...item, poNo: item.poNo.trim() })) }
+  })
+  packingNotices.forEach((notice, i) => {
+    const trimmed = notice.customerOrderNo.trim()
+    if (trimmed !== notice.customerOrderNo) packingNotices[i] = { ...notice, customerOrderNo: trimmed }
+  })
+}
+
 /** 舊入庫單沒有廠商者，補上上游單據的廠商；已有值（含倉管手動改過的）不覆蓋。時機同幣別回填 */
 function backfillReceiptVendors(): void {
   goodsReceipts.forEach((receipt, i) => {
@@ -1598,6 +1613,7 @@ export function applySessionSnapshot(snapshot: SessionSnapshot): void {
   if (snapshot.companyProfile) Object.assign(companyProfile, snapshot.companyProfile)
   backfillShippingCurrencies()
   backfillReceiptVendors()
+  trimPoNumbers()
 }
 
 /**

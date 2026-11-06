@@ -30,7 +30,8 @@ export const piMarkingSchema = z.object({
 export const piItemSchema = z
   .object({
     // PO NO.：拆單以 PO 為界（決策43），故為明細必填欄位
-    poNo: z.string().min(1, '請輸入 PO NO.'),
+    // 存檔前去前後空白（決策175）：只打空白也算沒填
+    poNo: z.string().trim().min(1, '請輸入 PO NO.'),
     roricaProductName: z.string().min(1, '請輸入皇加品名'),
     /** 產品編號：選定產品分支時記錄，隨轉換帶入表1（決策44） */
     productId: z.string().optional(),

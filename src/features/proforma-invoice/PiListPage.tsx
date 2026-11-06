@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { api } from '@/mocks/api'
 import { formatDate } from '@/lib/dates'
-import { PI_CURRENCY_SYMBOL, effectivePiStatus, piDueDate, piTotalAmount } from '@/lib/pi'
+import { PI_CURRENCY_SYMBOL, distinctPoNos, effectivePiStatus, piDueDate, piTotalAmount } from '@/lib/pi'
 import { formatAmount } from '@/lib/money'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import type { ProformaInvoice } from '@/types'
@@ -27,7 +27,7 @@ export function PiListPage() {
       {
         id: 'poNos',
         header: 'PO NO.',
-        accessorFn: (row) => [...new Set(row.items.map((i) => i.poNo))].join('、'),
+        accessorFn: (row) => distinctPoNos(row.items).join('、'),
       },
       { id: 'items', header: '品項數', accessorFn: (row) => row.items.length },
       {

@@ -35,6 +35,7 @@ import { ConvertedNtd } from '@/components/shared/ConvertedNtd'
 import { BasisQty } from '@/components/shared/BasisQty'
 import { colorRatioText } from '@/lib/workflow'
 import {
+  distinctPoNos,
   PI_CURRENCY_SYMBOL,
   canConvertPi,
   canSignBackPi,
@@ -98,7 +99,7 @@ export function PiDetailPage() {
   const symbol = PI_CURRENCY_SYMBOL[pi.currency]
   const total = piTotalAmount(pi)
   const dueDate = piDueDate(pi, packingNotices)
-  const poNos = [...new Set(pi.items.map((item) => item.poNo))]
+  const poNos = distinctPoNos(pi.items)
   const isReplacement = Boolean(pi.previousPiId)
   // 待人工處理不是狀態：PI 留在草稿但整條流程卡住，裁決前不得送批准／簽回／套用（決策27）
   const onHold = isPiOnManualHold(pi)
