@@ -263,7 +263,11 @@ const STATUS = {
   FAILED:{t:'失敗',c:'--st-fail'}, CANCELED:{t:'已取消',c:'--st-sub'}
 };
 
-const SNAPSHOT = {
+/* ERP 串接：嵌在 ERP 原型裡（/four-modules 頁面）時，由外層頁面把 ERP 的布卷、預留、商品主檔與色號 Lab
+   整理好放在 window.parent.__FOUR_MODULE_BRIDGE__；單獨開啟本檔時沒有外層，退回下方的示意資料。
+   外層的整理邏輯見 src/features/four-modules/bridge.ts。 */
+const BRIDGE=(()=>{try{return window.parent!==window?window.parent.__FOUR_MODULE_BRIDGE__||null:null}catch(e){return null}})();
+const SNAPSHOT = BRIDGE ? BRIDGE.snapshot : {
   asOf:'2026/11/16',
   items:{
     'S75':{name:'柔垂光澤緞'}, '3760':{name:'亮面鏡面緞'}, '630-1GU':{name:'霧面厚緞'},
@@ -291,7 +295,7 @@ function queryInventory(sku,color,qtyY){
   return {sku,color,requestY:qtyY,availableY,rolls:free.length,reservedY,sufficient:availableY>=qtyY,hasStock:availableY>0,asOf:SNAPSHOT.asOf};
 }
 
-const ERPNO={'S75':'1-11','3760':'1-07','630-1GU':'1-23','KK98':'1-30','N120':'8-13','90125':'20-12','WT-7012':'17-3'};
+const ERPNO=BRIDGE?BRIDGE.erpNo:{'S75':'1-11','3760':'1-07','630-1GU':'1-23','KK98':'1-30','N120':'8-13','90125':'20-12','WT-7012':'17-3'};
 const ATTR={'S75':['高','佳','柔'],'3760':['極高','佳','中'],'630-1GU':['低','中','挺'],'KK98':['中','低','挺'],'N120':['低','佳','柔'],'90125':['中','中','中'],'WT-7012':['中','低','挺']};
 const MODS={plat:{name:'選布平台',c:'--m-plat',d:'找布、布料資料、樣品與詢價'},hub:{name:'代理人協作',c:'--m-hub',d:'協調層、事件表、人工確認'},erp:{name:'ERP 串接',c:'--m-erp',d:'庫存唯讀查詢、定期同步'},col:{name:'色彩資料庫',c:'--m-col',d:'Lab 色樣、配方、實測色差'}};
 function modOf(e){if(e.mod)return e.mod;if(e.from==='color'||e.to==='color')return 'col';if(e.from==='inventory'||e.to==='inventory')return 'erp';if(e.status==='INPUT_REQUIRED'||e.from==='sales')return 'hub';return 'plat'}
@@ -325,7 +329,10 @@ function dE00([L1,a1,b1],[L2,a2,b2]){
 const f2=v=>v.toFixed(2),f1=v=>v.toFixed(1);
 function recipeFor(lab){const [L,a,b]=lab;const k=v=>Math.max(0.0008,v);
   return [{dye:'分散黃 SE-4G',c:k(b/420+0.002)},{dye:'分散紅 FB',c:k(a/320+(100-L)/2600)},{dye:'分散藍 2BLN',c:k((100-L)/1900-b/5200)}];}
-const COLOR_SEED=[
+/* 色彩資料庫：選色系統（AI 數位對色）的 API 尚未提供，暫以本檔內建的 findNearest／predictRecipes 計算。
+   嵌在 ERP 時，色樣種子改用 ERP 商品主檔各色號的 Lab（色樣編號＝ERP 歷史色樣編號）。
+   API 提供後，只需把 findNearest、predictRecipes 與實測回填（onShow）改為呼叫 API。 */
+const COLOR_SEED=BRIDGE?BRIDGE.colorSeed:[
   ['T7510301-1A','CHAMPAGNE','S75',[82.4,4.1,14.6],'分光儀量測'],
   ['T7510288-1A','IVORY','S75',[93.1,0.6,6.2],'分光儀量測'],
   ['T7510340-2A','NUDE PINK','S75',[78.5,9.8,11.2],'染廠打色'],
@@ -347,7 +354,10 @@ function predictRecipes(lab,base){
   const near=CDB.samples.filter(x=>x.base===base).map(x=>({x,d:dE00(lab,x.lab)})).sort((p,q)=>p.d-q.d).slice(0,3);
   return near.map((n,i)=>({no:`R-${String(i+1).padStart(2,'0')}`,from:n.x.id,dyes:recipeFor(lab).map((d,j)=>({dye:d.dye,c:d.c*(1+(i*0.06)*(j===1?1:-1))})),pred:Math.max(0.35,n.d*[0.32,0.48,0.66][i])})).sort((p,q)=>p.pred-q.pred);
 }
-const TARGETS={champ:{name:'香檳（客戶色卡）',lab:[81.6,4.4,15.2]},nude:{name:'裸粉（客戶照片）',lab:[79.6,11.5,12.4]},gold:{name:'淺金（客戶照片）',lab:[74.0,7.5,28.0]}};
+const TARGETS=Object.assign({champ:{name:'香檳（客戶色卡）',lab:[81.6,4.4,15.2]},nude:{name:'裸粉（客戶照片）',lab:[79.6,11.5,12.4]},gold:{name:'淺金（客戶照片）',lab:[74.0,7.5,28.0]}},BRIDGE?BRIDGE.targets:{});
+/* 情境 6 可選的布款：嵌在 ERP 時為「色彩資料庫裡有色樣」的 ERP 品名 */
+const BASES=BRIDGE?BRIDGE.bases:['S75','3760','630-1GU'];
+const DATA_LABEL=BRIDGE?'ERP 即時資料':'示意資料';
 
 const SCORE={'S75':[91,'柔垂、光澤相近'],'3760':[89,'光澤更高、垂墜相近'],'630-1GU':[62,'霧面，光澤不符'],'KK98':[58,'挺度高、垂墜不足'],'N120':[41,'網紗，質感不同']};
 const SIMILAR={'S75':['3760','630-1GU'],'3760':['S75','630-1GU'],'630-1GU':['3760','S75'],'KK98':['630-1GU','3760'],'N120':['3760','S75'],'90125':['3760','S75'],'WT-7012':['KK98','3760']};
@@ -383,7 +393,7 @@ const SCENARIOS=[
     if(reuse){
       const res=queryInventory(base,near.x.name,qty);
       pre.push(ev('inquiry','inventory','請求','WORKING',`query_inventory：${ERPNO[base]}（${base}）${near.x.name}，需求 ${qty}Y`,{tag:'query_inventory',payload:{erp_no:ERPNO[base],color:near.x.name,qty_y:qty}}));
-      pre.push(ev('inventory','inquiry','回覆','COMPLETED',r=>`${base}（${near.x.name}）${stockText(res,r)}；資料時間 ${SNAPSHOT.asOf} 14:00`,{tag:'庫存結果',payload:{...res},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算',hl:{tab:'erp',key:base+'|'+near.x.name}}));
+      pre.push(ev('inventory','inquiry','回覆','COMPLETED',r=>`${base}（${near.x.name}）${stockText(res,r)}；資料時間 ${SNAPSHOT.asOf} ${SNAPSHOT.time||'14:00'}`,{tag:'庫存結果',payload:{...res},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算',hl:{tab:'erp',key:base+'|'+near.x.name}}));
       const short=Math.max(0,qty-res.availableY);
       biz=short?`回覆草稿：${nm(base)}，色號 ${near.x.id}（ΔE00 ${f2(near.d)}）。現貨 ${res.availableY}Y，其餘 ${short}Y 以同色號染整，交期另行確認。`:`回覆草稿：${nm(base)}，色號 ${near.x.id}（ΔE00 ${f2(near.d)}），現貨可供 ${qty}Y。`;
       cust=short?`回覆草稿：${nm(base)} 有相近色號，部分現貨，其餘依同色號染整。`:`回覆草稿：${nm(base)} 有相近色號，有現貨。`;
@@ -504,7 +514,7 @@ const SCENARIOS=[
   }}
 ];
 
-const S={scen:0,role:'cust',speed:1,events:[],shown:0,playing:false,timer:null,sel:null,plan:null,p:{sku:'S75',color:'CHAMPAGNE',qty:300},cp:{base:'S75',tkey:'nude',custom:[80,8,14],qty:300},rejecting:false,typing:null,fresh:null,tab:'col',hl:{}};
+const S={scen:0,role:'cust',speed:1,events:[],shown:0,playing:false,timer:null,sel:null,plan:null,p:BRIDGE?BRIDGE.defaultInquiry:{sku:'S75',color:'CHAMPAGNE',qty:300},cp:{base:BRIDGE?BRIDGE.defaultBase:'S75',tkey:BRIDGE?BRIDGE.defaultTarget:'nude',custom:[80,8,14],qty:300},rejecting:false,typing:null,fresh:null,tab:'col',hl:{}};
 const $=id=>document.getElementById(id);
 const REDUCE=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -664,7 +674,7 @@ function renderControls(){
 function renderParams(){
   const sc=SCENARIOS[S.scen];$('scen-desc').textContent=sc.desc;
   if(sc.params==='color'){const c=S.cp;
-    $('params').innerHTML=`<label for="c-base">布款<select id="c-base">${['S75','3760','630-1GU'].map(k=>`<option value="${k}" ${k===c.base?'selected':''}>${nm(k)}</option>`).join('')}</select></label><label for="c-t">指定顏色<select id="c-t">${Object.entries(TARGETS).map(([k,t])=>`<option value="${k}" ${k===c.tkey?'selected':''}>${t.name}</option>`).join('')}<option value="custom" ${c.tkey==='custom'?'selected':''}>自訂 Lab</option></select></label>${c.tkey==='custom'?`<div class="lab-row"><label for="c-L">L*<input type="number" id="c-L" step="0.1" min="0" max="100" value="${c.custom[0]}"></label><label for="c-a">a*<input type="number" id="c-a" step="0.1" min="-60" max="60" value="${c.custom[1]}"></label><label for="c-b">b*<input type="number" id="c-b" step="0.1" min="-60" max="60" value="${c.custom[2]}"></label></div>`:''}<span class="sw big" id="c-sw" style="width:34px;height:34px;background:${lab2rgb(c.tkey==='custom'?c.custom:TARGETS[c.tkey].lab)}" title="指定顏色預覽"></span><label for="c-q">需求碼數<input type="number" id="c-q" min="1" max="5000" step="10" value="${c.qty}" style="width:100px"></label><button class="btn primary" type="button" id="c-go">套用並重播</button><span class="sub" id="c-err" hidden style="color:var(--st-fail)">請輸入有效的數值</span>`;
+    $('params').innerHTML=`<label for="c-base">布款<select id="c-base">${BASES.map(k=>`<option value="${k}" ${k===c.base?'selected':''}>${nm(k)}</option>`).join('')}</select></label><label for="c-t">指定顏色<select id="c-t">${Object.entries(TARGETS).map(([k,t])=>`<option value="${k}" ${k===c.tkey?'selected':''}>${t.name}</option>`).join('')}<option value="custom" ${c.tkey==='custom'?'selected':''}>自訂 Lab</option></select></label>${c.tkey==='custom'?`<div class="lab-row"><label for="c-L">L*<input type="number" id="c-L" step="0.1" min="0" max="100" value="${c.custom[0]}"></label><label for="c-a">a*<input type="number" id="c-a" step="0.1" min="-60" max="60" value="${c.custom[1]}"></label><label for="c-b">b*<input type="number" id="c-b" step="0.1" min="-60" max="60" value="${c.custom[2]}"></label></div>`:''}<span class="sw big" id="c-sw" style="width:34px;height:34px;background:${lab2rgb(c.tkey==='custom'?c.custom:TARGETS[c.tkey].lab)}" title="指定顏色預覽"></span><label for="c-q">需求碼數<input type="number" id="c-q" min="1" max="5000" step="10" value="${c.qty}" style="width:100px"></label><button class="btn primary" type="button" id="c-go">套用並重播</button><span class="sub" id="c-err" hidden style="color:var(--st-fail)">請輸入有效的數值</span>`;
     $('c-base').onchange=e=>{c.base=e.target.value};
     $('c-t').onchange=e=>{c.tkey=e.target.value;renderParams()};
     const upd=()=>{if(c.tkey!=='custom')return;const v=['c-L','c-a','c-b'].map(id=>parseFloat($(id).value));if(v.every(x=>!isNaN(x)))$('c-sw').style.background=lab2rgb(v)};
@@ -691,10 +701,10 @@ function renderData(){
   $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.k;render()});
   const biz=S.role==='biz';let h='';
   if(S.tab==='plat'){
-    h=`<div class="tbl-wrap"><table class="dt"><thead><tr><th>型錄貨號</th><th>名稱</th><th>ERP 產品編號</th><th>光澤</th><th>垂墜</th><th>手感</th><th>看圖相似度</th></tr></thead><tbody>${Object.keys(SNAPSHOT.items).map(k=>`<tr class="${S.hl.plat===k?'hl':''}"><td class="mono">${k}</td><td>${SNAPSHOT.items[k].name}</td><td class="mono">${ERPNO[k]}</td><td>${ATTR[k][0]}</td><td>${ATTR[k][1]}</td><td>${ATTR[k][2]}</td><td class="mono">${SCORE[k]?SCORE[k][0]+'%':'—'}</td></tr>`).join('')}</tbody></table></div><div class="data-note">選布平台以型錄貨號為主；ERP 產品編號由對照表轉換（示意對照）。</div>`;
+    h=`<div class="tbl-wrap"><table class="dt"><thead><tr><th>型錄貨號</th><th>名稱</th><th>ERP 產品編號</th><th>光澤</th><th>垂墜</th><th>手感</th><th>看圖相似度</th></tr></thead><tbody>${Object.keys(SNAPSHOT.items).map(k=>`<tr class="${S.hl.plat===k?'hl':''}"><td class="mono">${k}</td><td>${SNAPSHOT.items[k].name}</td><td class="mono">${ERPNO[k]}</td><td>${(ATTR[k]||['—'])[0]}</td><td>${(ATTR[k]||['—','—'])[1]}</td><td>${(ATTR[k]||['—','—','—'])[2]}</td><td class="mono">${SCORE[k]?SCORE[k][0]+'%':'—'}</td></tr>`).join('')}</tbody></table></div><div class="data-note">選布平台以型錄貨號為主；ERP 產品編號由對照表轉換（${BRIDGE?'取自 ERP 商品主檔':'示意對照'}）。</div>`;
   }else if(S.tab==='erp'){
     const groups={};SNAPSHOT.rolls.forEach(r=>{const k=r.sku+'|'+r.color;(groups[k]=groups[k]||{sku:r.sku,color:r.color,rs:[]}).rs.push(r)});
-    h=`<div class="tbl-wrap"><table class="dt"><thead><tr><th>產品編號</th><th>貨號</th><th>顏色</th>${biz?'<th>可用碼數</th><th>捲數</th><th>已預留</th>':'<th>現貨狀態</th>'}</tr></thead><tbody>${Object.entries(groups).map(([k,g])=>{const q=queryInventory(g.sku,g.color,1);return `<tr class="${S.hl.erp===k?'hl':''}"><td class="mono">${ERPNO[g.sku]}</td><td class="mono">${g.sku}</td><td>${g.color==='GREIGE'?'胚布（未染）':g.color}</td>${biz?`<td class="mono">${q.availableY}Y</td><td class="mono">${q.rolls}</td><td class="mono">${q.reservedY?q.reservedY+'Y':'—'}</td>`:`<td>${q.hasStock?'有現貨':'需訂製'}</td>`}</tr>`}).join('')}</tbody></table></div><div class="data-note">ERP 串接只讀不寫，每 15 分鐘同步；資料時間 ${SNAPSHOT.asOf} 14:00（示意資料）。${biz?'':'切換為業務視角才顯示數量。'}</div>`;
+    h=`<div class="tbl-wrap"><table class="dt"><thead><tr><th>產品編號</th><th>貨號</th><th>顏色</th>${biz?'<th>可用碼數</th><th>捲數</th><th>已預留</th>':'<th>現貨狀態</th>'}</tr></thead><tbody>${Object.entries(groups).map(([k,g])=>{const q=queryInventory(g.sku,g.color,1);return `<tr class="${S.hl.erp===k?'hl':''}"><td class="mono">${ERPNO[g.sku]}</td><td class="mono">${g.sku}</td><td>${g.color==='GREIGE'?'胚布（未染）':g.color}</td>${biz?`<td class="mono">${q.availableY}Y</td><td class="mono">${q.rolls}</td><td class="mono">${q.reservedY?q.reservedY+'Y':'—'}</td>`:`<td>${q.hasStock?'有現貨':'需訂製'}</td>`}</tr>`}).join('')}</tbody></table></div><div class="data-note">ERP 串接只讀不寫，每 15 分鐘同步；資料時間 ${SNAPSHOT.asOf} ${SNAPSHOT.time||'14:00'}（${DATA_LABEL}）。${biz?'':'切換為業務視角才顯示數量。'}</div>`;
   }else if(S.tab==='col'){
     const rows=CDB.samples.map(x=>`<tr class="${CDB.newIds.has(x.id)?'new':S.hl.col===x.id?'hl':''}"><td><span class="sw" style="background:${lab2rgb(x.lab)}" aria-hidden="true"></span></td><td class="mono">${x.id}</td><td>${x.name}</td><td class="mono">${x.base}</td><td class="mono">${f1(x.lab[0])}</td><td class="mono">${f1(x.lab[1])}</td><td class="mono">${f1(x.lab[2])}</td><td>${x.src}</td></tr>`).join('');
     const sc=SCENARIOS[S.scen];let near='';
@@ -702,7 +712,7 @@ function renderData(){
       near=`<div class="subh">本案對色結果</div><div class="target"><span class="sw big" style="background:${lab2rgb(cp.target.lab)}" title="指定顏色"></span><span class="sw big" style="background:${lab2rgb(n.x.lab)}" title="最接近色樣"></span><div><div>指定「${cp.target.name}」→ 最接近 <span class="mono">${n.x.id}</span>（${n.x.name}）</div><div class="sub">ΔE00 <span class="mono">${f2(n.d)}</span>・門檻 1.0・${n.d<=1?'可沿用既有色號':'需要新配方'}</div>${CDB.newIds.size?`<div class="sub">實測回填後已新增色樣 <span class="mono">${[...CDB.newIds][0]}</span>，下次相同顏色可直接沿用。</div>`:''}</div></div>`;
       if(!M.reuse){const rs=M.recs;near+=`<div class="subh">候選配方</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>參考色樣</th><th>染料與濃度（% owf）</th><th>預估 ΔE00</th></tr></thead><tbody>${rs.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.no}</td><td class="mono">${r.from}</td><td>${r.dyes.map(d=>`${d.dye} ${d.c.toFixed(3)}`).join('、')}</td><td class="mono">${f2(r.pred)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="sub">已備妥 ${rs.length} 組候選配方；配方內容只對內部角色顯示。</div>`}`}}
     const ms=CDB.measurements.length?`<div class="subh">實測紀錄</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>新增色樣</th><th>實測 L*</th><th>a*</th><th>b*</th><th>ΔE00</th><th>日期</th></tr></thead><tbody>${CDB.measurements.map(m=>`<tr class="new"><td class="mono">${m.recipe}</td><td class="mono">${m.sample}</td><td class="mono">${f1(m.lab[0])}</td><td class="mono">${f1(m.lab[1])}</td><td class="mono">${f1(m.lab[2])}</td><td class="mono">${f2(m.d)}</td><td class="mono">${m.date}</td></tr>`).join('')}</tbody></table></div>`:'';
-    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>胚布</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（示意資料）。</div>`;
+    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>胚布</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
   }else{
     const vis=S.events.slice(0,S.shown);
     h=vis.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>事件</th><th>發起者</th><th>接收者</th><th>模組</th><th>工具／標籤</th><th>狀態</th></tr></thead><tbody>${vis.map(e=>`<tr class="${e.id===S.sel?'hl':''}"><td class="mono">${e.id}</td><td>${AG[e.from].name}</td><td>${AG[e.to].name}</td><td>${mtag(modOf(e))}</td><td class="mono">${e.tag}</td><td>${STATUS[e.status].t} <span class="sub mono">${e.status}</span></td></tr>`).join('')}</tbody></table></div><div class="data-note">代理人協作模組的事件表，也是協作畫面的資料來源；任務狀態採 A2A v1.0 命名。</div>`:`<div class="empty">尚未有事件。按「播放」後，每一筆代理人之間的呼叫都會寫進這裡。</div>`;
@@ -713,7 +723,7 @@ function render(){renderMods();renderBoard();renderLanes();renderThread();render
 
 $('scenario').innerHTML=SCENARIOS.map((s,i)=>`<option value="${i}">${s.name}</option>`).join('');
 $('scenario').onchange=e=>{S.scen=+e.target.value;renderParams();start(false)};
-$('asof').textContent=`ERP 快照 ${SNAPSHOT.asOf}・色彩資料庫 ${COLOR_SEED.length} 色・示意資料`;
+$('asof').textContent=`ERP 快照 ${SNAPSHOT.asOf}・色彩資料庫 ${COLOR_SEED.length} 色・${DATA_LABEL}`;
 $('role-cust').onclick=()=>{S.role='cust';render()};
 $('role-biz').onclick=()=>{S.role='biz';render()};
 $('sp1').onclick=()=>{S.speed=1;render()};

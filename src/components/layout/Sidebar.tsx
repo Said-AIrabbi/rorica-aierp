@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   Users,
   Warehouse,
+  Workflow,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -121,6 +122,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <div>
           <NavItem to="/" label="首頁總覽" icon={Home} />
           <NavItem to="/inventory" label="現貨/無現貨總覽" icon={Warehouse} />
+        </div>
+
+        <div>
+          <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            模組串接
+          </div>
+          <NavItem to="/four-modules" label="四模組協作中心" icon={Workflow} />
         </div>
 
         <div>
