@@ -10,6 +10,10 @@ import type { docAccess, DocAction, DocKey, FieldGroup, MasterKey } from './perm
  */
 export interface CurrentAccountValue {
   account: Account
+  /** 實際以帳密登入的帳號：管理員代入別人時仍是管理員本人，其餘時候同 account */
+  signedInAccount: Account
+  /** 實際登入者為管理員才能切換身分（代入他人後仍可切回） */
+  canSwitch: boolean
   switchTo: (id: string) => void
   /** 登出：回到登入頁並清掉查詢快取 */
   signOut: () => void

@@ -74,6 +74,8 @@ export function signIn(code: string, password: string): Account {
   clearFailedSignIns()
   currentAccountId = account.id
   writeStored(account.id)
+  signedInAccountId = account.id
+  writeSignedIn(account.id)
   return account
 }
 
@@ -133,12 +135,48 @@ function clearFailedSignIns(): void {
 }
 
 /**
- * 管理員切換身分（不需對方密碼）：只有目前登入者具「管理員」角色才放行，
- * 其餘角色呼叫一律擋下——頁首選單雖已只對管理員顯示，這裡是資料層的第二道。
- * 切到非管理員帳號後就失去切換權，要換回來須登出再以帳密登入。
+ * 管理員切換身分（代入）：畫面與權限照被切換的帳號，但「實際登入者」仍記為管理員本人，
+ * 所以切到業務之後還能再切、或一鍵回到本人。登出時一併清除。
+ *
+ * 判斷的是實際登入者是不是管理員，不是目前代入的身分——
+ * 否則切到業務後就失去切換權，管理員本人反而回不來。
+ * 頁首選單只對實際登入者為管理員時顯示，這裡是資料層的第二道。
  */
+const SIGNED_IN_KEY = 'rorica-erp-signed-in-account'
+
+function readSignedIn(): string | null {
+  try {
+    return window.sessionStorage.getItem(SIGNED_IN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeSignedIn(id: string | null): void {
+  try {
+    if (id === null) window.sessionStorage.removeItem(SIGNED_IN_KEY)
+    else window.sessionStorage.setItem(SIGNED_IN_KEY, id)
+  } catch {
+    // 存不進去不影響本次瀏覽
+  }
+}
+
+/** 實際以帳密登入的帳號 id；沒有代入時與目前身分相同 */
+let signedInAccountId: string | null = typeof window === 'undefined' ? null : (readSignedIn() ?? currentAccountId)
+
+/** 實際以帳密登入的帳號（代入別人時，這裡仍是管理員本人） */
+export function getSignedInAccount(): Account | undefined {
+  const id = signedInAccountId ?? currentAccountId
+  return id === null ? undefined : accounts.find((a) => a.id === id)
+}
+
+/** 實際登入者是否為管理員：決定能不能切換身分 */
+export function canSwitchAccount(): boolean {
+  return Boolean(getSignedInAccount()?.roles.includes('管理員'))
+}
+
 export function switchAccountAsAdmin(id: string): void {
-  if (!getCurrentAccount()?.roles.includes('管理員')) throw new Error('只有管理員可以切換身分')
+  if (!canSwitchAccount()) throw new Error('只有管理員可以切換身分')
   const target = accounts.find((a) => a.id === id)
   if (!target || target.status === '停用') throw new Error('該帳號不存在或已停用')
   currentAccountId = id
@@ -148,6 +186,8 @@ export function switchAccountAsAdmin(id: string): void {
 export function signOut(): void {
   currentAccountId = null
   writeStored(null)
+  signedInAccountId = null
+  writeSignedIn(null)
 }
 
 /**

@@ -33,8 +33,9 @@ function exportSnapshot() {
 }
 
 export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
-  const { account, switchTo, signOut } = useCurrentAccount()
-  const isAdmin = account.roles.includes('管理員')
+  const { account, signedInAccount, canSwitch, switchTo, signOut } = useCurrentAccount()
+  // 管理員代入他人時：畫面照代入的身分，但頁首要看得出「實際是誰在操作」，並能一鍵回到本人
+  const impersonating = signedInAccount.id !== account.id
 
   return (
     <header
@@ -79,7 +80,7 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
             <button
               type="button"
               className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted"
-              title={isAdmin ? '切換身分或登出' : '登出'}
+              title={canSwitch ? '切換身分或登出' : '登出'}
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white">
                 {account.name.slice(0, 1)}
@@ -87,17 +88,31 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
               {/* 頭像在小螢幕已足以辨識目前身分，姓名與角色僅在 sm 以上顯示 */}
               <div className="hidden text-left text-sm sm:block">
                 <div className="font-medium text-ink">{account.name}</div>
-                <div className="text-xs text-muted-foreground">{account.roles.join('、')}</div>
+                <div className="text-xs text-muted-foreground">
+                  {account.roles.join('、')}
+                  {impersonating && <span className="text-warning">（{signedInAccount.name} 代入中）</span>}
+                </div>
               </div>
               <UserCog className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[min(18rem,calc(100vw-2rem))]">
-            {/* 切換身分僅管理員可見（不需對方密碼）；其他角色要換帳號一律登出再登入 */}
-            {isAdmin && (
+            {/*
+              切換身分僅實際登入者為管理員時可見（不需對方密碼）；代入他人後仍顯示，可隨時切回本人。
+              其他角色要換帳號一律登出再登入。
+            */}
+            {canSwitch && (
               <>
                 <DropdownMenuLabel>切換身分（僅管理員，不需對方密碼）</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {impersonating && (
+                  <>
+                    <DropdownMenuItem onSelect={() => switchTo(signedInAccount.id)}>
+                      <UserCog className="mr-2 h-3.5 w-3.5" /> 回到本人（{signedInAccount.name}）
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 {accounts
                   .filter((a) => a.status === '啟用')
                   .map((a) => (
