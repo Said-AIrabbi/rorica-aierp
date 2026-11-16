@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { accounts } from '@/mocks/data'
-import { getCurrentAccountId, setCurrentAccountId, signIn, signOut } from '@/mocks/session'
+import { getCurrentAccountId, signIn, signOut, switchAccountAsAdmin } from '@/mocks/session'
 import { LoginPage } from '@/features/auth/LoginPage'
 import {
   actionsFor,
@@ -30,7 +30,8 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
 
   const switchTo = useCallback(
     (id: string) => {
-      setCurrentAccountId(id)
+      // 僅管理員可切換（session 層把關，非管理員會丟錯，畫面不變）
+      switchAccountAsAdmin(id)
       setAccountId(id)
       // 換身分等於換一組可見資料與可按按鈕，快取一律重取
       queryClient.invalidateQueries()

@@ -62,13 +62,87 @@ export function getCurrentAccount(): Account | undefined {
  * 免得訊息本身變成「這個帳號存在」的線索。
  */
 export function signIn(code: string, password: string): Account {
+  const lockedFor = signInLockRemainingSeconds()
+  if (lockedFor > 0) throw new Error(`登入失敗次數過多，請 ${lockedFor} 秒後再試`)
+
   const account = accounts.find((a) => a.code.toLowerCase() === code.trim().toLowerCase())
   if (!account || account.password !== password || account.status === '停用') {
-    throw new Error('帳號或密碼錯誤，或該帳號已停用')
+    const lock = recordFailedSignIn()
+    // 錯在帳號、密碼或停用，訊息一律相同，不透露哪一項有問題
+    throw new Error(lock > 0 ? `登入失敗次數過多，請 ${lock} 秒後再試` : '帳號或密碼錯誤，或該帳號已停用')
   }
+  clearFailedSignIns()
   currentAccountId = account.id
   writeStored(account.id)
   return account
+}
+
+/**
+ * 連續登入失敗的暫時鎖定：同一個瀏覽器連錯 MAX_FAILED_SIGN_INS 次，鎖 LOCK_SECONDS 秒。
+ *
+ * 不分帳號計次——若依帳號計，等於告訴對方「這個帳號存在」（與上面錯誤訊息一致的考量）。
+ * 存在 localStorage 而非記憶體，重新整理頁面不會歸零；讀寫失敗（無痕、封鎖網站資料）時退回記憶體。
+ * 這仍是前端的把關，正式系統須在伺服器端依帳號與來源 IP 限制（docs/backend-infra-requirements.md）。
+ */
+const MAX_FAILED_SIGN_INS = 5
+const LOCK_SECONDS = 60
+const FAILED_KEY = 'rorica-erp-failed-sign-ins'
+
+let failedMemory: { count: number; lockedUntil: number } = { count: 0, lockedUntil: 0 }
+
+function readFailed(): { count: number; lockedUntil: number } {
+  try {
+    const raw = window.localStorage.getItem(FAILED_KEY)
+    if (raw) return JSON.parse(raw) as { count: number; lockedUntil: number }
+  } catch {
+    // 讀不到就用記憶體裡那份
+  }
+  return failedMemory
+}
+
+function writeFailed(state: { count: number; lockedUntil: number }): void {
+  failedMemory = state
+  try {
+    window.localStorage.setItem(FAILED_KEY, JSON.stringify(state))
+  } catch {
+    // 寫不進去仍以記憶體計次
+  }
+}
+
+/** 目前還要鎖幾秒；未鎖定回 0 */
+export function signInLockRemainingSeconds(): number {
+  if (typeof window === 'undefined') return 0
+  return Math.max(0, Math.ceil((readFailed().lockedUntil - Date.now()) / 1000))
+}
+
+/** 記一次失敗，達上限即上鎖並歸零計數；回傳上鎖秒數（未上鎖為 0） */
+function recordFailedSignIn(): number {
+  if (typeof window === 'undefined') return 0
+  const count = readFailed().count + 1
+  if (count >= MAX_FAILED_SIGN_INS) {
+    writeFailed({ count: 0, lockedUntil: Date.now() + LOCK_SECONDS * 1000 })
+    return LOCK_SECONDS
+  }
+  writeFailed({ count, lockedUntil: 0 })
+  return 0
+}
+
+function clearFailedSignIns(): void {
+  if (typeof window === 'undefined') return
+  writeFailed({ count: 0, lockedUntil: 0 })
+}
+
+/**
+ * 管理員切換身分（不需對方密碼）：只有目前登入者具「管理員」角色才放行，
+ * 其餘角色呼叫一律擋下——頁首選單雖已只對管理員顯示，這裡是資料層的第二道。
+ * 切到非管理員帳號後就失去切換權，要換回來須登出再以帳密登入。
+ */
+export function switchAccountAsAdmin(id: string): void {
+  if (!getCurrentAccount()?.roles.includes('管理員')) throw new Error('只有管理員可以切換身分')
+  const target = accounts.find((a) => a.id === id)
+  if (!target || target.status === '停用') throw new Error('該帳號不存在或已停用')
+  currentAccountId = id
+  writeStored(id)
 }
 
 export function signOut(): void {
