@@ -34,6 +34,7 @@ function exportSnapshot() {
 
 export function Header({ className = '', onMenuClick }: { className?: string; onMenuClick?: () => void }) {
   const { account, switchTo, signOut } = useCurrentAccount()
+  const isAdmin = account.roles.includes('管理員')
 
   return (
     <header
@@ -78,7 +79,7 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
             <button
               type="button"
               className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted"
-              title="切換目前登入身分（原型展示用）"
+              title={isAdmin ? '切換身分或登出' : '登出'}
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-blue text-xs font-semibold text-white">
                 {account.name.slice(0, 1)}
@@ -92,19 +93,24 @@ export function Header({ className = '', onMenuClick }: { className?: string; on
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[min(18rem,calc(100vw-2rem))]">
-            <DropdownMenuLabel>切換身分（原型展示用，不需重新輸入密碼）</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {accounts
-              .filter((a) => a.status === '啟用')
-              .map((a) => (
-                <DropdownMenuItem key={a.id} onSelect={() => switchTo(a.id)}>
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span className={a.id === account.id ? 'font-semibold text-brand-dark' : ''}>{a.name}</span>
-                    <span className="text-xs text-muted-foreground">{a.roles.join('、')}</span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            <DropdownMenuSeparator />
+            {/* 切換身分僅管理員可見（不需對方密碼）；其他角色要換帳號一律登出再登入 */}
+            {isAdmin && (
+              <>
+                <DropdownMenuLabel>切換身分（僅管理員，不需對方密碼）</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {accounts
+                  .filter((a) => a.status === '啟用')
+                  .map((a) => (
+                    <DropdownMenuItem key={a.id} onSelect={() => switchTo(a.id)}>
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className={a.id === account.id ? 'font-semibold text-brand-dark' : ''}>{a.name}</span>
+                        <span className="text-xs text-muted-foreground">{a.roles.join('、')}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem onSelect={signOut}>
               <LogOut className="mr-2 h-3.5 w-3.5" /> 登出
             </DropdownMenuItem>

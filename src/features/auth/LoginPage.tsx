@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { accounts } from '@/mocks/data'
 
 /**
  * 登入頁。
@@ -10,6 +9,8 @@ import { accounts } from '@/mocks/data'
  * 任何人開 devtools 都能繞過。它存在的目的只有一個：讓權限規格的三層控制
  * （側欄／按鈕／欄位）演得出來，換個帳號進來就看得到畫面跟著變。
  * 正式系統的帳密、雜湊與連線階段管理屬後端工作（docs/backend-infra-requirements.md）。
+ *
+ * 頁面上不列任何帳號、密碼或帳號格式提示；連續輸錯的暫時鎖定在 mocks/session.ts 的 signIn 處理。
  */
 export function LoginPage({ onSignIn }: { onSignIn: (code: string, password: string) => void }) {
   const [code, setCode] = useState('')
@@ -22,6 +23,8 @@ export function LoginPage({ onSignIn }: { onSignIn: (code: string, password: str
       onSignIn(code, password)
     } catch (err) {
       setError((err as Error).message)
+      // 輸錯即清空密碼，不讓錯誤的密碼留在畫面上
+      setPassword('')
     }
   }
 
@@ -50,7 +53,6 @@ export function LoginPage({ onSignIn }: { onSignIn: (code: string, password: str
                 }}
                 autoFocus
                 autoComplete="username"
-                placeholder="R001"
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand"
               />
             </label>
@@ -80,41 +82,8 @@ export function LoginPage({ onSignIn }: { onSignIn: (code: string, password: str
           </Button>
         </form>
 
-        {/*
-          測試帳號一覽：原型是給皇加試用的，藏起來只會讓人問「帳號是什麼」。
-          正式系統當然不會有這一塊。
-        */}
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4 text-xs">
-          <p className="mb-2 font-medium text-ink-body">測試帳號（原型展示用，密碼皆為 0000）</p>
-          <table className="w-full">
-            <tbody>
-              {accounts
-                .filter((a) => a.status === '啟用')
-                .map((a) => (
-                  <tr key={a.id} className="border-t border-border/60 first:border-t-0">
-                    <td className="py-1 pr-2">
-                      <button
-                        type="button"
-                        className="font-mono text-brand hover:underline"
-                        onClick={() => {
-                          setCode(a.code)
-                          setPassword('0000')
-                          setError(undefined)
-                        }}
-                      >
-                        {a.code}
-                      </button>
-                    </td>
-                    <td className="py-1 pr-2 text-muted-foreground">{a.name}</td>
-                    <td className="py-1 text-right text-muted-foreground">{a.roles.join('、')}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-          <p className="mt-2 leading-relaxed text-muted-foreground">
-            點帳號即可自動填入。不同角色登入後，左側選單、單據上的按鈕與金額欄位都會依權限規格改變。
-          </p>
-        </div>
+        {/* 帳號與密碼一律另行提供，登入頁不列出任何帳號、密碼或帳號格式 */}
+        <p className="mt-4 text-center text-xs text-muted-foreground">帳號密碼請洽系統管理員</p>
       </div>
     </div>
   )
