@@ -80,6 +80,24 @@ export function signIn(code: string, password: string): Account {
 }
 
 /**
+ * 以選布平台單一登入：通行證已由 lib/sso.ts 驗過，這裡依 email 對應帳號主檔的「信箱」。
+ * 對應不到或帳號已停用一律拒絕——ERP 的權限只看 ERP 自己的帳號角色，選布平台的身分不帶進來。
+ */
+export function signInWithSsoEmail(email: string): Account {
+  const target = email.trim().toLowerCase()
+  const account = accounts.find((a) => a.mailbox.trim().toLowerCase() === target)
+  if (!account || account.status === '停用') {
+    throw new Error(`選布平台帳號 ${target} 沒有對應的 ERP 帳號（或已停用）。請管理員在帳戶主檔把信箱設成相同的 email。`)
+  }
+  clearFailedSignIns()
+  currentAccountId = account.id
+  writeStored(account.id)
+  signedInAccountId = account.id
+  writeSignedIn(account.id)
+  return account
+}
+
+/**
  * 連續登入失敗的暫時鎖定：同一個瀏覽器連錯 MAX_FAILED_SIGN_INS 次，鎖 LOCK_SECONDS 秒。
  *
  * 不分帳號計次——若依帳號計，等於告訴對方「這個帳號存在」（與上面錯誤訊息一致的考量）。

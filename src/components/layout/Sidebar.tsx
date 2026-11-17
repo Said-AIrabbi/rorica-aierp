@@ -25,9 +25,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import type { DocKey, MasterKey } from '@/lib/permissions'
-
-/** 選布平台（fabric-portal）網址：部署後以環境變數指定，本機開發預設 localhost:3000 */
-const FABRIC_PORTAL_URL = import.meta.env.VITE_FABRIC_PORTAL_URL || 'http://localhost:3000'
+import { FABRIC_PORTAL_URL } from '@/lib/sso'
 
 /**
  * 側欄即權限規格的第①層「功能權限」：該角色是否看得到這張單據的列表與建單入口。

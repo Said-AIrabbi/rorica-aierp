@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { accounts } from '@/mocks/data'
-import { canSwitchAccount, getCurrentAccountId, getSignedInAccount, signIn, signOut, switchAccountAsAdmin } from '@/mocks/session'
+import {
+  canSwitchAccount,
+  getCurrentAccountId,
+  getSignedInAccount,
+  signIn,
+  signInWithSsoEmail,
+  signOut,
+  switchAccountAsAdmin,
+} from '@/mocks/session'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { clearSsoHash, readSsoHash, startSso, verifyTicket } from './sso'
 import {
   actionsFor,
   canDoAction,
@@ -54,6 +63,36 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
     queryClient.clear()
   }, [queryClient])
 
+  /*
+    選布平台單一登入（lib/sso.ts）：開站時看網址
+      #/sso-start           → 已登入就留在 ERP；未登入就轉去選布平台取通行證
+      #/sso-callback?ticket → 先把通行證從網址列拿掉，再驗證、依 email 登入；失敗原因顯示在登入頁
+  */
+  const [ssoWorking, setSsoWorking] = useState(() => readSsoHash() !== null)
+  const [ssoError, setSsoError] = useState<string>()
+  useEffect(() => {
+    const action = readSsoHash()
+    if (!action) return
+    if (action.kind === 'start') {
+      if (getCurrentAccountId() !== null) {
+        clearSsoHash()
+        setSsoWorking(false)
+      } else {
+        startSso()
+      }
+      return
+    }
+    clearSsoHash()
+    verifyTicket(action.ticket)
+      .then((claims) => {
+        const signedIn = signInWithSsoEmail(claims.sub)
+        setAccountId(signedIn.id)
+        queryClient.invalidateQueries()
+      })
+      .catch((err: unknown) => setSsoError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setSsoWorking(false))
+  }, [queryClient])
+
   const account = accountId === null ? undefined : accounts.find((a) => a.id === accountId)
 
   // 管理員調整權限設定後：查詢介面重建（側欄、按鈕即時更新），已取回的資料重取（欄位可見性可能變了）
@@ -89,7 +128,14 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
   }, [account, switchTo, handleSignOut, settingsVersion])
 
   // 未登入（或帳號已被刪除）一律回登入頁
-  if (!value) return <LoginPage onSignIn={handleSignIn} />
+  if (ssoWorking) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-surface-muted text-sm text-muted-foreground">
+        以選布平台帳號登入中…
+      </div>
+    )
+  }
+  if (!value) return <LoginPage onSignIn={handleSignIn} ssoError={ssoError} />
 
   return <CurrentAccountContext.Provider value={value}>{children}</CurrentAccountContext.Provider>
 }
