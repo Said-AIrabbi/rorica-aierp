@@ -372,9 +372,14 @@ function dE00([L1,a1,b1],[L2,a2,b2]){
 const f2=v=>v.toFixed(2),f1=v=>v.toFixed(1);
 function recipeFor(lab){const [L,a,b]=lab;const k=v=>Math.max(0.0008,v);
   return [{dye:'分散黃 SE-4G',c:k(b/420+0.002)},{dye:'分散紅 FB',c:k(a/320+(100-L)/2600)},{dye:'分散藍 2BLN',c:k((100-L)/1900-b/5200)}];}
-/* 色彩資料庫：選色系統（AI 數位對色）的 API 尚未提供，暫以本檔內建的 findNearest／predictRecipes 計算。
-   嵌在 ERP 時，色樣種子改用 ERP 商品主檔各色號的 Lab（色樣編號＝ERP 歷史色樣編號）。
-   API 提供後，只需把 findNearest、predictRecipes 與實測回填（onShow）改為呼叫 API。 */
+/* 色彩資料庫：
+   - 嵌在 ERP 且 ERP 有配方庫時（BRIDGE.colorDb，PET 染色配方）：對色代理人先在配方庫找 ΔE00 1.0 以內的既有配方，
+     找不到才請 ColorMind（選色系統）以 Lab 預測，帶回各組 CMYK 與 RGB（colormindPredict）。
+   - 沒有配方庫時：色樣種子改用 ERP 商品主檔各色號的 Lab（色樣編號＝ERP 歷史色樣編號），配方以內建算法估算。
+   ColorMind 尚未接上：demo 照劇本走，colormindPredict 以配方庫推估，回傳格式與 ColorMind 相同；
+   正式串接時改由 ERP 後端呼叫（api/colormind/）。 */
+const RECIPE_DB=BRIDGE&&Array.isArray(BRIDGE.colorDb)&&BRIDGE.colorDb.length?BRIDGE.colorDb:null;
+const KIND=RECIPE_DB?'配方':'色號';
 const COLOR_SEED=BRIDGE?BRIDGE.colorSeed:[
   ['T7510301-1A','CHAMPAGNE','S75',[82.4,4.1,14.6],'分光儀量測'],
   ['T7510288-1A','IVORY','S75',[93.1,0.6,6.2],'分光儀量測'],
@@ -390,14 +395,39 @@ const COLOR_SEED=BRIDGE?BRIDGE.colorSeed:[
   ['TN120071-1B','IVORY','N120',[92.4,0.9,7.4],'分光儀量測']
 ];
 let CDB;
-function resetColorDB(){CDB={samples:COLOR_SEED.map(([id,name,base,lab,src])=>({id,name,base,lab,src,status:'已驗證'})),measurements:[],newIds:new Set()}}
+function resetColorDB(){CDB={samples:RECIPE_DB
+  ?RECIPE_DB.map(r=>({id:r.id,name:`${r.en}（${r.zh}）`,base:'PET',lab:r.lab,src:'PET 染色配方',status:'已驗證',dyes:r.dyes}))
+  :COLOR_SEED.map(([id,name,base,lab,src])=>({id,name,base,lab,src,status:'已驗證'})),measurements:[],newIds:new Set()}}
 resetColorDB();
 function findNearest(lab,base){const pool=CDB.samples.filter(x=>x.base===base);const list=(pool.length?pool:CDB.samples).map(x=>({x,d:dE00(lab,x.lab)})).sort((p,q)=>p.d-q.d);return list[0]}
 function predictRecipes(lab,base){
   const near=CDB.samples.filter(x=>x.base===base).map(x=>({x,d:dE00(lab,x.lab)})).sort((p,q)=>p.d-q.d).slice(0,3);
   return near.map((n,i)=>({no:`R-${String(i+1).padStart(2,'0')}`,from:n.x.id,dyes:recipeFor(lab).map((d,j)=>({dye:d.dye,c:d.c*(1+(i*0.06)*(j===1?1:-1))})),pred:Math.max(0.35,n.d*[0.32,0.48,0.66][i])})).sort((p,q)=>p.pred-q.pred);
 }
-const TARGETS=Object.assign({champ:{name:'香檳（客戶色卡）',lab:[81.6,4.4,15.2]},nude:{name:'裸粉（客戶照片）',lab:[79.6,11.5,12.4]},gold:{name:'淺金（客戶照片）',lab:[74.0,7.5,28.0]}},BRIDGE?BRIDGE.targets:{});
+/* ColorMind 預測（模擬）：輸入色名與 Lab，回傳與 ColorMind redeem 相同的格式 {色樣名稱,L,a,b,recipes:[{序號,C,M,Y,K,R,G,B}]}。
+   第 1 組為目標色本身，第 2 組為配方庫最接近 3 筆依色差加權的推估，其後為最接近的既有色；RGB 由 Lab 換算 sRGB，CMYK 為未套 ICC 的簡易換算 */
+function labRGB([L,a,b]){
+  let y=(L+16)/116,x=a/500+y,z=y-b/200;
+  const f=t=>t**3>0.008856?t**3:(t-16/116)/7.787;
+  x=0.95047*f(x);y=1.0*f(y);z=1.08883*f(z);
+  const c=v=>{v=v>0.0031308?1.055*v**(1/2.4)-0.055:12.92*v;return Math.round(Math.max(0,Math.min(1,v))*255)};
+  return [c(x*3.2406+y*-1.5372+z*-0.4986),c(x*-0.9689+y*1.8758+z*0.0415),c(x*0.0557+y*-0.2040+z*1.0570)];
+}
+function rgbCMYK([r,g,b]){const R=r/255,G=g/255,B=b/255,k=1-Math.max(R,G,B),o=v=>Math.round(v*1000)/10;
+  return k>=1?[0,0,0,100]:[o((1-R-k)/(1-k)),o((1-G-k)/(1-k)),o((1-B-k)/(1-k)),o(k)]}
+function colormindPredict(name,lab){
+  const near=CDB.samples.map(x=>({x,d:dE00(lab,x.lab)})).sort((p,q)=>p.d-q.d).slice(0,3);
+  const w=near.map(n=>1/Math.max(n.d,0.05)),sw=w.reduce((s,v)=>s+v,0);
+  const blend=[0,1,2].map(i=>near.reduce((s,n,j)=>s+n.x.lab[i]*w[j],0)/sw);
+  const recipes=[lab,blend,...near.map(n=>n.x.lab)].map((l,i)=>{const rgb=labRGB(l),[C,M,Y,K]=rgbCMYK(rgb);return {序號:i+1,C,M,Y,K,R:rgb[0],G:rgb[1],B:rgb[2]}});
+  return {色樣名稱:name,L:+f1(lab[0]),a:+f1(lab[1]),b:+f1(lab[2]),recipes};
+}
+const cmykTxt=r=>`C${r.C} M${r.M} Y${r.Y} K${r.K}`;
+const dyeTxt=x=>(x.dyes||[]).map(([d,g])=>`${d} ${g}g`).join('、');
+/* 配方庫的示範目標色：取一筆既有配方，Lab 微調到 ΔE00 1.0 以內，走「沿用既有配方」路線 */
+const PET_TARGETS=(()=>{if(!RECIPE_DB)return {};const a=RECIPE_DB.slice().sort((p,q)=>Math.abs(p.lab[0]-68)-Math.abs(q.lab[0]-68))[0];
+  return {pet:{name:`貼近配方庫「${a.en}」（${a.id}）`,lab:[+(a.lab[0]+0.3).toFixed(1),+(a.lab[1]-0.2).toFixed(1),+(a.lab[2]+0.3).toFixed(1)]}}})();
+const TARGETS=Object.assign({champ:{name:'香檳（客戶色卡）',lab:[81.6,4.4,15.2]},nude:{name:'裸粉（客戶照片）',lab:[79.6,11.5,12.4]},gold:{name:'淺金（客戶照片）',lab:[74.0,7.5,28.0]}},BRIDGE?BRIDGE.targets:{},PET_TARGETS);
 /* 情境 6 可選的布款：嵌在 ERP 時為「色彩資料庫裡有色樣」的 ERP 品名 */
 const BASES=BRIDGE?BRIDGE.bases:['S75','3760','630-1GU'];
 const DATA_LABEL=BRIDGE?'ERP 即時資料':'示意資料';
@@ -429,11 +459,28 @@ const SCENARIOS=[
       ev('designer','finder','請求','SUBMITTED',`上傳禮服照，指定顏色「${t.name}」（${labTxt}），需求 ${qty}Y`,{tag:'找布＋指定色',payload:{image:'gown.jpg',target_lab:t.lab,qty_y:qty},dt:600}),
       ev('finder','finder','呼叫工具','WORKING',`search_fabric：推薦 ${nm(base)}（${SCORE[base]?SCORE[base][0]:80}%，${SCORE[base]?SCORE[base][1]:'質感相近'}）`,{tag:'search_fabric',payload:{top:base,erp_no:ERPNO[base]},hl:{tab:'plat',key:base}}),
       ev('finder','color','請求','WORKING',`找 ${base} 胚布上最接近「${t.name}」的既有色樣`,{tag:'find_nearest_color',payload:{target_lab:t.lab,base}}),
-      ev('color','finder','回覆','COMPLETED',reuse?`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，在 1.0 以內，可沿用既有色號`:`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，超過 1.0，需要新配方`,{tag:'對色結果',payload:{nearest:near.x.id,lab:near.x.lab,dE00:+f2(near.d),reuse},src:'色彩資料庫計算',hl:{tab:'col',key:near.x.id}}),
-      ev('finder','inquiry','請求','WORKING',`交辦詢價：${base}，${reuse?`色號 ${near.x.id}`:'需新配方'}，需求 ${qty}Y`,{tag:'交辦詢價',mod:'hub',payload:{base,color_ref:reuse?near.x.id:null,qty_y:qty}})
+      ev('color','finder','回覆','COMPLETED',reuse?`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，在 1.0 以內，可沿用既有${KIND}`:`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，超過 1.0，需要新配方`,{tag:'對色結果',payload:{nearest:near.x.id,lab:near.x.lab,dE00:+f2(near.d),reuse},src:'色彩資料庫計算',hl:{tab:'col',key:near.x.id}}),
+      ev('finder','inquiry','請求','WORKING',`交辦詢價：${base}，${reuse?`${KIND} ${near.x.id}`:'需新配方'}，需求 ${qty}Y`,{tag:'交辦詢價',mod:'hub',payload:{base,color_ref:reuse?near.x.id:null,qty_y:qty}})
     ];
-    let biz,cust,recs=null;
-    if(reuse){
+    let biz,cust,recs=null,cm=null;
+    if(RECIPE_DB){
+      /* 配方庫路線：夠近就沿用既有配方，否則請 ColorMind 以 Lab 預測（帶回 CMYK＋RGB）；兩者都要染色，查的是胚布 */
+      if(reuse){
+        pre.push(ev('inquiry','color','請求','WORKING',`取既有配方 ${near.x.id}`,{tag:'get_recipe',payload:{sample:near.x.id}}));
+        pre.push(ev('color','inquiry','回覆','COMPLETED',r=>r==='biz'?`沿用既有配方 ${near.x.id}：${dyeTxt(near.x)}`:'沿用色彩資料庫的既有配方',{tag:'既有配方',payload:{sample:near.x.id,dyes:near.x.dyes},internal:['dyes'],src:'色彩資料庫',hl:{tab:'col',key:near.x.id}}));
+      }else{
+        cm=colormindPredict(t.name,t.lab);
+        pre.push(ev('inquiry','color','請求','WORKING',`配方庫沒有 ΔE00 1.0 以內的配方，請 ColorMind 預測`,{tag:'predict_recipe',payload:{target_lab:t.lab}}));
+        pre.push(ev('color','color','呼叫工具','WORKING',`ColorMind 預測：送出「${cm.色樣名稱}」L* ${cm.L}・a* ${cm.a}・b* ${cm.b}`,{tag:'colormind.predict',payload:{色樣名稱:cm.色樣名稱,L:cm.L,a:cm.a,b:cm.b},src:'ColorMind（模擬）',dt:1600}));
+        pre.push(ev('color','inquiry','回覆','COMPLETED',r=>r==='biz'?`ColorMind 帶回 ${cm.recipes.length} 組配方，第 1 組 ${cmykTxt(cm.recipes[0])}（RGB ${cm.recipes[0].R},${cm.recipes[0].G},${cm.recipes[0].B}）`:`已取得 ${cm.recipes.length} 組預測配方`,{tag:'ColorMind 配方',payload:{recipes:cm.recipes},internal:['recipes'],src:'ColorMind（模擬）',hl:{tab:'col',key:'recipes'}}));
+      }
+      const g=queryInventory(base,'GREIGE',qty);
+      pre.push(ev('inquiry','inventory','請求','WORKING',`query_inventory：${ERPNO[base]}（${base}）胚布，需求 ${qty}Y`,{tag:'查胚布',payload:{erp_no:ERPNO[base],color:'GREIGE',qty_y:qty}}));
+      pre.push(ev('inventory','inquiry','回覆','COMPLETED',r=>`${base} 胚布 ${stockText(g,r)}`,{tag:'胚布結果',payload:{...g},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算',hl:{tab:'erp',key:base+'|GREIGE'}}));
+      biz=reuse?`回覆草稿：${nm(base)} 以既有配方 ${near.x.id}（${near.x.name}，ΔE00 ${f2(near.d)}）染色；胚布${g.sufficient?'足夠':'不足'}，約 2 週交貨。`
+        :`回覆草稿：${nm(base)} 依 ColorMind 預測打色（第 1 組 ${cmykTxt(cm.recipes[0])}）；胚布${g.sufficient?'足夠':'不足'}，打色確認後約 3 週交貨。`;
+      cust=reuse?`回覆草稿：${nm(base)} 有相近的既有配方，可直接染色，確認色卡後安排生產。`:`回覆草稿：${nm(base)} 可依指定顏色打色，確認色卡後安排生產。`;
+    }else if(reuse){
       const res=queryInventory(base,near.x.name,qty);
       pre.push(ev('inquiry','inventory','請求','WORKING',`query_inventory：${ERPNO[base]}（${base}）${near.x.name}，需求 ${qty}Y`,{tag:'query_inventory',payload:{erp_no:ERPNO[base],color:near.x.name,qty_y:qty}}));
       pre.push(ev('inventory','inquiry','回覆','COMPLETED',r=>`${base}（${near.x.name}）${stockText(res,r)}；資料時間 ${SNAPSHOT.asOf} ${SNAPSHOT.time||'14:00'}`,{tag:'庫存結果',payload:{...res},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算',hl:{tab:'erp',key:base+'|'+near.x.name}}));
@@ -454,12 +501,13 @@ const SCENARIOS=[
     return {pre,post:k=>{
       const out=[ev('sales','inquiry','回覆','COMPLETED',k==='modify'?'修改一句後核准送出':'核准送出',{tag:'業務核准',src:'人工',dt:700}),
         ev('inquiry','designer','回覆','COMPLETED','回覆已送出，案件紀錄存入選布平台',{tag:'已送出',mod:'plat'})];
-      if(recs){const r0=recs[0];const meas=[t.lab[0]+0.4,t.lab[1]-0.3,t.lab[2]+0.5];const d=dE00(t.lab,meas);const newId=`T${({'S75':'7510','3760':'3760','630-1GU':'6301'})[base]||'0000'}401-1A`;
-        out.push(ev('color','color','狀態變更','COMPLETED',r=>r==='biz'?`record_measurement：染廠依 ${r0.no} 打色，實測 L* ${f1(meas[0])}・a* ${f1(meas[1])}・b* ${f1(meas[2])}，ΔE00 ${f2(d)}；新增色樣 ${newId} 並校正`:`染廠打色後的實測值已寫回色彩資料庫，新增色樣 ${newId}`,
-          {tag:'實測回填',src:'實測值',dt:1400,payload:{recipe:r0.no,measured_lab:meas.map(v=>+f1(v)),dE00:+f2(d),new_sample:newId},hl:{tab:'col',key:newId},
-           onShow(){if(CDB.samples.some(x=>x.id===newId))return;CDB.samples.unshift({id:newId,name:t.name.replace(/（.*）/,''),base,lab:meas,src:'染廠打色',status:'已驗證'});CDB.measurements.unshift({recipe:r0.no,sample:newId,lab:meas,d,date:'2026-11-16'});CDB.newIds.add(newId)}}));}
+      if(recs||cm){const rno=cm?'ColorMind #1':recs[0].no;const meas=[t.lab[0]+0.4,t.lab[1]-0.3,t.lab[2]+0.5];const d=dE00(t.lab,meas);
+        const newId=cm?'PET-N0001':`T${({'S75':'7510','3760':'3760','630-1GU':'6301'})[base]||'0000'}401-1A`;
+        out.push(ev('color','color','狀態變更','COMPLETED',r=>r==='biz'?`record_measurement：染廠依 ${rno} 打色，實測 L* ${f1(meas[0])}・a* ${f1(meas[1])}・b* ${f1(meas[2])}，ΔE00 ${f2(d)}；新增色樣 ${newId} 並校正`:`染廠打色後的實測值已寫回色彩資料庫，新增色樣 ${newId}`,
+          {tag:'實測回填',src:'實測值',dt:1400,payload:{recipe:rno,measured_lab:meas.map(v=>+f1(v)),dE00:+f2(d),new_sample:newId},hl:{tab:'col',key:newId},
+           onShow(){if(CDB.samples.some(x=>x.id===newId))return;CDB.samples.unshift({id:newId,name:t.name.replace(/（.*）/,''),base:cm?'PET':base,lab:meas,src:'染廠打色',status:'已驗證',dyes:[]});CDB.measurements.unshift({recipe:rno,sample:newId,lab:meas,d,date:'2026-11-16'});CDB.newIds.add(newId)}}));}
       return out;},
-      revise:'修正後的回覆草稿（已補上色差說明）',match:{target:t,near:near.x,d:near.d,reuse,recs}};
+      revise:'修正後的回覆草稿（已補上色差說明）',match:{target:t,near:near.x,d:near.d,reuse,recs,cm}};
   }},
  {key:'s1',name:'情境 1｜詢價缺貨找替代布',lanes:['customer','inquiry','inventory','finder','sample','sales'],
   desc:'海外客戶來信詢價。庫存代理人依庫存快照算出可用量，不足時詢價代理人才請選布代理人找替代布；換一個品項或碼數，路線就會不同。',
@@ -752,13 +800,15 @@ function renderData(){
     const groups={};SNAPSHOT.rolls.forEach(r=>{const k=r.sku+'|'+r.color;(groups[k]=groups[k]||{sku:r.sku,color:r.color,rs:[]}).rs.push(r)});
     h=`<div class="tbl-wrap"><table class="dt"><thead><tr><th>產品編號</th><th>貨號</th><th>顏色</th>${biz?'<th>可用碼數</th><th>捲數</th><th>已預留</th>':'<th>現貨狀態</th>'}</tr></thead><tbody>${Object.entries(groups).map(([k,g])=>{const q=queryInventory(g.sku,g.color,1);return `<tr class="${S.hl.erp===k?'hl':''}"><td class="mono">${ERPNO[g.sku]}</td><td class="mono">${g.sku}</td><td>${g.color==='GREIGE'?'胚布（未染）':g.color}</td>${biz?`<td class="mono">${q.availableY}Y</td><td class="mono">${q.rolls}</td><td class="mono">${q.reservedY?q.reservedY+'Y':'—'}</td>`:`<td>${q.hasStock?'有現貨':'需訂製'}</td>`}</tr>`}).join('')}</tbody></table></div><div class="data-note">ERP 串接只讀不寫，每 15 分鐘同步；資料時間 ${SNAPSHOT.asOf} ${SNAPSHOT.time||'14:00'}（${DATA_LABEL}）。${biz?'':'切換為業務視角才顯示數量。'}</div>`;
   }else if(S.tab==='col'){
-    const rows=CDB.samples.map(x=>`<tr class="${CDB.newIds.has(x.id)?'new':S.hl.col===x.id?'hl':''}"><td><span class="sw" style="background:${lab2rgb(x.lab)}" aria-hidden="true"></span></td><td class="mono">${x.id}</td><td>${x.name}</td><td class="mono">${x.base}</td><td class="mono">${f1(x.lab[0])}</td><td class="mono">${f1(x.lab[1])}</td><td class="mono">${f1(x.lab[2])}</td><td>${x.src}</td></tr>`).join('');
+    const rows=CDB.samples.map(x=>`<tr class="${CDB.newIds.has(x.id)?'new':S.hl.col===x.id?'hl':''}"><td><span class="sw" style="background:${lab2rgb(x.lab)}" aria-hidden="true"></span></td><td class="mono">${x.id}</td><td>${x.name}</td><td class="${RECIPE_DB?'':'mono'}">${RECIPE_DB?(x.dyes&&x.dyes.length?(biz?dyeTxt(x):`${x.dyes.length} 種染料`):'—'):x.base}</td><td class="mono">${f1(x.lab[0])}</td><td class="mono">${f1(x.lab[1])}</td><td class="mono">${f1(x.lab[2])}</td><td>${x.src}</td></tr>`).join('');
     const sc=SCENARIOS[S.scen];let near='';
     if(sc.params==='color'&&S.plan&&S.plan.match){const M=S.plan.match,cp={target:M.target},n={x:M.near,d:M.d};
-      near=`<div class="subh">本案對色結果</div><div class="target"><span class="sw big" style="background:${lab2rgb(cp.target.lab)}" title="指定顏色"></span><span class="sw big" style="background:${lab2rgb(n.x.lab)}" title="最接近色樣"></span><div><div>指定「${cp.target.name}」→ 最接近 <span class="mono">${n.x.id}</span>（${n.x.name}）</div><div class="sub">ΔE00 <span class="mono">${f2(n.d)}</span>・門檻 1.0・${n.d<=1?'可沿用既有色號':'需要新配方'}</div>${CDB.newIds.size?`<div class="sub">實測回填後已新增色樣 <span class="mono">${[...CDB.newIds][0]}</span>，下次相同顏色可直接沿用。</div>`:''}</div></div>`;
-      if(!M.reuse){const rs=M.recs;near+=`<div class="subh">候選配方</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>參考色樣</th><th>染料與濃度（% owf）</th><th>預估 ΔE00</th></tr></thead><tbody>${rs.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.no}</td><td class="mono">${r.from}</td><td>${r.dyes.map(d=>`${d.dye} ${d.c.toFixed(3)}`).join('、')}</td><td class="mono">${f2(r.pred)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="sub">已備妥 ${rs.length} 組候選配方；配方內容只對內部角色顯示。</div>`}`}}
+      near=`<div class="subh">本案對色結果</div><div class="target"><span class="sw big" style="background:${lab2rgb(cp.target.lab)}" title="指定顏色"></span><span class="sw big" style="background:${lab2rgb(n.x.lab)}" title="最接近色樣"></span><div><div>指定「${cp.target.name}」→ 最接近 <span class="mono">${n.x.id}</span>（${n.x.name}）</div><div class="sub">ΔE00 <span class="mono">${f2(n.d)}</span>・門檻 1.0・${n.d<=1?`可沿用既有${KIND}`:RECIPE_DB?'需要 ColorMind 預測':'需要新配方'}</div>${CDB.newIds.size?`<div class="sub">實測回填後已新增色樣 <span class="mono">${[...CDB.newIds][0]}</span>，下次相同顏色可直接沿用。</div>`:''}</div></div>`;
+      if(M.reuse&&RECIPE_DB){near+=`<div class="subh">沿用的既有配方</div>${biz?`<div class="sub"><span class="mono">${n.x.id}</span>　${dyeTxt(n.x)||'—'}</div>`:`<div class="sub">配方內容只對內部角色顯示。</div>`}`}
+      else if(M.cm){const c=M.cm;near+=`<div class="subh">ColorMind 預測配方（${c.recipes.length} 組）</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>序號</th><th>色塊</th><th>C</th><th>M</th><th>Y</th><th>K</th><th>R</th><th>G</th><th>B</th></tr></thead><tbody>${c.recipes.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.序號}</td><td><span class="sw" style="background:rgb(${r.R},${r.G},${r.B})" aria-hidden="true"></span></td><td class="mono">${r.C}</td><td class="mono">${r.M}</td><td class="mono">${r.Y}</td><td class="mono">${r.K}</td><td class="mono">${r.R}</td><td class="mono">${r.G}</td><td class="mono">${r.B}</td></tr>`).join('')}</tbody></table></div><div class="data-note">送出「${c.色樣名稱}」L* ${c.L}・a* ${c.a}・b* ${c.b}；ColorMind 尚未接上，此為模擬結果，格式與 ColorMind 回傳相同。</div>`:`<div class="sub">已取得 ${c.recipes.length} 組預測配方；配方內容只對內部角色顯示。</div>`}`}
+      else if(!M.reuse){const rs=M.recs;near+=`<div class="subh">候選配方</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>參考色樣</th><th>染料與濃度（% owf）</th><th>預估 ΔE00</th></tr></thead><tbody>${rs.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.no}</td><td class="mono">${r.from}</td><td>${r.dyes.map(d=>`${d.dye} ${d.c.toFixed(3)}`).join('、')}</td><td class="mono">${f2(r.pred)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="sub">已備妥 ${rs.length} 組候選配方；配方內容只對內部角色顯示。</div>`}`}}
     const ms=CDB.measurements.length?`<div class="subh">實測紀錄</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>新增色樣</th><th>實測 L*</th><th>a*</th><th>b*</th><th>ΔE00</th><th>日期</th></tr></thead><tbody>${CDB.measurements.map(m=>`<tr class="new"><td class="mono">${m.recipe}</td><td class="mono">${m.sample}</td><td class="mono">${f1(m.lab[0])}</td><td class="mono">${f1(m.lab[1])}</td><td class="mono">${f1(m.lab[2])}</td><td class="mono">${f2(m.d)}</td><td class="mono">${m.date}</td></tr>`).join('')}</tbody></table></div>`:'';
-    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>胚布</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
+    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩資料庫：PET 染色配方 ${RECIPE_DB.length} 筆，L* 超過 100 與欄位有問題的列不收錄；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測（尚未接上，目前為模擬）`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
   }else{
     const vis=S.events.slice(0,S.shown);
     h=vis.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>事件</th><th>發起者</th><th>接收者</th><th>模組</th><th>工具／標籤</th><th>狀態</th></tr></thead><tbody>${vis.map(e=>`<tr class="${e.id===S.sel?'hl':''}"><td class="mono">${e.id}</td><td>${AG[e.from].name}</td><td>${AG[e.to].name}</td><td>${mtag(modOf(e))}</td><td class="mono">${e.tag}</td><td>${STATUS[e.status].t} <span class="sub mono">${e.status}</span></td></tr>`).join('')}</tbody></table></div><div class="data-note">代理人協作模組的事件表，也是協作畫面的資料來源；任務狀態採 A2A v1.0 命名。</div>`:`<div class="empty">尚未有事件。按「播放」後，每一筆代理人之間的呼叫都會寫進這裡。</div>`;

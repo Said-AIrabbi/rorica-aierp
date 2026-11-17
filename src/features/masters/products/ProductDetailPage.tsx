@@ -462,7 +462,6 @@ export function ProductDetailPage() {
                       editable={canMaintain('商品')}
                       pending={digitalMutation.isPending}
                       onSave={(digital) => digitalMutation.mutate({ color: c.color, dyeVendorId: c.dyeVendorId, digital })}
-                      colorName={c.color}
                     />
                   </div>
                 ))}

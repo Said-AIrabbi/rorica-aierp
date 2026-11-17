@@ -31,3 +31,5 @@ docs
 
 # 假 ColorMind 的資料：客戶的 PET 染色配方（含品牌色名），不進版控
 tools/fake-colormind/data
+# ERP 色彩資料庫（由 PET 染色配方產生，含客戶品牌色名），不進版控
+public/private

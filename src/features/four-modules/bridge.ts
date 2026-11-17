@@ -30,6 +30,17 @@ export interface ConsoleBridge {
   defaultTarget: string
   /** 情境 1 的預設詢價：ERP 裡實際有可用現貨的品名＋顏色 */
   defaultInquiry: { sku: string; color: string; qty: number }
+  /** ERP 色彩資料庫（PET 染色配方，tools/build-color-db.mjs 產生）；沒有這份檔時不帶，協作中心改用 colorSeed */
+  colorDb?: ColorDbRecord[]
+}
+
+export interface ColorDbRecord {
+  id: string
+  zh: string
+  en: string
+  lab: [number, number, number]
+  /** [染料代號, 用量 g] */
+  dyes: [string, number][]
 }
 
 const YARD_PER_METER = 1 / 0.9144
