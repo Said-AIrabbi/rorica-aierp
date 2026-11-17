@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { api } from '@/mocks/api'
 import { getHubAccess, type HubAccess } from '@/lib/sso'
+import { isEmbedded } from '@/lib/embed'
 import { buildConsoleBridge, type ConsoleBridge } from './bridge'
 
 declare global {
@@ -34,20 +35,26 @@ export function FourModuleConsolePage() {
   window.__AGENT_HUB__ = hub
   const version = bridge ? `${bridge.snapshot.rolls.length}-${bridge.colorSeed.length}-${bridge.snapshot.time}-${hub ? 'hub' : 'solo'}` : ''
 
+  // 嵌在選布平台時，標題與說明由選布平台的頁面顯示，這裡不重複
+  const embedded = isEmbedded()
+
   return (
-    <div className="flex h-full flex-col">
-      <PageHeader
-        title="Agents協作中心"
-        description={`選布平台、代理人協作、ERP 串接、色彩資料庫依情境順序串接。庫存、品號對照與色樣取自本 ERP（唯讀）；選色系統 API 尚未提供，對色與配方預測暫用內建算法。${hub ? '與選布平台後台即時同步。' : '以 ERP 帳號密碼登入時為單機模式，不與選布平台同步。'}`}
-      />
+    <div>
+      {!embedded && (
+        <PageHeader
+          title="Agents協作中心"
+          description={`選布平台、代理人協作、ERP 串接、色彩資料庫依情境順序串接；對外送出前一律由業務確認。庫存、品號對照與色樣取自本 ERP（唯讀）；選色系統 API 尚未提供，對色與配方預測暫用內建算法。${hub ? '與選布平台後台即時同步。' : '以 ERP 帳號密碼登入時為單機模式，不與選布平台同步。'}`}
+        />
+      )}
       {loadingProducts || loadingLabels || !bridge ? (
         <div className="text-sm text-muted-foreground">載入 ERP 資料中…</div>
       ) : (
+        // 協作中心頁面會自行依內容高度撐開這個框（見 four-module-console.html 開頭），整頁只剩 ERP 一條捲軸
         <iframe
           key={version}
           title="Agents協作中心"
           src={`${import.meta.env.BASE_URL}four-module-console.html`}
-          className="min-h-[80vh] w-full flex-1 rounded-md border border-border bg-surface"
+          className="block h-[70vh] w-full border-0 bg-transparent"
         />
       )}
     </div>

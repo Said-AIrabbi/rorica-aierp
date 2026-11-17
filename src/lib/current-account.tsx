@@ -35,6 +35,55 @@ import {
 } from './permissions'
 import { CurrentAccountContext, type CurrentAccountValue } from './current-account-context'
 
+type SsoResult =
+  | { kind: 'none' }
+  | { kind: 'redirecting' }
+  | { kind: 'done' }
+  | { kind: 'signed-in'; accountId: string }
+  | { kind: 'error'; message: string }
+
+/*
+  單一登入流程整頁只跑一次：effect 可能執行兩次（開發模式的 StrictMode），
+  若各自產生 state、各自驗證，第二次會蓋掉第一次存的 state，兩張通行證都驗不過。
+*/
+let ssoFlow: Promise<SsoResult> | null = null
+
+function runSsoFlow(): Promise<SsoResult> {
+  ssoFlow ??= ssoFlowOnce()
+  return ssoFlow
+}
+
+async function ssoFlowOnce(): Promise<SsoResult> {
+  const action = readSsoHash()
+  if (!action) return { kind: 'none' }
+  if (action.kind === 'start') {
+    if (getCurrentAccountId() !== null) {
+      clearSsoHash()
+      return { kind: 'done' }
+    }
+    startSso()
+    return { kind: 'redirecting' }
+  }
+  // 嵌在選布平台後台：已登入且已有存取證就直接進去，否則請上層代領通行證
+  if (action.kind === 'embed' && getCurrentAccountId() !== null && getHubAccess()) {
+    clearSsoHash(action.next)
+    return { kind: 'done' }
+  }
+  if (action.kind === 'callback') clearSsoHash()
+  try {
+    const ticket = action.kind === 'embed' ? await requestEmbedTicket() : action.ticket
+    // 驗證通行證 → 依 email 登入 → 換協作中心存取證（換不到不影響登入）→ 前往 next
+    const claims = await verifyTicket(ticket)
+    const signedIn = signInWithSsoEmail(claims.sub)
+    await exchangeHubToken(ticket)
+    clearSsoHash(action.kind === 'embed' ? action.next : '/')
+    return { kind: 'signed-in', accountId: signedIn.id }
+  } catch (err) {
+    clearSsoHash()
+    return { kind: 'error', message: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 /**
  * 目前登入帳號的 React 側包裝，同時扮演登入閘門。
  *
@@ -81,47 +130,20 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
   const [ssoWorking, setSsoWorking] = useState(() => readSsoHash() !== null)
   const [ssoError, setSsoError] = useState<string>()
   useEffect(() => {
-    const action = readSsoHash()
-    if (!action) return
-    if (action.kind === 'start') {
-      if (getCurrentAccountId() !== null) {
-        clearSsoHash()
-        setSsoWorking(false)
-      } else {
-        startSso()
+    let alive = true
+    runSsoFlow().then((r) => {
+      if (!alive || r.kind === 'none' || r.kind === 'redirecting') return
+      if (r.kind === 'signed-in') {
+        setAccountId(r.accountId)
+        queryClient.invalidateQueries()
+      } else if (r.kind === 'error') {
+        setSsoError(r.message)
       }
-      return
+      setSsoWorking(false)
+    })
+    return () => {
+      alive = false
     }
-    // 驗證通行證 → 依 email 登入 → 換協作中心存取證（換不到不影響登入）→ 前往 next
-    const complete = async (ticket: string, next: string) => {
-      const claims = await verifyTicket(ticket)
-      const signedIn = signInWithSsoEmail(claims.sub)
-      await exchangeHubToken(ticket)
-      clearSsoHash(next)
-      setAccountId(signedIn.id)
-      queryClient.invalidateQueries()
-    }
-    const fail = (err: unknown) => {
-      clearSsoHash()
-      setSsoError(err instanceof Error ? err.message : String(err))
-    }
-    if (action.kind === 'embed') {
-      // 嵌在選布平台後台：已登入且已有存取證就直接進去，否則請上層代領通行證
-      if (getCurrentAccountId() !== null && getHubAccess()) {
-        clearSsoHash(action.next)
-        setSsoWorking(false)
-        return
-      }
-      requestEmbedTicket()
-        .then((ticket) => complete(ticket, action.next))
-        .catch(fail)
-        .finally(() => setSsoWorking(false))
-      return
-    }
-    clearSsoHash()
-    complete(action.ticket, '/')
-      .catch(fail)
-      .finally(() => setSsoWorking(false))
   }, [queryClient])
 
   const account = accountId === null ? undefined : accounts.find((a) => a.id === accountId)
