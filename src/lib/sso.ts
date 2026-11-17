@@ -77,7 +77,7 @@ const FABRIC_ORIGIN = new URL(FABRIC_PORTAL_URL).origin
  * 改由上層頁面代領通行證——送出 state 給上層，等上層把通行證送回來。
  * 只對選布平台的 origin 送、只收上層視窗從那個 origin 送來的訊息。
  */
-export function requestEmbedTicket(timeoutMs = 15_000): Promise<string> {
+export function requestEmbedTicket(timeoutMs = 30_000): Promise<string> {
   if (window.parent === window) return Promise.reject(new Error('不在選布平台的頁面裡，無法自動登入'))
   const state = randomState()
   try {
@@ -86,25 +86,31 @@ export function requestEmbedTicket(timeoutMs = 15_000): Promise<string> {
     // 存不進去時回來會因 state 對不上而失敗
   }
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
+    // 上層頁面可能還在載入、還沒開始聽：每秒重送同一個 state，直到收到回覆或逾時（上層對同一 state 只回一次）
+    const ask = () => window.parent.postMessage({ type: 'erp-sso-request', state }, FABRIC_ORIGIN)
+    const retry = window.setInterval(ask, 1000)
+    const done = () => {
+      window.clearInterval(retry)
+      window.clearTimeout(timer)
       window.removeEventListener('message', onMessage)
+    }
+    const timer = window.setTimeout(() => {
+      done()
       reject(new Error('選布平台沒有回應，請重新整理頁面'))
     }, timeoutMs)
     function onMessage(e: MessageEvent) {
       if (e.origin !== FABRIC_ORIGIN || e.source !== window.parent) return
       const data = e.data as { type?: unknown; ticket?: unknown; error?: unknown } | null
       if (data?.type === 'erp-sso-ticket' && typeof data.ticket === 'string') {
-        window.clearTimeout(timer)
-        window.removeEventListener('message', onMessage)
+        done()
         resolve(data.ticket)
       } else if (data?.type === 'erp-sso-error') {
-        window.clearTimeout(timer)
-        window.removeEventListener('message', onMessage)
+        done()
         reject(new Error(`選布平台無法簽發通行證（${String(data.error)}）`))
       }
     }
     window.addEventListener('message', onMessage)
-    window.parent.postMessage({ type: 'erp-sso-request', state }, FABRIC_ORIGIN)
+    ask()
   })
 }
 
