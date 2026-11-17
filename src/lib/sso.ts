@@ -40,11 +40,24 @@ export interface SsoClaims {
   jti: string
 }
 
-export type SsoHashAction = { kind: 'start' } | { kind: 'callback'; ticket: string } | null
+export type SsoHashAction =
+  | { kind: 'start' }
+  | { kind: 'callback'; ticket: string }
+  | { kind: 'embed'; next: string }
+  | null
 
-/** 網址上的 #/sso-start 或 #/sso-callback?ticket=…（HashRouter 下兩者都在 # 之後） */
+/** 只接受站內路徑（/four-modules），避免被拿來導去別的網站 */
+function safeNext(raw: string | null): string {
+  return raw && /^\/[A-Za-z0-9/_-]*$/.test(raw) ? raw : '/'
+}
+
+/** 網址上的 #/sso-start、#/sso-callback?ticket=…、#/sso-embed?next=…（HashRouter 下都在 # 之後） */
 export function readSsoHash(hash: string = window.location.hash): SsoHashAction {
   if (hash === '#/sso-start') return { kind: 'start' }
+  if (hash.startsWith('#/sso-embed')) {
+    const q = hash.includes('?') ? new URLSearchParams(hash.slice(hash.indexOf('?') + 1)) : new URLSearchParams()
+    return { kind: 'embed', next: safeNext(q.get('next')) }
+  }
   if (hash.startsWith('#/sso-callback')) {
     const ticket = new URLSearchParams(hash.slice(hash.indexOf('?') + 1)).get('ticket')
     return ticket ? { kind: 'callback', ticket } : null
@@ -52,9 +65,97 @@ export function readSsoHash(hash: string = window.location.hash): SsoHashAction 
   return null
 }
 
-/** 把通行證從網址列拿掉：不留在瀏覽紀錄、也不會被複製分享出去 */
-export function clearSsoHash(): void {
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/`)
+/** 把通行證從網址列拿掉：不留在瀏覽紀錄、也不會被複製分享出去；next 為登入後要去的站內頁 */
+export function clearSsoHash(next = '/'): void {
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${safeNext(next)}`)
+}
+
+const FABRIC_ORIGIN = new URL(FABRIC_PORTAL_URL).origin
+
+/**
+ * 嵌在選布平台後台（Agents協作中心）時的登入：框架不能轉去選布平台（對方禁止被嵌入），
+ * 改由上層頁面代領通行證——送出 state 給上層，等上層把通行證送回來。
+ * 只對選布平台的 origin 送、只收上層視窗從那個 origin 送來的訊息。
+ */
+export function requestEmbedTicket(timeoutMs = 15_000): Promise<string> {
+  if (window.parent === window) return Promise.reject(new Error('不在選布平台的頁面裡，無法自動登入'))
+  const state = randomState()
+  try {
+    window.sessionStorage.setItem(STATE_KEY, state)
+  } catch {
+    // 存不進去時回來會因 state 對不上而失敗
+  }
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      window.removeEventListener('message', onMessage)
+      reject(new Error('選布平台沒有回應，請重新整理頁面'))
+    }, timeoutMs)
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== FABRIC_ORIGIN || e.source !== window.parent) return
+      const data = e.data as { type?: unknown; ticket?: unknown; error?: unknown } | null
+      if (data?.type === 'erp-sso-ticket' && typeof data.ticket === 'string') {
+        window.clearTimeout(timer)
+        window.removeEventListener('message', onMessage)
+        resolve(data.ticket)
+      } else if (data?.type === 'erp-sso-error') {
+        window.clearTimeout(timer)
+        window.removeEventListener('message', onMessage)
+        reject(new Error(`選布平台無法簽發通行證（${String(data.error)}）`))
+      }
+    }
+    window.addEventListener('message', onMessage)
+    window.parent.postMessage({ type: 'erp-sso-request', state }, FABRIC_ORIGIN)
+  })
+}
+
+/*
+  Agents協作中心的共用狀態放在選布平台（agent-hub 模組）。單一登入時用剛驗過的通行證換一張存取證，
+  協作中心以它讀寫共用狀態、接收即時推送。換不到（模組沒開、以帳密登入）就維持單機模式。
+*/
+const HUB_KEY = 'rorica-erp-agent-hub'
+
+export interface HubAccess {
+  url: string
+  token: string
+  name: string
+}
+
+export async function exchangeHubToken(ticket: string): Promise<void> {
+  try {
+    const r = await fetch(`${FABRIC_PORTAL_URL}/api/agent-hub/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket }),
+    })
+    if (!r.ok) return
+    const body = (await r.json()) as { token?: string; exp?: number; name?: string }
+    if (body.token && body.exp) {
+      window.sessionStorage.setItem(HUB_KEY, JSON.stringify({ token: body.token, exp: body.exp, name: body.name ?? '' }))
+    }
+  } catch {
+    // 協作中心同步是附加功能：換不到不影響登入
+  }
+}
+
+/** 目前有效的存取證；沒有或已過期回傳 undefined（協作中心改為單機模式） */
+export function getHubAccess(): HubAccess | undefined {
+  try {
+    const raw = window.sessionStorage.getItem(HUB_KEY)
+    if (!raw) return undefined
+    const h = JSON.parse(raw) as { token: string; exp: number; name: string }
+    if (h.exp * 1000 <= Date.now()) return undefined
+    return { url: FABRIC_PORTAL_URL, token: h.token, name: h.name }
+  } catch {
+    return undefined
+  }
+}
+
+export function clearHubAccess(): void {
+  try {
+    window.sessionStorage.removeItem(HUB_KEY)
+  } catch {
+    // 沒有可清的
+  }
 }
 
 /** 本站在選布平台允許清單裡登記的位址：origin＋路徑（不含 ? 與 #） */

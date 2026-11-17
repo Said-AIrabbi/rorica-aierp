@@ -11,7 +11,16 @@ import {
   switchAccountAsAdmin,
 } from '@/mocks/session'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { clearSsoHash, readSsoHash, startSso, verifyTicket } from './sso'
+import {
+  clearHubAccess,
+  clearSsoHash,
+  exchangeHubToken,
+  getHubAccess,
+  readSsoHash,
+  requestEmbedTicket,
+  startSso,
+  verifyTicket,
+} from './sso'
 import {
   actionsFor,
   canDoAction,
@@ -59,6 +68,7 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = useCallback(() => {
     signOut()
+    clearHubAccess()
     setAccountId(null)
     queryClient.clear()
   }, [queryClient])
@@ -82,14 +92,35 @@ export function CurrentAccountProvider({ children }: { children: ReactNode }) {
       }
       return
     }
+    // 驗證通行證 → 依 email 登入 → 換協作中心存取證（換不到不影響登入）→ 前往 next
+    const complete = async (ticket: string, next: string) => {
+      const claims = await verifyTicket(ticket)
+      const signedIn = signInWithSsoEmail(claims.sub)
+      await exchangeHubToken(ticket)
+      clearSsoHash(next)
+      setAccountId(signedIn.id)
+      queryClient.invalidateQueries()
+    }
+    const fail = (err: unknown) => {
+      clearSsoHash()
+      setSsoError(err instanceof Error ? err.message : String(err))
+    }
+    if (action.kind === 'embed') {
+      // 嵌在選布平台後台：已登入且已有存取證就直接進去，否則請上層代領通行證
+      if (getCurrentAccountId() !== null && getHubAccess()) {
+        clearSsoHash(action.next)
+        setSsoWorking(false)
+        return
+      }
+      requestEmbedTicket()
+        .then((ticket) => complete(ticket, action.next))
+        .catch(fail)
+        .finally(() => setSsoWorking(false))
+      return
+    }
     clearSsoHash()
-    verifyTicket(action.ticket)
-      .then((claims) => {
-        const signedIn = signInWithSsoEmail(claims.sub)
-        setAccountId(signedIn.id)
-        queryClient.invalidateQueries()
-      })
-      .catch((err: unknown) => setSsoError(err instanceof Error ? err.message : String(err)))
+    complete(action.ticket, '/')
+      .catch(fail)
       .finally(() => setSsoWorking(false))
   }, [queryClient])
 

@@ -173,6 +173,7 @@ table.dt tr.new td{background:color-mix(in srgb,var(--st-ok) 14%,transparent)}
         <button type="button" id="role-biz" aria-pressed="false">業務視角</button>
       </div>
       <span class="badge mono" id="asof"></span>
+      <span class="badge" id="sync" hidden></span>
     </div>
   </header>
 
@@ -526,8 +527,9 @@ function start(atRest){
   S.events=S.plan.pre.slice();
   S.rejecting=false;S.typing=null;S.fresh=null;
   S.shown=0;S.playing=false;
-  S.sel=null;
+  S.sel=null;S.decisions=[];
   render();
+  if(!atRest)syncPush();
 }
 function awaiting(){const e=S.events[S.shown-1];return !!e&&S.shown===S.events.length&&e.status==='INPUT_REQUIRED'&&!e.decided}
 function isDone(){const hasHuman=S.events.some(e=>e.status==='INPUT_REQUIRED');return S.shown>0&&S.shown===S.events.length&&!awaiting()&&(!hasHuman||S.events.some(e=>e.decided))}
@@ -538,12 +540,13 @@ function step(manual){
   const next=S.events[S.shown];
   if(!manual&&!REDUCE&&S.typing!==next){S.typing=next;render();schedule(Math.min(950,next.dt*0.65)/S.speed);return}
   S.typing=null;S.shown++;S.sel=next.id;S.fresh=next.id;if(next.onShow&&!next.applied){next.onShow();next.applied=true}if(next.hl){S.hl[next.hl.tab]=next.hl.key;S.tab=next.hl.tab}render();S.fresh=null;
-  if(awaiting()){S.playing=false;renderControls();return}
+  if(awaiting()){S.playing=false;renderControls();syncPush();return}
   if(S.playing&&S.shown<S.events.length) schedule(Math.max(220,S.events[S.shown].dt*0.4)/S.speed);
   else {S.playing=false;renderControls();}
+  syncPush();
 }
 function decide(kind,reason){
-  const e=S.events[S.shown-1];e.decided=kind;
+  const e=S.events[S.shown-1];e.decided=kind;S.decisions.push({kind,reason:reason||''});
   if(kind==='reject'){
     const owner=e.from;
     S.events.push(ev('sales',owner,'回覆','WORKING','退回：'+reason,{tag:'業務退回',src:'人工',dt:500,payload:{reason}}));
@@ -552,6 +555,7 @@ function decide(kind,reason){
     S.events.push(...S.plan.post(kind));
   }
   S.rejecting=false;S.playing=true;S.typing=null;render();schedule(350/S.speed);
+  syncPush();
 }
 
 function boardState(){
@@ -728,12 +732,100 @@ $('role-cust').onclick=()=>{S.role='cust';render()};
 $('role-biz').onclick=()=>{S.role='biz';render()};
 $('sp1').onclick=()=>{S.speed=1;render()};
 $('sp2').onclick=()=>{S.speed=2;render()};
-$('play').onclick=()=>{if(S.playing){stopPlay()}else{S.playing=true;schedule(150)}render()};
+$('play').onclick=()=>{if(S.playing){stopPlay()}else{S.playing=true;schedule(150)}render();syncPush()};
 $('next').onclick=()=>{stopPlay();step(true)};
-$('prev').onclick=()=>{stopPlay();if(S.shown>0){S.shown--;S.sel=S.shown?S.events[S.shown-1].id:null}render()};
+$('prev').onclick=()=>{stopPlay();if(S.shown>0){S.shown--;S.sel=S.shown?S.events[S.shown-1].id:null}render();syncPush()};
 $('replay').onclick=()=>start(false);
-$('progress').oninput=e=>{stopPlay();S.shown=+e.target.value;S.sel=S.shown?S.events[S.shown-1].id:null;render()};
+$('progress').oninput=e=>{stopPlay();S.shown=+e.target.value;S.sel=S.shown?S.events[S.shown-1].id:null;render();syncPush()};
+
+/* ===== 即時同步（選布平台 agent-hub 模組）=====
+   嵌在 ERP 且有存取證時（window.parent.__AGENT_HUB__），情境、參數、播放到第幾步、人工決定與播放中與否
+   都寫到選布平台的共用狀態，並即時接收別人的變更；ERP 與選布平台後台看到的是同一件案件。
+   客戶／業務視角與播放速度各看各的，不同步。
+   寫入以 rev 做 compare-and-set：同時按下時後到的一方收到 409 與目前狀態，改顯示對方的結果。
+   自動播放只由按下播放的那個畫面推進（driver），其他畫面跟著顯示；driver 關掉或斷線 6 秒，另一個畫面接手。 */
+const HUB=(()=>{try{const h=window.parent!==window?window.parent.__AGENT_HUB__:null;return h&&h.url&&h.token?h:null}catch(e){return null}})();
+const ME=Math.random().toString(36).slice(2,10);
+const SYNC={rev:0,applying:false,inFlight:false,dirty:false,lastAt:0,connected:false,expired:false,by:'',remote:null};
+function syncSnapshot(){return {v:1,writer:ME,scen:S.scen,p:S.p,cp:S.cp,shown:S.shown,decisions:S.decisions,playing:S.playing,driver:S.playing?ME:null}}
+function syncBadge(){const b=$('sync');b.hidden=false;
+  b.textContent=!HUB?'單機模式（未與選布平台同步）':SYNC.expired?'同步存取證已失效，請重新以選布平台帳號登入':SYNC.connected?`即時同步中${SYNC.by?'・最後操作：'+SYNC.by:''}`:'同步連線中…';}
+async function syncPush(){
+  if(!HUB||SYNC.applying||SYNC.expired)return;
+  if(SYNC.inFlight){SYNC.dirty=true;return}
+  SYNC.inFlight=true;
+  try{
+    const r=await fetch(HUB.url+'/api/agent-hub/state',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+HUB.token},body:JSON.stringify({baseRev:SYNC.rev,state:syncSnapshot()})});
+    const b=await r.json().catch(()=>null);
+    if(r.ok&&b){SYNC.rev=b.rev;SYNC.by=b.updatedBy||'';SYNC.lastAt=Date.now();SYNC.remote=b.state}
+    else if(r.status===409&&b){SYNC.dirty=false;syncApply(b)}
+    else if(r.status===401){SYNC.expired=true}
+  }catch(e){/* 斷線時本機照常操作，重新連上後以伺服器狀態為準 */}
+  finally{SYNC.inFlight=false;syncBadge();if(SYNC.dirty){SYNC.dirty=false;syncPush()}}
+}
+function syncRebuild(st){
+  S.scen=st.scen;S.p=st.p;S.cp=st.cp;$('scenario').value=String(st.scen);renderParams();
+  uid=0;resetColorDB();S.hl={};
+  const sc=SCENARIOS[S.scen];S.plan=sc.build(sc.params==='color'?colorParams():S.p);S.events=S.plan.pre.slice();
+  S.decisions=[];
+  for(const d of st.decisions||[]){
+    const e=[...S.events].reverse().find(x=>x.status==='INPUT_REQUIRED'&&!x.decided);if(!e)break;
+    e.decided=d.kind;S.decisions.push(d);
+    if(d.kind==='reject'){S.events.push(ev('sales',e.from,'回覆','WORKING','退回：'+d.reason,{tag:'業務退回',src:'人工',dt:500,payload:{reason:d.reason}}));S.events.push(ev(e.from,'sales','等待人工','INPUT_REQUIRED',S.plan.revise,{tag:'修正待確認',payload:{revised:true}}))}
+    else S.events.push(...S.plan.post(d.kind));
+  }
+}
+function syncApply(snap){
+  if(!snap||typeof snap.rev!=='number'||snap.rev<=SYNC.rev||!snap.state)return;
+  SYNC.rev=snap.rev;SYNC.by=snap.updatedBy||'';SYNC.lastAt=Date.now();SYNC.remote=snap.state;
+  // 自己寫的回推：本機畫面只會比它新（推送可能晚於本機下一步才到），只記版本、不覆蓋
+  if(snap.state.writer===ME){syncBadge();return}
+  const st=snap.state;SYNC.applying=true;
+  try{
+    const prevShown=S.shown;
+    clearTimeout(S.timer);S.typing=null;S.rejecting=false;
+    const sameCase=st.scen===S.scen&&JSON.stringify([st.p,st.cp,st.decisions])===JSON.stringify([S.p,S.cp,S.decisions]);
+    if(!sameCase)syncRebuild(st);
+    S.shown=Math.max(0,Math.min(st.shown|0,S.events.length));
+    for(let i=0;i<S.shown;i++){const e=S.events[i];if(e.onShow&&!e.applied){e.onShow();e.applied=true}if(e.hl)S.hl[e.hl.tab]=e.hl.key}
+    const last=S.events[S.shown-1];
+    if(last&&last.hl&&S.shown>prevShown)S.tab=last.hl.tab;
+    S.sel=last?last.id:null;S.fresh=sameCase&&S.shown===prevShown+1&&last?last.id:null;
+    S.playing=!!st.playing&&st.driver===ME;
+    render();S.fresh=null;
+    if(S.playing&&!awaiting()&&S.shown<S.events.length)schedule(400/S.speed);
+  }finally{SYNC.applying=false;syncBadge()}
+}
+async function syncStream(){
+  if(!HUB||SYNC.expired)return;
+  try{
+    const r=await fetch(HUB.url+'/api/agent-hub/stream',{headers:{Authorization:'Bearer '+HUB.token}});
+    if(r.status===401){SYNC.expired=true;SYNC.connected=false;syncBadge();return}
+    if(!r.ok||!r.body)throw new Error('HTTP '+r.status);
+    SYNC.connected=true;syncBadge();
+    const reader=r.body.getReader(),dec=new TextDecoder();let buf='';
+    for(;;){
+      const {value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});let i;
+      while((i=buf.indexOf('\n\n'))>=0){
+        const chunk=buf.slice(0,i);buf=buf.slice(i+2);
+        if(!/^event: state$/m.test(chunk))continue;
+        const data=chunk.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('\n');
+        try{const snap=JSON.parse(data);
+          // 共用狀態還是空的（第一次使用）：把本機目前的案件送上去當起點
+          if(snap.state==null){if(snap.rev===0&&SYNC.rev===0)syncPush()}else syncApply(snap)}catch(e){}
+      }
+    }
+  }catch(e){}
+  SYNC.connected=false;syncBadge();setTimeout(syncStream,2000);
+}
+// 推進播放的畫面關掉或斷線：6 秒沒有新進度就由這個畫面接手
+setInterval(()=>{const st=SYNC.remote;
+  if(!HUB||!SYNC.connected||!st||!st.playing||st.driver===ME||S.playing)return;
+  if(Date.now()-SYNC.lastAt>6000&&!awaiting()&&S.shown<S.events.length){S.playing=true;schedule(150);syncPush()}},2000);
+
 renderParams();start(true);
+syncBadge();syncStream();
 </script>
 </body>
 </html>
