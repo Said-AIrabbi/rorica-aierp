@@ -1,11 +1,18 @@
-import { useState } from 'react'
-import { Save, Wand2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Loader2, Palette, Save, Wand2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ColorSwatch, DigitalColorDetail, SWATCH_SIZE_PX } from '@/components/shared/ColorSwatch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDate } from '@/lib/dates'
+import {
+  isColorMindEnabled,
+  onColorMindResult,
+  recipeHex,
+  startColorMindPrediction,
+  type ColorMindResult,
+} from '@/lib/colormind'
 import { hexToCmyk, labToHex, normalizeHex, validateDigitalColor } from '@/lib/digital-color'
 import type { DigitalColor } from '@/types'
 
@@ -56,14 +63,35 @@ export function DigitalColorEditor({
   editable,
   pending,
   onSave,
+  colorName,
 }: {
   value: DigitalColor | undefined
   editable: boolean
   pending: boolean
   onSave: (digital: DigitalColor) => void
+  /** 顏色名稱：ColorMind 預測時當作色樣名稱 */
+  colorName?: string
 }) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(value))
   const [open, setOpen] = useState(false)
+  // ColorMind 預測：等待中的請求代號、帶回的配方、帶入了哪一組
+  const [cmRequest, setCmRequest] = useState<string>()
+  const [cmResult, setCmResult] = useState<ColorMindResult>()
+  const [cmApplied, setCmApplied] = useState<number>()
+
+  useEffect(() => {
+    if (!cmRequest) return
+    return onColorMindResult(cmRequest, (outcome) => {
+      setCmRequest(undefined)
+      if ('error' in outcome) {
+        toast.error(outcome.error)
+        return
+      }
+      setCmResult(outcome.result)
+      setCmApplied(undefined)
+      toast.success(`ColorMind 帶回 ${outcome.result.recipes.length} 組配方，請選擇要帶入的一組`)
+    })
+  }, [cmRequest])
 
   if (!editable || !open) {
     return (
@@ -122,6 +150,33 @@ export function DigitalColorEditor({
     if (oog) toast.warning('此 LAB 超出螢幕 sRGB 色域，HEX 為最接近的可顯示顏色')
   }
 
+  const startColorMind = async () => {
+    const lab = fromDraft(draft).lab
+    if (!lab || ![lab.l, lab.a, lab.b].every(Number.isFinite)) {
+      toast.error('請先填好 L*、a*、b* 三個值')
+      return
+    }
+    const name = (colorName ?? '').trim()
+    if (!name) {
+      toast.error('這筆色號沒有顏色名稱，無法送 ColorMind 預測')
+      return
+    }
+    try {
+      setCmResult(undefined)
+      setCmRequest(await startColorMindPrediction({ name: [...name].slice(0, 80).join(''), lab }))
+    } catch (error) {
+      toast.error((error as Error).message)
+    }
+  }
+
+  /** 帶入一組配方：HEX 取 ColorMind 的 RGB、CMYK 取它的值；LAB 是分光儀讀數，維持原值 */
+  const applyRecipe = (index: number) => {
+    const r = cmResult?.recipes[index]
+    if (!r) return
+    setDraft((d) => ({ ...d, hex: recipeHex(r), c: str(r.C), m: str(r.M), y: str(r.Y), k: str(r.K) }))
+    setCmApplied(index)
+  }
+
   const save = () => {
     try {
       validateDigitalColor(fromDraft(draft))
@@ -166,6 +221,16 @@ export function DigitalColorEditor({
             <Button type="button" variant="outline" size="sm" className="h-8" onClick={deriveFromLab}>
               <Wand2 className="mr-1 h-3.5 w-3.5" /> 換算 HEX／CMYK
             </Button>
+            {isColorMindEnabled() && (
+              <Button type="button" variant="outline" size="sm" className="h-8" disabled={!!cmRequest} onClick={startColorMind}>
+                {cmRequest ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Palette className="mr-1 h-3.5 w-3.5" />
+                )}
+                {cmRequest ? '等待 ColorMind 帶回…' : 'ColorMind 預測'}
+              </Button>
+            )}
           </div>
           {outOfGamut && <div className="text-[11px] text-warning">此 LAB 超出螢幕色域，色塊為最接近的可顯示顏色</div>}
         </div>
@@ -194,6 +259,65 @@ export function DigitalColorEditor({
           </div>
         </div>
       </div>
+
+      {cmRequest && (
+        <div className="text-[11px] text-muted-foreground">
+          已在新分頁開啟 ColorMind：確認配方後按「帶回配方」，結果會回到這裡。
+          <button type="button" className="ml-2 underline" onClick={() => setCmRequest(undefined)}>
+            取消等待
+          </button>
+        </div>
+      )}
+
+      {cmResult && (
+        <div className="space-y-2 rounded-md bg-muted/50 p-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium text-ink">ColorMind 配方（{cmResult.recipes.length} 組）</span>
+            <span className="text-muted-foreground">選一組帶入 HEX／CMYK，LAB 維持原值；帶入後仍須按「儲存電腦色號」</span>
+            <button type="button" className="ml-auto text-muted-foreground underline" onClick={() => setCmResult(undefined)}>
+              收起
+            </button>
+          </div>
+          <div className="max-h-56 overflow-auto">
+            <table className="w-full text-xs tabular-nums">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1 font-normal">序號</th>
+                  <th className="px-2 py-1 font-normal">色塊</th>
+                  <th className="px-2 py-1 font-normal">C／M／Y／K</th>
+                  <th className="px-2 py-1 font-normal">R／G／B</th>
+                  <th className="px-2 py-1" />
+                </tr>
+              </thead>
+              <tbody>
+                {cmResult.recipes.map((r, i) => (
+                  <tr key={r.序號} className={cmApplied === i ? 'bg-brand/10' : undefined}>
+                    <td className="px-2 py-1">{r.序號}</td>
+                    <td className="px-2 py-1">
+                      <span
+                        className="inline-block h-5 w-5 rounded border border-border align-middle"
+                        style={{ background: recipeHex(r) }}
+                        aria-hidden
+                      />
+                    </td>
+                    <td className="px-2 py-1">
+                      {r.C}／{r.M}／{r.Y}／{r.K}
+                    </td>
+                    <td className="px-2 py-1">
+                      {r.R}／{r.G}／{r.B}
+                    </td>
+                    <td className="px-2 py-1 text-right">
+                      <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px]" onClick={() => applyRecipe(i)}>
+                        {cmApplied === i ? '已帶入' : '帶入'}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="mr-auto text-[11px] text-muted-foreground">三組皆可留空；全部清空後儲存即清除。</span>

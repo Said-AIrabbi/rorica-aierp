@@ -420,6 +420,7 @@ export function DyeRequestDetailPage() {
                     editable={permissions.can('表3', '建立')}
                     pending={saveDigitalMutation.isPending}
                     onSave={(digital) => saveDigitalMutation.mutate({ entryId: c.id!, digital })}
+                    colorName={request.colors.find((x) => x.id === c.id)?.color}
                   />
                 ) : (
                   <div className="mt-2 text-xs text-muted-foreground">儲存色號清單後即可登記電腦色號。</div>
