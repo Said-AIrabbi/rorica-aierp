@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import type { FabricLabel, Product } from '@/types'
 
 /**
- * 把 ERP 資料整理成四模組協作中心（public/four-module-console.html）讀的格式。
+ * 把 ERP 資料整理成Agents協作中心（public/four-module-console.html）讀的格式。
  *
  * 協作中心原本內建示意資料（SNAPSHOT、ERPNO、COLOR_SEED）；嵌在 ERP 裡時改讀這裡給的值，
  * 劇本與畫面邏輯一行不動。對照關係：

@@ -131,7 +131,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             模組串接
           </div>
-          <NavItem to="/four-modules" label="四模組協作中心" icon={Workflow} />
+          <NavItem to="/four-modules" label="Agents協作中心" icon={Workflow} />
           {/*
             選布平台（fabric-portal）是獨立系統，各自登入，故開新分頁而非站內路由。
             網址由 VITE_FABRIC_PORTAL_URL 設定，未設定時指向本機開發站 localhost:3000。

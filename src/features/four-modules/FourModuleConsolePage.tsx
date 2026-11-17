@@ -11,7 +11,7 @@ declare global {
 }
 
 /**
- * 四模組協作中心：把協作中心原型（public/four-module-console.html）嵌進 ERP，
+ * Agents協作中心：把協作中心原型（public/four-module-console.html）嵌進 ERP，
  * 並把 ERP 的布卷、預留、商品主檔與色號 Lab 交給它（見 bridge.ts）。
  *
  * 讀取走 api.*，與 ERP 其他頁面同一套權限：看不到布卷資料的角色，交過去的庫存就是空的。
@@ -32,7 +32,7 @@ export function FourModuleConsolePage() {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title="四模組協作中心"
+        title="Agents協作中心"
         description="選布平台、代理人協作、ERP 串接、色彩資料庫依情境順序串接。庫存、品號對照與色樣取自本 ERP（唯讀）；選色系統 API 尚未提供，對色與配方預測暫用內建算法。"
       />
       {loadingProducts || loadingLabels || !bridge ? (
@@ -40,7 +40,7 @@ export function FourModuleConsolePage() {
       ) : (
         <iframe
           key={version}
-          title="四模組協作中心"
+          title="Agents協作中心"
           src={`${import.meta.env.BASE_URL}four-module-console.html`}
           className="min-h-[80vh] w-full flex-1 rounded-md border border-border bg-surface"
         />
