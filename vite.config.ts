@@ -1,5 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { parseEnv } from 'node:util'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 /**
@@ -12,13 +14,34 @@ const LOCAL_API_ROUTES: Record<string, string> = {
   '/api/colormind/redeem': '/api/colormind/redeem.ts',
 }
 
+/** 只讀 .env 檔本身（vite 的 loadEnv 在前綴為空時會把整個 process.env 也混進來）；後讀的蓋前面的 */
+function fileEnv(mode: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const name of ['.env', '.env.local', `.env.${mode}`, `.env.${mode}.local`]) {
+    const file = path.join(process.cwd(), name)
+    if (existsSync(file)) Object.assign(out, parseEnv(readFileSync(file, 'utf8')))
+  }
+  return out
+}
+
+// 設定檔本身也會重新載入，記錄放在 globalThis 才跨得過重啟
+const envStore = globalThis as typeof globalThis & { __localApiEnv?: Set<string> }
+const injectedEnv = (envStore.__localApiEnv ??= new Set<string>())
+
 function localApi(): Plugin {
   return {
     name: 'local-api',
     apply: 'serve',
     configureServer(server) {
-      const env = loadEnv(server.config.mode, process.cwd(), '')
-      for (const [k, v] of Object.entries(env)) if (!k.startsWith('VITE_') && process.env[k] === undefined) process.env[k] = v
+      // 改了 .env.local 時 vite 會重啟伺服器但行程不變：先清掉上次從檔案帶進來的值，刪掉的設定才不會殘留
+      for (const k of injectedEnv) delete process.env[k]
+      injectedEnv.clear()
+      // 本機開發以 .env 檔為準（覆寫同名的既有值）
+      for (const [k, v] of Object.entries(fileEnv(server.config.mode))) {
+        if (k.startsWith('VITE_')) continue
+        process.env[k] = v
+        injectedEnv.add(k)
+      }
 
       server.middlewares.use(async (req, res, next) => {
         const pathname = (req.url ?? '').split('?')[0]

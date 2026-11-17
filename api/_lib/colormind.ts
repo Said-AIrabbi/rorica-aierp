@@ -6,7 +6,7 @@
  * 環境變數：
  *   COLORMIND_BASE_URL    預設 https://test.tcolormind.ai；本機接假 ColorMind 時設 http://localhost:4010
  *   COLORMIND_API_KEY     Bearer 金鑰；未設定時兩支端點都回 503
- *   COLORMIND_RETURN_URL  按「帶回配方」後回到的頁面；未設定時用本站的 /colormind-return.html。
+ *   COLORMIND_RETURN_URL  按「帶回配方」後回到的完整網址，原樣送出；未設定時為本站的 /#/four-modules。
  *                         這個網址的網域須先請 ColorMind 加入允許清單（正式須為 https）
  */
 
@@ -57,7 +57,7 @@ export function sameOrigin(req: Request): boolean {
 }
 
 export function returnUrlFor(req: Request): string {
-  return process.env.COLORMIND_RETURN_URL?.trim() || new URL('/colormind-return.html', req.url).toString()
+  return process.env.COLORMIND_RETURN_URL?.trim() || new URL('/#/four-modules', req.url).toString()
 }
 
 /** 呼叫 ColorMind；回傳對方的狀態碼與內容，錯誤訊息轉成可給使用者看的中文 */

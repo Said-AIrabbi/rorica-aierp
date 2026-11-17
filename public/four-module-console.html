@@ -376,8 +376,8 @@ function recipeFor(lab){const [L,a,b]=lab;const k=v=>Math.max(0.0008,v);
    - 嵌在 ERP 且 ERP 有配方庫時（BRIDGE.colorDb，PET 染色配方）：對色代理人先在配方庫找 ΔE00 1.0 以內的既有配方，
      找不到才請 ColorMind（選色系統）以 Lab 預測，帶回各組 CMYK 與 RGB（colormindPredict）。
    - 沒有配方庫時：色樣種子改用 ERP 商品主檔各色號的 Lab（色樣編號＝ERP 歷史色樣編號），配方以內建算法估算。
-   ColorMind 尚未接上：demo 照劇本走，colormindPredict 以配方庫推估，回傳格式與 ColorMind 相同；
-   正式串接時改由 ERP 後端呼叫（api/colormind/）。 */
+   ColorMind：預測後由業務到 ColorMind 確認並按「帶回配方」（人工步驟），嵌在 ERP 時可開真的 ColorMind（openColorMind），
+   也可用 colormindPredict 的模擬結果帶回（以配方庫推估，格式與 ColorMind 相同）。 */
 const RECIPE_DB=BRIDGE&&Array.isArray(BRIDGE.colorDb)&&BRIDGE.colorDb.length?BRIDGE.colorDb:null;
 const KIND=RECIPE_DB?'配方':'色號';
 const COLOR_SEED=BRIDGE?BRIDGE.colorSeed:[
@@ -444,7 +444,7 @@ function stockText(res,role,need){
 
 let uid=0;
 function ev(from,to,type,status,text,o={}){
-  return {id:'EV-'+String(++uid).padStart(4,'0'),from,to,type,status,text,tag:o.tag||'',payload:o.payload||{},internal:o.internal||[],dt:o.dt??1100,src:o.src||'劇本',group:o.group||'',mod:o.mod,onShow:o.onShow,hl:o.hl};
+  return {id:'EV-'+String(++uid).padStart(4,'0'),from,to,type,status,text,tag:o.tag||'',payload:o.payload||{},internal:o.internal||[],dt:o.dt??1100,src:o.src||'劇本',group:o.group||'',mod:o.mod,onShow:o.onShow,hl:o.hl,stage:o.stage,revise:o.revise};
 }
 const T=(e,role)=>typeof e.text==='function'?e.text(role):e.text;
 
@@ -462,7 +462,7 @@ const SCENARIOS=[
       ev('color','finder','回覆','COMPLETED',reuse?`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，在 1.0 以內，可沿用既有${KIND}`:`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，超過 1.0，需要新配方`,{tag:'對色結果',payload:{nearest:near.x.id,lab:near.x.lab,dE00:+f2(near.d),reuse},src:'色彩資料庫計算',hl:{tab:'col',key:near.x.id}}),
       ev('finder','inquiry','請求','WORKING',`交辦詢價：${base}，${reuse?`${KIND} ${near.x.id}`:'需新配方'}，需求 ${qty}Y`,{tag:'交辦詢價',mod:'hub',payload:{base,color_ref:reuse?near.x.id:null,qty_y:qty}})
     ];
-    let biz,cust,recs=null,cm=null;
+    let biz,cust,recs=null,cm=null,cmCut=-1;
     if(RECIPE_DB){
       /* 配方庫路線：夠近就沿用既有配方，否則請 ColorMind 以 Lab 預測（帶回 CMYK＋RGB）；兩者都要染色，查的是胚布 */
       if(reuse){
@@ -472,13 +472,19 @@ const SCENARIOS=[
         cm=colormindPredict(t.name,t.lab);
         pre.push(ev('inquiry','color','請求','WORKING',`配方庫沒有 ΔE00 1.0 以內的配方，請 ColorMind 預測`,{tag:'predict_recipe',payload:{target_lab:t.lab}}));
         pre.push(ev('color','color','呼叫工具','WORKING',`ColorMind 預測：送出「${cm.色樣名稱}」L* ${cm.L}・a* ${cm.a}・b* ${cm.b}`,{tag:'colormind.predict',payload:{色樣名稱:cm.色樣名稱,L:cm.L,a:cm.a,b:cm.b},src:'ColorMind（模擬）',dt:1600}));
+        /* 人員介入：ColorMind 的配方要有人在它的畫面上確認、按「帶回配方」才會回來；確認後才往下走（stage2） */
+        pre.push(ev('color','sales','等待人工','INPUT_REQUIRED',`ColorMind 已產生預測配方。請到 ColorMind 確認「${cm.色樣名稱}」的配方，按「帶回配方」後繼續`,{tag:'ColorMind 待確認',stage:'colormind',payload:{色樣名稱:cm.色樣名稱,L:cm.L,a:cm.a,b:cm.b},
+          revise:'ColorMind 已依退回意見重新預測。請再到 ColorMind 確認，按「帶回配方」後繼續'}));
+        cmCut=pre.length;
+        pre.push(ev('sales','color','回覆','COMPLETED','已在 ColorMind 確認配方，按下「帶回配方」',{tag:'帶回配方',src:'人工',dt:700,mod:'col'}));
         pre.push(ev('color','inquiry','回覆','COMPLETED',r=>r==='biz'?`ColorMind 帶回 ${cm.recipes.length} 組配方，第 1 組 ${cmykTxt(cm.recipes[0])}（RGB ${cm.recipes[0].R},${cm.recipes[0].G},${cm.recipes[0].B}）`:`已取得 ${cm.recipes.length} 組預測配方`,{tag:'ColorMind 配方',payload:{recipes:cm.recipes},internal:['recipes'],src:'ColorMind（模擬）',hl:{tab:'col',key:'recipes'}}));
       }
       const g=queryInventory(base,'GREIGE',qty);
       pre.push(ev('inquiry','inventory','請求','WORKING',`query_inventory：${ERPNO[base]}（${base}）胚布，需求 ${qty}Y`,{tag:'查胚布',payload:{erp_no:ERPNO[base],color:'GREIGE',qty_y:qty}}));
       pre.push(ev('inventory','inquiry','回覆','COMPLETED',r=>`${base} 胚布 ${stockText(g,r)}`,{tag:'胚布結果',payload:{...g},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算',hl:{tab:'erp',key:base+'|GREIGE'}}));
+      // ColorMind 的配方要等帶回才確定（可能換成真的回傳值），草稿在顯示時才組
       biz=reuse?`回覆草稿：${nm(base)} 以既有配方 ${near.x.id}（${near.x.name}，ΔE00 ${f2(near.d)}）染色；胚布${g.sufficient?'足夠':'不足'}，約 2 週交貨。`
-        :`回覆草稿：${nm(base)} 依 ColorMind 預測打色（第 1 組 ${cmykTxt(cm.recipes[0])}）；胚布${g.sufficient?'足夠':'不足'}，打色確認後約 3 週交貨。`;
+        :()=>`回覆草稿：${nm(base)} 依 ColorMind 預測打色（第 1 組 ${cmykTxt(cm.recipes[0])}）；胚布${g.sufficient?'足夠':'不足'}，打色確認後約 3 週交貨。`;
       cust=reuse?`回覆草稿：${nm(base)} 有相近的既有配方，可直接染色，確認色卡後安排生產。`:`回覆草稿：${nm(base)} 可依指定顏色打色，確認色卡後安排生產。`;
     }else if(reuse){
       const res=queryInventory(base,near.x.name,qty);
@@ -497,8 +503,14 @@ const SCENARIOS=[
       biz=`回覆草稿：${nm(base)} 需依新配方打色（${recs[0].no}，預估 ΔE00 ${f2(recs[0].pred)}）；胚布${g.sufficient?'足夠':'不足'}，打色確認後約 3 週交貨。`;
       cust=`回覆草稿：${nm(base)} 可依指定顏色打色，確認色卡後安排生產。`;
     }
-    pre.push(ev('inquiry','sales','等待人工','INPUT_REQUIRED',r=>r==='biz'?biz:cust,{tag:'草稿待確認',payload:{draft:biz},internal:['draft']}));
-    return {pre,post:k=>{
+    const bizNow=()=>typeof biz==='function'?biz():biz;
+    pre.push(ev('inquiry','sales','等待人工','INPUT_REQUIRED',r=>r==='biz'?bizNow():cust,{tag:'草稿待確認',payload:{get draft(){return bizNow()}},internal:['draft']}));
+    /* ColorMind 路線：「到 ColorMind 確認並帶回」之後的步驟（帶回配方、查胚布、回覆草稿）留到確認後才出現 */
+    const stage2=cmCut>=0?pre.splice(cmCut):null;
+    return {pre,post:(k,e)=>{
+      if(stage2&&e&&e.stage==='colormind'){
+        if(cm.live)stage2.forEach(x=>{if(x.src==='ColorMind（模擬）')x.src='ColorMind 測試站'});
+        return stage2.splice(0);}
       const out=[ev('sales','inquiry','回覆','COMPLETED',k==='modify'?'修改一句後核准送出':'核准送出',{tag:'業務核准',src:'人工',dt:700}),
         ev('inquiry','designer','回覆','COMPLETED','回覆已送出，案件紀錄存入選布平台',{tag:'已送出',mod:'plat'})];
       if(recs||cm){const rno=cm?'ColorMind #1':recs[0].no;const meas=[t.lab[0]+0.4,t.lab[1]-0.3,t.lab[2]+0.5];const d=dE00(t.lab,meas);
@@ -617,7 +629,7 @@ function start(atRest){
   S.events=S.plan.pre.slice();
   S.rejecting=false;S.typing=null;S.fresh=null;
   S.shown=0;S.playing=false;
-  S.sel=null;S.decisions=[];
+  S.sel=null;S.decisions=[];S.cmWaiting=false;S.cmError=null;
   render();
   if(!atRest)syncPush();
 }
@@ -635,14 +647,57 @@ function step(manual){
   else {S.playing=false;renderControls();}
   syncPush();
 }
-function decide(kind,reason){
-  const e=S.events[S.shown-1];e.decided=kind;S.decisions.push({kind,reason:reason||''});
+/* 真的 ColorMind（嵌在 ERP 時）：人工步驟按「到 ColorMind 確認」→ ERP 後端簽發預測頁連結，開新分頁；
+   使用者在 ColorMind 按「帶回配方」後回到 ERP（?code=…#/four-modules），ERP 換回配方，經 BroadcastChannel 交回這裡。
+   只有開出分頁的這一邊會依結果往下走，另一邊經同步取得同一份配方（decisions 裡的 cm）。 */
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function cmStepPending(){const e=S.events[S.shown-1];return awaiting()&&e&&e.stage==='colormind'}
+async function openColorMind(){
+  const cm=S.plan&&S.plan.match&&S.plan.match.cm;if(!cm||!cmStepPending())return;
+  const win=window.open('','_blank');
+  if(!win){S.cmError='瀏覽器擋下了新分頁，請允許本站開啟彈出視窗後再試';render();return}
+  win.opener=null;try{win.document.title='ColorMind';win.document.body.textContent='正在開啟 ColorMind 預測畫面…'}catch(e){}
+  S.cmError=null;S.cmWaiting=true;render();
+  try{
+    const r=await fetch('/api/colormind/launch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:[...cm.色樣名稱].slice(0,80).join(''),l:cm.L,a:cm.a,b:cm.b})});
+    const body=await r.json().catch(()=>null);
+    if(!r.ok||!body||!body.launch_url)throw new Error((body&&body.error)||`開啟 ColorMind 失敗（${r.status}）`);
+    win.location.replace(body.launch_url);
+  }catch(err){try{win.close()}catch(e){}S.cmWaiting=false;S.cmError=err.message||String(err);render()}
+}
+/* ColorMind 帶回的配方套進本案：劇本裡的文字與色彩資料庫分頁都讀同一個 cm 物件 */
+function applyCM(res){
+  const cm=S.plan&&S.plan.match&&S.plan.match.cm;if(!cm||!res||!Array.isArray(res.recipes))return;
+  const n=v=>Number.isFinite(+v)?+v:0;
+  if(typeof res['色樣名稱']==='string')cm.色樣名稱=res['色樣名稱'];
+  cm.L=n(res.L);cm.a=n(res.a);cm.b=n(res.b);
+  cm.recipes.length=0;cm.recipes.push(...res.recipes.slice(0,30).map((r,i)=>({序號:n(r['序號'])||i+1,C:n(r.C),M:n(r.M),Y:n(r.Y),K:n(r.K),R:n(r.R),G:n(r.G),B:n(r.B)})));
+  cm.live=true;
+}
+function onColorMindMessage(m){
+  if(!m||m.type!=='colormind-result'||!S.cmWaiting)return;
+  S.cmWaiting=false;
+  if(m.error||!m.result){S.cmError=m.error||'ColorMind 沒有帶回配方';render();return}
+  if(!cmStepPending()||!m.result.recipes||!m.result.recipes.length){S.cmError='ColorMind 沒有帶回配方';render();return}
+  decide('approve','',{cm:m.result});
+}
+try{const ch=new BroadcastChannel('rorica-colormind');ch.onmessage=e=>onColorMindMessage(e.data)}catch(e){}
+window.addEventListener('storage',e=>{if(e.key!=='rorica-colormind-result'||!e.newValue)return;try{onColorMindMessage(JSON.parse(e.newValue))}catch(x){}});
+
+/* 退回：重送同一關（stage 沿用），文字用該關自己的 revise，沒有就用劇本的預設 */
+function rejectEvents(e,reason){
+  return [ev('sales',e.from,'回覆','WORKING','退回：'+reason,{tag:'業務退回',src:'人工',dt:500,payload:{reason}}),
+    ev(e.from,'sales','等待人工','INPUT_REQUIRED',e.revise||S.plan.revise,{tag:e.stage==='colormind'?'ColorMind 待確認':'修正待確認',payload:{revised:true},stage:e.stage,revise:e.revise})];
+}
+function decide(kind,reason,extra){
+  const e=S.events[S.shown-1];e.decided=kind;S.decisions.push(Object.assign({kind,reason:reason||''},extra||{}));
+  S.cmWaiting=false;S.cmError=null;
+  if(extra&&extra.cm)applyCM(extra.cm);
   if(kind==='reject'){
     const owner=e.from;
-    S.events.push(ev('sales',owner,'回覆','WORKING','退回：'+reason,{tag:'業務退回',src:'人工',dt:500,payload:{reason}}));
-    S.events.push(ev(owner,'sales','等待人工','INPUT_REQUIRED',S.plan.revise,{tag:'修正待確認',payload:{revised:true}}));
+    S.events.push(...rejectEvents(e,reason));
   }else{
-    S.events.push(...S.plan.post(kind));
+    S.events.push(...S.plan.post(kind,e));
   }
   S.rejecting=false;S.playing=true;S.typing=null;render();schedule(350/S.speed);
   syncPush();
@@ -730,7 +785,8 @@ function renderThread(){
   const ap=th.querySelector('.approve');
   if(ap){
     ap.querySelector('#ap-ok').onclick=()=>decide('approve');
-    ap.querySelector('#ap-mod').onclick=()=>decide('modify');
+    const mod=ap.querySelector('#ap-mod');if(mod)mod.onclick=()=>decide('modify');
+    const cmb=ap.querySelector('#ap-cm');if(cmb)cmb.onclick=openColorMind;
     ap.querySelector('#ap-rej').onclick=()=>{S.rejecting=true;render();const r=$('rej-reason');if(r)r.focus()};
     const go=ap.querySelector('#rej-go');
     if(go)go.onclick=()=>{const v=$('rej-reason').value.trim();const err=$('rej-err');if(!v){err.hidden=false;return}decide('reject',v)};
@@ -738,7 +794,11 @@ function renderThread(){
   }
 }
 function approveBox(){
-  return `<div class="approve"><strong style="font-size:13px">業務確認：這一步需要人工核准才會繼續</strong><div class="acts"><button class="btn primary" type="button" id="ap-ok">核准送出</button><button class="btn" type="button" id="ap-mod">修改後送出</button><button class="btn warn" type="button" id="ap-rej">退回</button></div>${S.rejecting?`<div class="rej"><input type="text" id="rej-reason" placeholder="退回原因，例如：請補上交期" aria-label="退回原因"><button class="btn warn" type="button" id="rej-go">確認退回</button></div><div class="sub" id="rej-err" hidden style="color:var(--st-fail)">請先填寫退回原因</div>`:''}</div>`;
+  const cmStep=S.events[S.shown-1]?.stage==='colormind';
+  const head=cmStep
+    ?`<strong style="font-size:13px">業務確認：請到 ColorMind 確認配方，按「帶回配方」後才會繼續</strong>${S.cmWaiting?`<div class="sub">已在新分頁開啟 ColorMind：確認配方後按「帶回配方」，配方帶回後自動繼續。</div>`:''}${S.cmError?`<div class="sub" style="color:var(--st-fail)">${esc(S.cmError)}</div>`:''}<div class="acts">${BRIDGE?`<button class="btn primary" type="button" id="ap-cm" ${S.cmWaiting?'disabled':''}>${S.cmWaiting?'等待 ColorMind 帶回…':'到 ColorMind 確認（開新分頁）'}</button>`:''}<button class="btn ${BRIDGE?'':'primary'}" type="button" id="ap-ok">${BRIDGE?'以模擬結果帶回':'已確認，帶回配方'}</button><button class="btn warn" type="button" id="ap-rej">退回，重新預測</button></div>`
+    :`<strong style="font-size:13px">業務確認：這一步需要人工核准才會繼續</strong><div class="acts"><button class="btn primary" type="button" id="ap-ok">核准送出</button><button class="btn" type="button" id="ap-mod">修改後送出</button><button class="btn warn" type="button" id="ap-rej">退回</button></div>`;
+  return `<div class="approve">${head}${S.rejecting?`<div class="rej"><input type="text" id="rej-reason" placeholder="${cmStep?'退回原因，例如：顏色偏黃，請重新預測':'退回原因，例如：請補上交期'}" aria-label="退回原因"><button class="btn warn" type="button" id="rej-go">確認退回</button></div><div class="sub" id="rej-err" hidden style="color:var(--st-fail)">請先填寫退回原因</div>`:''}</div>`;
 }
 function mask(payload,internal){
   if(S.role==='biz')return payload;
@@ -805,10 +865,11 @@ function renderData(){
     if(sc.params==='color'&&S.plan&&S.plan.match){const M=S.plan.match,cp={target:M.target},n={x:M.near,d:M.d};
       near=`<div class="subh">本案對色結果</div><div class="target"><span class="sw big" style="background:${lab2rgb(cp.target.lab)}" title="指定顏色"></span><span class="sw big" style="background:${lab2rgb(n.x.lab)}" title="最接近色樣"></span><div><div>指定「${cp.target.name}」→ 最接近 <span class="mono">${n.x.id}</span>（${n.x.name}）</div><div class="sub">ΔE00 <span class="mono">${f2(n.d)}</span>・門檻 1.0・${n.d<=1?`可沿用既有${KIND}`:RECIPE_DB?'需要 ColorMind 預測':'需要新配方'}</div>${CDB.newIds.size?`<div class="sub">實測回填後已新增色樣 <span class="mono">${[...CDB.newIds][0]}</span>，下次相同顏色可直接沿用。</div>`:''}</div></div>`;
       if(M.reuse&&RECIPE_DB){near+=`<div class="subh">沿用的既有配方</div>${biz?`<div class="sub"><span class="mono">${n.x.id}</span>　${dyeTxt(n.x)||'—'}</div>`:`<div class="sub">配方內容只對內部角色顯示。</div>`}`}
-      else if(M.cm){const c=M.cm;near+=`<div class="subh">ColorMind 預測配方（${c.recipes.length} 組）</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>序號</th><th>色塊</th><th>C</th><th>M</th><th>Y</th><th>K</th><th>R</th><th>G</th><th>B</th></tr></thead><tbody>${c.recipes.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.序號}</td><td><span class="sw" style="background:rgb(${r.R},${r.G},${r.B})" aria-hidden="true"></span></td><td class="mono">${r.C}</td><td class="mono">${r.M}</td><td class="mono">${r.Y}</td><td class="mono">${r.K}</td><td class="mono">${r.R}</td><td class="mono">${r.G}</td><td class="mono">${r.B}</td></tr>`).join('')}</tbody></table></div><div class="data-note">送出「${c.色樣名稱}」L* ${c.L}・a* ${c.a}・b* ${c.b}；ColorMind 尚未接上，此為模擬結果，格式與 ColorMind 回傳相同。</div>`:`<div class="sub">已取得 ${c.recipes.length} 組預測配方；配方內容只對內部角色顯示。</div>`}`}
+      else if(M.cm&&!S.events.slice(0,S.shown).some(e=>e.tag==='ColorMind 配方')){near+=`<div class="subh">ColorMind 預測配方</div><div class="sub">${S.events.slice(0,S.shown).some(e=>e.stage==='colormind')?'等待業務到 ColorMind 確認並按「帶回配方」。':'尚未送出預測。'}</div>`}
+      else if(M.cm){const c=M.cm;near+=`<div class="subh">ColorMind 預測配方（${c.recipes.length} 組）</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>序號</th><th>色塊</th><th>C</th><th>M</th><th>Y</th><th>K</th><th>R</th><th>G</th><th>B</th></tr></thead><tbody>${c.recipes.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.序號}</td><td><span class="sw" style="background:rgb(${r.R},${r.G},${r.B})" aria-hidden="true"></span></td><td class="mono">${r.C}</td><td class="mono">${r.M}</td><td class="mono">${r.Y}</td><td class="mono">${r.K}</td><td class="mono">${r.R}</td><td class="mono">${r.G}</td><td class="mono">${r.B}</td></tr>`).join('')}</tbody></table></div><div class="data-note">送出「${c.色樣名稱}」L* ${c.L}・a* ${c.a}・b* ${c.b}；${c.live?'ColorMind 測試站回傳。':'以模擬結果帶回，格式與 ColorMind 回傳相同。'}</div>`:`<div class="sub">已取得 ${c.recipes.length} 組預測配方；配方內容只對內部角色顯示。</div>`}`}
       else if(!M.reuse){const rs=M.recs;near+=`<div class="subh">候選配方</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>參考色樣</th><th>染料與濃度（% owf）</th><th>預估 ΔE00</th></tr></thead><tbody>${rs.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.no}</td><td class="mono">${r.from}</td><td>${r.dyes.map(d=>`${d.dye} ${d.c.toFixed(3)}`).join('、')}</td><td class="mono">${f2(r.pred)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="sub">已備妥 ${rs.length} 組候選配方；配方內容只對內部角色顯示。</div>`}`}}
     const ms=CDB.measurements.length?`<div class="subh">實測紀錄</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>新增色樣</th><th>實測 L*</th><th>a*</th><th>b*</th><th>ΔE00</th><th>日期</th></tr></thead><tbody>${CDB.measurements.map(m=>`<tr class="new"><td class="mono">${m.recipe}</td><td class="mono">${m.sample}</td><td class="mono">${f1(m.lab[0])}</td><td class="mono">${f1(m.lab[1])}</td><td class="mono">${f1(m.lab[2])}</td><td class="mono">${f2(m.d)}</td><td class="mono">${m.date}</td></tr>`).join('')}</tbody></table></div>`:'';
-    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩資料庫：PET 染色配方 ${RECIPE_DB.length} 筆，L* 超過 100 與欄位有問題的列不收錄；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測（尚未接上，目前為模擬）`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
+    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩資料庫：PET 染色配方 ${RECIPE_DB.length} 筆，L* 超過 100 與欄位有問題的列不收錄；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測，由業務到 ColorMind 確認並帶回`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
   }else{
     const vis=S.events.slice(0,S.shown);
     h=vis.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>事件</th><th>發起者</th><th>接收者</th><th>模組</th><th>工具／標籤</th><th>狀態</th></tr></thead><tbody>${vis.map(e=>`<tr class="${e.id===S.sel?'hl':''}"><td class="mono">${e.id}</td><td>${AG[e.from].name}</td><td>${AG[e.to].name}</td><td>${mtag(modOf(e))}</td><td class="mono">${e.tag}</td><td>${STATUS[e.status].t} <span class="sub mono">${e.status}</span></td></tr>`).join('')}</tbody></table></div><div class="data-note">代理人協作模組的事件表，也是協作畫面的資料來源；任務狀態採 A2A v1.0 命名。</div>`:`<div class="empty">尚未有事件。按「播放」後，每一筆代理人之間的呼叫都會寫進這裡。</div>`;
@@ -863,8 +924,9 @@ function syncRebuild(st){
   for(const d of st.decisions||[]){
     const e=[...S.events].reverse().find(x=>x.status==='INPUT_REQUIRED'&&!x.decided);if(!e)break;
     e.decided=d.kind;S.decisions.push(d);
-    if(d.kind==='reject'){S.events.push(ev('sales',e.from,'回覆','WORKING','退回：'+d.reason,{tag:'業務退回',src:'人工',dt:500,payload:{reason:d.reason}}));S.events.push(ev(e.from,'sales','等待人工','INPUT_REQUIRED',S.plan.revise,{tag:'修正待確認',payload:{revised:true}}))}
-    else S.events.push(...S.plan.post(d.kind));
+    if(d.cm)applyCM(d.cm);
+    if(d.kind==='reject')S.events.push(...rejectEvents(e,d.reason));
+    else S.events.push(...S.plan.post(d.kind,e));
   }
 }
 function syncApply(snap){

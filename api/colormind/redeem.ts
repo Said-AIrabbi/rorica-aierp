@@ -1,7 +1,7 @@
 /**
  * POST /api/colormind/redeem  {code}  → {色樣名稱, L, a, b, recipes: [{序號, C, M, Y, K, R, G, B}]}
  *
- * 由 public/colormind-return.html 呼叫：使用者在 ColorMind 按「帶回配方」後回到那一頁，
+ * 由 src/lib/colormind-return.ts 呼叫：使用者在 ColorMind 按「帶回配方」後回到 ERP（?code=…#/four-modules），
  * 網址上的 code 一載入就換成配方（code 只能換一次、約 15 分鐘內有效）。
  */
 import { REDEEM_PATH, callColorMind, json, sameOrigin } from '../_lib/colormind'
