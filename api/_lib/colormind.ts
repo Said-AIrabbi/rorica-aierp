@@ -74,7 +74,7 @@ export async function callColorMind(path: string, body: unknown): Promise<{ stat
   } catch {
     return { status: 502, body: { error: '連不上 ColorMind，請稍後再試' } }
   }
-  const data = (await res.json().catch(() => null)) as { error?: unknown } | null
+  const data = (await res.json().catch(() => null)) as { error?: unknown; detail?: unknown } | null
   if (res.ok) return { status: 200, body: data }
   // 401 是金鑰問題、503 是對方尚未設定完成：都不是使用者能處理的，換成固定說明；400 帶對方的原因
   const reason =
@@ -82,8 +82,10 @@ export async function callColorMind(path: string, body: unknown): Promise<{ stat
       ? 'ColorMind 金鑰不正確，請聯絡系統管理員'
       : res.status === 503
         ? 'ColorMind 這條串接尚未設定完成，請聯絡系統管理員（請勿重試）'
-        : typeof data?.error === 'string'
-          ? data.error
-          : `ColorMind 回應 ${res.status}`
+        : typeof data?.detail === 'string' // ColorMind 的 400 原因放在 detail
+          ? data.detail
+          : typeof data?.error === 'string'
+            ? data.error
+            : `ColorMind 回應 ${res.status}`
   return { status: res.status === 400 ? 400 : 502, body: { error: reason } }
 }
