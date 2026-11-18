@@ -164,6 +164,14 @@ html.in-erp .detail{position:static}
 /* 整頁由 ERP 捲動：色彩資料庫等長表格改在自己的區塊內捲動，免得頁面拉得很長 */
 html.in-erp .tbl-wrap{max-height:520px;overflow:auto}
 html.in-erp table.dt thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+/* 待處理案件 */
+.inbox{display:grid;gap:6px;margin-top:8px}
+.inbox:empty{display:none}
+.case{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:40px;cursor:pointer}
+.case:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.case[aria-current="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.case .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:640px){.case{flex-wrap:wrap}.case .grow{flex-basis:100%;white-space:normal}}
 </style>
 <script>
 /*
@@ -208,7 +216,7 @@ html.in-erp table.dt thead th{position:sticky;top:0;background:var(--surface);z-
       <div class="sub">選布平台、代理人協作、ERP 串接與色彩資料庫在同一個畫面運作；對外送出前一律由業務確認。</div>
     </div>
     <div class="controls-top">
-      <label class="sub" for="scenario">情境</label>
+      <label class="sub" for="scenario">示範情境</label>
       <select id="scenario"></select>
       <div class="seg" role="group" aria-label="檢視角色">
         <button type="button" id="role-cust" aria-pressed="true">客戶視角</button>
@@ -218,6 +226,16 @@ html.in-erp table.dt thead th{position:sticky;top:0;background:var(--surface);z-
       <span class="badge" id="sync" hidden></span>
     </div>
   </header>
+
+  <section class="panel" aria-labelledby="inbox-title">
+    <div class="panel-head">
+      <div style="display:grid;gap:4px;min-width:0">
+        <h2 id="inbox-title">待處理案件</h2>
+        <div class="sub" id="inbox-note"></div>
+      </div>
+    </div>
+    <div class="inbox" id="inbox"></div>
+  </section>
 
   <section class="panel" aria-labelledby="scen-title">
     <div class="panel-head">
@@ -444,7 +462,7 @@ function stockText(res,role,need){
 
 let uid=0;
 function ev(from,to,type,status,text,o={}){
-  return {id:'EV-'+String(++uid).padStart(4,'0'),from,to,type,status,text,tag:o.tag||'',payload:o.payload||{},internal:o.internal||[],dt:o.dt??1100,src:o.src||'劇本',group:o.group||'',mod:o.mod,onShow:o.onShow,hl:o.hl,stage:o.stage,revise:o.revise};
+  return {id:'EV-'+String(++uid).padStart(4,'0'),from,to,type,status,text,tag:o.tag||'',payload:o.payload||{},internal:o.internal||[],dt:o.dt??1100,src:o.src||'劇本',group:o.group||'',mod:o.mod,onShow:o.onShow,hl:o.hl,stage:o.stage,revise:o.revise,final:o.final};
 }
 const T=(e,role)=>typeof e.text==='function'?e.text(role):e.text;
 
@@ -614,8 +632,83 @@ const SCENARIOS=[
       ev('catalog','sales','等待人工','INPUT_REQUIRED','建檔草稿：屬性、中英文介紹、產品類別、相似款已備妥，請確認上架',{tag:'建檔待確認',payload:{ready:true}})
     ];
     return {pre,post:k=>[ev('sales','catalog','回覆','COMPLETED',k==='modify'?'將光澤改為「高」後確認上架':'確認上架',{tag:'業務核准',src:'人工',dt:700}),ev('catalog','catalog','狀態變更','COMPLETED','WT-7012 已上架選布平台',{tag:'已上架'})],revise:'修正後的建檔草稿'};
+  }},
+
+ /* ===== 案件（起點在選布平台）=====
+    客戶在選布平台送出樣品申請、或在布料頁用 ColorMind 選色時，選布平台開一件案件（agent-hub 模組）。
+    下面兩個劇本以案件裡客戶的真實輸入跑；路線（可否剪樣、色差夠不夠近、是不是新客戶）由資料決定。
+    代理人的回覆仍是劇本草稿；業務核准後由選布平台把結果寫回（見 caseAction）。不在示範選單裡。 */
+ {key:'cs',case:'sample_request',name:'樣品申請',lanes:['customer','sample','inventory','sales'],desc:'',
+  build(c){
+    const i=c.input||{},items=(i.items||[]).slice(0,6),cust=custName(c);
+    AG.customer.name=(i.customer&&(i.customer.company||i.customer.name))||'客戶';
+    const maps=items.map(it=>({it,...erpFor(it.article_no)}));
+    const res=maps.map(m=>({...m,r:queryInventory(m.sku,m.color,1)}));
+    const can=res.filter(x=>x.r.hasStock),cannot=res.filter(x=>!x.r.hasStock);
+    const isNew=!!(i.customer&&i.customer.tier==='new')&&!((i.history&&i.history.approved)>0);
+    const lab=parseLab(i.color_reference);
+    this.lanes=['customer','sample','inventory',...(lab?['color']:[]),'sales'];
+    this.desc=`${cust} 在選布平台送出樣品申請 #${i.request_id}（${items.length} 款）。寄樣代理人確認每款剪得出樣布${lab?'，對色代理人比對客戶指定的顏色':''}，再給業務審核建議；業務核准後，選布平台上的申請單改為「已核准」。`;
+    const list=items.map(it=>`${it.article_no} ${it.name}（${SIZE[it.suggested_size]||it.suggested_size}）`).join('、');
+    const extra=[i.uses&&i.uses.length?`用途 ${i.uses.join('、')}`:'',i.order_timing?`預計 ${TIMING[i.order_timing]||i.order_timing}下單`:'',i.color_reference?`顏色參考：${i.color_reference}`:'',i.notes?`備註：${i.notes}`:''].filter(Boolean).join('；');
+    const pre=[ev('customer','sample','請求','SUBMITTED',`樣品申請 #${i.request_id}：${list}${extra?'；'+extra:''}`,{tag:'樣品申請',mod:'plat',src:'選布平台',payload:{request_id:i.request_id,items:items.map(x=>x.article_no),uses:i.uses,order_timing:i.order_timing},dt:600})];
+    pre.push(ev('sample','sample','呼叫工具','WORKING',`對應 ERP 品號：${maps.map(m=>`${m.it.article_no} → ${m.sku}（${m.color}）`).join('、')}`,{tag:'map_erp_item',payload:Object.fromEntries(maps.map(m=>[m.it.article_no,{erp:m.sku,color:m.color}])),src:'示範對應（選布平台貨號尚未對應 ERP 品號）'}));
+    pre.push(ev('sample','inventory','請求','WORKING',`查 ${maps.map(m=>`${m.sku}（${m.color}）`).join('、')} 是否有可剪樣的布卷`,{tag:'查可剪樣',payload:{items:maps.map(m=>`${m.sku}/${m.color}`)}}));
+    pre.push(ev('inventory','sample','回覆','COMPLETED',r=>res.map(x=>`${x.sku}（${x.color}）${x.r.hasStock?'可剪樣':'無可用布卷'}${r==='biz'?`（可用 ${x.r.availableY}Y）`:''}`).join('；'),{tag:'可剪樣結果',payload:Object.fromEntries(res.map(x=>[`${x.sku}/${x.color}`,{availableY:x.r.availableY,cuttable:x.r.hasStock}])),internal:Object.keys(Object.fromEntries(res.map(x=>[`${x.sku}/${x.color}`,1]))),src:'ERP 快照計算',hl:res[0]?{tab:'erp',key:res[0].sku+'|'+res[0].color}:undefined}));
+    let colourLine='';
+    if(lab&&maps[0]){
+      const base=maps[0].sku,near=findNearest(lab,base),ok=near.d<=1.0;
+      pre.push(ev('sample','color','請求','WORKING',`客戶指定顏色 Lab ${lab.map(f1).join('/')}，找 ${base} 最接近的既有色樣`,{tag:'find_nearest_color',payload:{target_lab:lab,base}}));
+      pre.push(ev('color','sample','回覆','COMPLETED',ok?`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，可直接以此色號剪樣`:`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，超過 1.0，建議另寄打色樣（Lab dip）`,{tag:'對色結果',payload:{nearest:near.x.id,dE00:+f2(near.d)},src:'色彩資料庫',hl:{tab:'col',key:near.x.id}}));
+      colourLine=ok?`；指定顏色可用色號 ${near.x.id}`:'；指定顏色另寄打色樣';
+    }
+    const h=i.history||{};
+    pre.push(ev('sample','sample','呼叫工具','WORKING',isNew?`查客戶紀錄：${cust} 首次申請，尚無寄樣紀錄`:`查客戶紀錄：過往申請 ${h.requests||0} 次，已核准或寄出 ${h.approved||0} 次`,{tag:'客戶紀錄',payload:{history:h,tier:i.customer&&i.customer.tier},src:'選布平台'}));
+    const rec=`審核建議：${can.length?`核准 ${can.map(x=>x.it.article_no).join('、')}`:'目前沒有剪得出樣布的品項'}${cannot.length?`；${cannot.map(x=>x.it.article_no).join('、')} 改寄色卡或等新貨`:''}${colourLine}${isNew?'；新客戶，建議先確認公司資料再寄出':''}`;
+    pre.push(ev('sample','sales','等待人工','INPUT_REQUIRED',rec,{tag:'審核待確認',payload:{approve:can.map(x=>x.it.article_no),hold:cannot.map(x=>x.it.article_no),new_customer:isNew},final:true}));
+    return {pre,post:k=>[ev('sales','sample','回覆','COMPLETED',k==='modify'?'修改審核建議後核准':'核准',{tag:'業務核准',src:'人工',dt:700}),
+      ev('sample','customer','回覆','COMPLETED',`申請 #${i.request_id} 已在選布平台改為「已核准」，客戶可在「我的申請」看到`,{tag:'回寫選布平台',mod:'plat'})],
+      revise:'修正後的審核建議（已依退回意見調整）',note:rec};
+  }},
+ {key:'cc',case:'custom_colour',name:'自訂顏色',lanes:['designer','finder','color','inventory','sample','sales'],desc:'',
+  build(c){
+    const i=c.input||{},col=i.colour||{},cust=custName(c);
+    AG.designer.name=(i.customer&&(i.customer.company||i.customer.name))||'客戶';
+    const lab=[col.lab&&col.lab.L,col.lab&&col.lab.a,col.lab&&col.lab.b].map(v=>Number(v)||0);
+    const base=erpFor(i.article_no,BASES).sku,near=findNearest(lab,base),reuse=near.d<=1.0,no=col.recipe_no||1;
+    this.desc=`${cust} 在選布平台 ${i.article_no}（${i.name}）的布料頁用 ColorMind 選了顏色「${col.name}」。選布代理人對應 ERP 品號，對色代理人到色彩資料庫比對；業務核准後，選布平台替客戶建立一張已核准的打色樣申請。`;
+    const qty=50;
+    const pre=[ev('designer','color','請求','SUBMITTED',`在 ${i.article_no} ${i.name} 的布料頁用 ColorMind 選色：「${col.name}」Lab ${lab.map(f1).join('/')}${col.rgb?`，RGB ${col.rgb.join(',')}`:''}（ColorMind #${no}，共 ${col.recipes||1} 組）`,{tag:'ColorMind 選色',mod:'plat',src:'選布平台',payload:{article_no:i.article_no,colour:col},dt:600})];
+    pre.push(ev('color','finder','請求','WORKING',`${i.article_no} 對應的 ERP 胚布是哪一款？`,{tag:'map_erp_item',payload:{article_no:i.article_no}}));
+    pre.push(ev('finder','color','回覆','COMPLETED',`${i.article_no} → ${nm(base)}`,{tag:'對應結果',payload:{erp:base},src:'示範對應（選布平台貨號尚未對應 ERP 品號）',hl:{tab:'plat',key:base}}));
+    pre.push(ev('color','color','呼叫工具','WORKING',`find_nearest_color：${base} 上最接近「${col.name}」的既有色樣`,{tag:'find_nearest_color',payload:{target_lab:lab,base}}));
+    pre.push(ev('color','color','回覆','COMPLETED',reuse?`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，可沿用既有色號`:`最接近 ${near.x.id}（${near.x.name}），ΔE00 ${f2(near.d)}，超過 1.0，以客戶選的 ColorMind 配方 #${no} 打色`,{tag:'對色結果',payload:{nearest:near.x.id,dE00:+f2(near.d),reuse},src:'色彩資料庫',hl:{tab:'col',key:near.x.id}}));
+    const g=reuse?queryInventory(base,near.x.name,1):queryInventory(base,'GREIGE',qty);
+    pre.push(ev('color','inventory','請求','WORKING',reuse?`查 ${base}（${near.x.name}）是否有可剪樣的布卷`:`查 ${base} 胚布可否打色 ${qty}Y`,{tag:reuse?'查可剪樣':'查胚布',payload:{sku:base,color:reuse?near.x.name:'GREIGE'}}));
+    pre.push(ev('inventory','color','回覆','COMPLETED',r=>reuse?`${base}（${near.x.name}）${g.hasStock?'可剪樣':'無可用布卷'}${r==='biz'?`（可用 ${g.availableY}Y）`:''}`:`${base} 胚布 ${stockText(g,r,qty)}`,{tag:'庫存結果',payload:{...g},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算'}));
+    pre.push(ev('color','sample','請求','WORKING',`規劃 ${i.article_no} 的打色樣`,{tag:'規劃寄樣',payload:{article_no:i.article_no}}));
+    const rec=`建議：為 ${cust} 建立打色樣申請 —— ${i.article_no} ${i.name}，A4 色卡，顏色「${col.name}」；${reuse?`沿用色號 ${near.x.id}${g.hasStock?'，可直接剪樣':'，需等新貨'}`:`依 ColorMind 配方 #${no} 打色，約 2 週`}`;
+    pre.push(ev('sample','sales','等待人工','INPUT_REQUIRED',rec,{tag:'打色樣待確認',payload:{article_no:i.article_no,reference:col.reference},final:true}));
+    return {pre,post:k=>[ev('sales','sample','回覆','COMPLETED',k==='modify'?'修改後核准':'核准',{tag:'業務核准',src:'人工',dt:700}),
+      ev('sample','designer','回覆','COMPLETED','選布平台已替客戶建立打色樣申請（已核准），客戶可在「我的申請」看到',{tag:'回寫選布平台',mod:'plat'})],
+      revise:'修正後的打色樣建議',note:rec};
   }}
 ];
+const AG_DEFAULT=Object.fromEntries(Object.entries(AG).map(([k,v])=>[k,v.name]));
+const SIZE={none:'不需樣布',color_chip:'色卡小片',a4_card:'A4 樣布',half_meter:'半碼'};
+const TIMING={'1m':'1 個月內','3m':'3 個月內','6m':'6 個月內',later:'之後'};
+function hashOf(s){let h=2166136261;for(const ch of String(s))h=Math.imul(h^ch.charCodeAt(0),16777619);return h>>>0}
+/* 選布平台的貨號還沒有對應到 ERP 品號：以貨號固定挑一個有布卷的 ERP 品號與顏色（示範對應，同一貨號每次相同） */
+function erpFor(article,pool){
+  const skus=(pool&&pool.length?pool:Object.keys(SNAPSHOT.items).filter(s=>colorsOf(s).length));
+  const sku=skus[hashOf(article)%skus.length],cs=colorsOf(sku);
+  return {sku,color:cs.length?cs[hashOf(article+'#')%cs.length]:'GREIGE'};
+}
+function parseLab(ref){const m=/Lab\s*(-?[\d.]+)\s*\/\s*(-?[\d.]+)\s*\/\s*(-?[\d.]+)/.exec(ref||'');return m?[+m[1],+m[2],+m[3]]:null}
+const custName=c=>{const u=c&&c.input&&c.input.customer;return u?(u.company?`${u.name}（${u.company}）`:u.name):'客戶'};
+const caseScen=kind=>SCENARIOS.findIndex(s=>s.case===kind);
+const isCase=()=>!!(S.case&&SCENARIOS[S.scen].case);
+const caseTime=c=>new Date(String(c.created_at).replace(' ','T')+(/Z|[+-]\d\d:?\d\d$/.test(c.created_at)?'':'Z'));
 
 const S={scen:0,role:'cust',speed:1,events:[],shown:0,playing:false,timer:null,sel:null,plan:null,p:BRIDGE?BRIDGE.defaultInquiry:{sku:'S75',color:'CHAMPAGNE',qty:300},cp:{base:BRIDGE?BRIDGE.defaultBase:'S75',tkey:BRIDGE?BRIDGE.defaultTarget:'nude',custom:[80,8,14],qty:300},rejecting:false,typing:null,fresh:null,tab:'col',hl:{}};
 const $=id=>document.getElementById(id);
@@ -625,7 +718,9 @@ function start(atRest){
   clearTimeout(S.timer);uid=0;
   const sc=SCENARIOS[S.scen];
   resetColorDB();S.hl={};
-  S.plan=sc.build(sc.params==='color'?colorParams():S.p);
+  if(!sc.case)S.case=null;
+  Object.entries(AG_DEFAULT).forEach(([k,n])=>{AG[k].name=n});
+  S.plan=sc.case?sc.build(S.case):sc.build(sc.params==='color'?colorParams():S.p);
   S.events=S.plan.pre.slice();
   S.rejecting=false;S.typing=null;S.fresh=null;
   S.shown=0;S.playing=false;
@@ -642,7 +737,7 @@ function step(manual){
   const next=S.events[S.shown];
   if(!manual&&!REDUCE&&S.typing!==next){S.typing=next;render();schedule(Math.min(950,next.dt*0.65)/S.speed);return}
   S.typing=null;S.shown++;S.sel=next.id;S.fresh=next.id;if(next.onShow&&!next.applied){next.onShow();next.applied=true}if(next.hl){S.hl[next.hl.tab]=next.hl.key;S.tab=next.hl.tab}render();S.fresh=null;
-  if(awaiting()){S.playing=false;renderControls();syncPush();return}
+  if(awaiting()){S.playing=false;renderControls();syncPush();if(isCase()&&S.events[S.shown-1].final)caseAction('wait');return}
   if(S.playing&&S.shown<S.events.length) schedule(Math.max(220,S.events[S.shown].dt*0.4)/S.speed);
   else {S.playing=false;renderControls();}
   syncPush();
@@ -701,6 +796,8 @@ function decide(kind,reason,extra){
   }
   S.rejecting=false;S.playing=true;S.typing=null;render();schedule(350/S.speed);
   syncPush();
+  // 案件的最後一關：業務核准（或修改後核准）由選布平台寫回（申請單改為已核准／建立打色樣申請）；只有按下的這個畫面送
+  if(isCase()&&e.final&&kind!=='reject')caseAction('decide',{decision:kind,note:kind==='modify'?`${S.plan.note}（業務修改後核准）`:S.plan.note});
 }
 
 function boardState(){
@@ -761,7 +858,12 @@ function renderLanes(){
   s+='</svg>';$('lanes').innerHTML=s;
   $('lanes').querySelectorAll('.row-hit').forEach(g=>{g.addEventListener('click',()=>{S.sel=g.dataset.id;render()});g.addEventListener('keydown',k=>{if(k.key==='Enter'||k.key===' '){k.preventDefault();S.sel=g.dataset.id;render()}})});
 }
-function clock(i){let t=0;for(let k=0;k<=i;k++)t+=Math.round(S.events[k].dt/300);const s=5+t;const m=2+Math.floor(s/60);return `14:${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+/* 時間：案件從客戶在選布平台送出的時間起算（本機時區）；示範情境用固定的 14:02 起 */
+function caseStamp(i){let t=0;for(let k=0;k<=i;k++)t+=Math.round(S.events[k].dt/300);return new Date(caseTime(S.case).getTime()+t*1000)}
+const pad2=n=>String(n).padStart(2,'0');
+function clock(i){if(isCase()){const d=caseStamp(i);return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`}
+  let t=0;for(let k=0;k<=i;k++)t+=Math.round(S.events[k].dt/300);const s=5+t;const m=2+Math.floor(s/60);return `14:${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+function dayOf(i){if(!isCase())return '2026-11-16';const d=caseStamp(i);return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`}
 function who(a){const g=AG[a];return `<span class="who"><span class="dot" style="--c:var(${g.c})" aria-hidden="true">${g.sh}</span>${g.name}</span>`}
 function renderThread(){
   const vis=S.events.slice(0,S.shown);let html='';let owner=null;
@@ -811,7 +913,7 @@ function renderDetail(){
   const i=S.events.findIndex(e=>e.id===S.sel);const e=S.events[i];
   if(!e||i>=S.shown){$('detail').innerHTML=`<div class="empty">點選時間軸的箭頭或左側任一則對話，查看完整事件內容。</div>`;return}
   const st=STATUS[e.status];
-  $('detail').innerHTML=`<dl class="kv"><dt>事件編號</dt><dd class="mono">${e.id}</dd><dt>案件</dt><dd class="mono">${SCENARIOS[S.scen].key.toUpperCase()}-128</dd><dt>發起者</dt><dd>${who(e.from)}</dd><dt>接收者</dt><dd>${who(e.to)}</dd><dt>類型</dt><dd>${e.type}</dd><dt>經過模組</dt><dd>${mtag(modOf(e))}</dd><dt>工具／標籤</dt><dd>${e.tag}</dd><dt>狀態</dt><dd><span class="pill" style="--sc:var(${st.c})">${st.t}</span> <span class="mono sub">${e.status}</span></dd><dt>時間</dt><dd class="mono">2026-11-16 ${clock(i)}</dd></dl>`;
+  $('detail').innerHTML=`<dl class="kv"><dt>事件編號</dt><dd class="mono">${e.id}</dd><dt>案件</dt><dd class="mono">${isCase()?'C-'+S.case.id:SCENARIOS[S.scen].key.toUpperCase()+'-128（示範）'}</dd><dt>發起者</dt><dd>${who(e.from)}</dd><dt>接收者</dt><dd>${who(e.to)}</dd><dt>類型</dt><dd>${e.type}</dd><dt>經過模組</dt><dd>${mtag(modOf(e))}</dd><dt>工具／標籤</dt><dd>${e.tag}</dd><dt>狀態</dt><dd><span class="pill" style="--sc:var(${st.c})">${st.t}</span> <span class="mono sub">${e.status}</span></dd><dt>時間</dt><dd class="mono">${dayOf(i)} ${clock(i)}</dd></dl>`;
 }
 function renderControls(){
   const n=S.events.length;
@@ -827,6 +929,10 @@ function renderControls(){
 }
 function renderParams(){
   const sc=SCENARIOS[S.scen];$('scen-desc').textContent=sc.desc;
+  $('scen-title').textContent=isCase()?`案件 C-${S.case.id}｜${sc.name}`:'情境說明（示範）';
+  if(sc.case){const c=S.case||{};const st=CASE_STATUS[c.status]||CASE_STATUS.new;
+    $('params').innerHTML=c.id?`<span class="pill" style="--sc:var(${st.c})">${st.t}</span><span class="sub">${esc(custName(c))}・${esc(fmtWhen(c.created_at))} 送出</span>`:'';
+    return}
   if(sc.params==='color'){const c=S.cp;
     $('params').innerHTML=`<label for="c-base">布款<select id="c-base">${BASES.map(k=>`<option value="${k}" ${k===c.base?'selected':''}>${nm(k)}</option>`).join('')}</select></label><label for="c-t">指定顏色<select id="c-t">${Object.entries(TARGETS).map(([k,t])=>`<option value="${k}" ${k===c.tkey?'selected':''}>${t.name}</option>`).join('')}<option value="custom" ${c.tkey==='custom'?'selected':''}>自訂 Lab</option></select></label>${c.tkey==='custom'?`<div class="lab-row"><label for="c-L">L*<input type="number" id="c-L" step="0.1" min="0" max="100" value="${c.custom[0]}"></label><label for="c-a">a*<input type="number" id="c-a" step="0.1" min="-60" max="60" value="${c.custom[1]}"></label><label for="c-b">b*<input type="number" id="c-b" step="0.1" min="-60" max="60" value="${c.custom[2]}"></label></div>`:''}<span class="sw big" id="c-sw" style="width:34px;height:34px;background:${lab2rgb(c.tkey==='custom'?c.custom:TARGETS[c.tkey].lab)}" title="指定顏色預覽"></span><label for="c-q">需求碼數<input type="number" id="c-q" min="1" max="5000" step="10" value="${c.qty}" style="width:100px"></label><button class="btn primary" type="button" id="c-go">套用並重播</button><span class="sub" id="c-err" hidden style="color:var(--st-fail)">請輸入有效的數值</span>`;
     $('c-base').onchange=e=>{c.base=e.target.value};
@@ -878,8 +984,9 @@ function renderData(){
 }
 function render(){renderMods();renderBoard();renderLanes();renderThread();renderDetail();renderControls();renderData();}
 
-$('scenario').innerHTML=SCENARIOS.map((s,i)=>`<option value="${i}">${s.name}</option>`).join('');
-$('scenario').onchange=e=>{S.scen=+e.target.value;renderParams();start(false)};
+// 示範選單只列示範情境；開著案件時選單顯示「（案件）」
+$('scenario').innerHTML=`<option value="" disabled hidden>（案件）</option>`+SCENARIOS.map((s,i)=>s.case?'':`<option value="${i}">${s.name}</option>`).join('');
+$('scenario').onchange=e=>{S.scen=+e.target.value;S.case=null;start(false);renderParams();renderInbox()};
 $('asof').textContent=`ERP 快照 ${SNAPSHOT.asOf}・色彩資料庫 ${COLOR_SEED.length} 色・${DATA_LABEL}`;
 $('role-cust').onclick=()=>{S.role='cust';render()};
 $('role-biz').onclick=()=>{S.role='biz';render()};
@@ -900,9 +1007,9 @@ $('progress').oninput=e=>{stopPlay();S.shown=+e.target.value;S.sel=S.shown?S.eve
 const HUB=(()=>{try{const h=window.parent!==window?window.parent.__AGENT_HUB__:null;return h&&h.url&&h.token?h:null}catch(e){return null}})();
 const ME=Math.random().toString(36).slice(2,10);
 const SYNC={rev:0,applying:false,inFlight:false,dirty:false,lastAt:0,connected:false,expired:false,by:'',remote:null};
-function syncSnapshot(){return {v:1,writer:ME,scen:S.scen,p:S.p,cp:S.cp,shown:S.shown,decisions:S.decisions,playing:S.playing,driver:S.playing?ME:null}}
+function syncSnapshot(){return {v:1,writer:ME,scen:S.scen,p:S.p,cp:S.cp,case:isCase()?{id:S.case.id,kind:S.case.kind,input:S.case.input,created_at:S.case.created_at}:null,shown:S.shown,decisions:S.decisions,playing:S.playing,driver:S.playing?ME:null}}
 function syncBadge(){const b=$('sync');b.hidden=false;
-  b.textContent=!HUB?'單機模式（未與選布平台同步）':SYNC.expired?'同步存取證已失效，請重新以選布平台帳號登入':SYNC.connected?`即時同步中${SYNC.by?'・最後操作：'+SYNC.by:''}`:'同步連線中…';}
+  b.textContent=!HUB?'單機模式（未與選布平台同步）':SYNC.expired?'同步存取證已失效，請重新以選布平台帳號登入':SYNC.connected?`即時同步中${SYNC.by?'・最後操作：'+SYNC.by:''}`:SYNC.polling?`同步中（每 5 秒更新）${SYNC.by?'・最後操作：'+SYNC.by:''}`:'同步連線中…';}
 async function syncPush(){
   if(!HUB||SYNC.applying||SYNC.expired)return;
   if(SYNC.inFlight){SYNC.dirty=true;return}
@@ -917,9 +1024,11 @@ async function syncPush(){
   finally{SYNC.inFlight=false;syncBadge();if(SYNC.dirty){SYNC.dirty=false;syncPush()}}
 }
 function syncRebuild(st){
-  S.scen=st.scen;S.p=st.p;S.cp=st.cp;$('scenario').value=String(st.scen);renderParams();
+  S.scen=st.scen;S.p=st.p;S.cp=st.cp;S.case=st.case||null;$('scenario').value=SCENARIOS[st.scen].case?'':String(st.scen);
   uid=0;resetColorDB();S.hl={};
-  const sc=SCENARIOS[S.scen];S.plan=sc.build(sc.params==='color'?colorParams():S.p);S.events=S.plan.pre.slice();
+  Object.entries(AG_DEFAULT).forEach(([k,n])=>{AG[k].name=n});
+  const sc=SCENARIOS[S.scen];S.plan=sc.case?sc.build(S.case||{}):sc.build(sc.params==='color'?colorParams():S.p);S.events=S.plan.pre.slice();
+  renderParams();renderInbox();
   S.decisions=[];
   for(const d of st.decisions||[]){
     const e=[...S.events].reverse().find(x=>x.status==='INPUT_REQUIRED'&&!x.decided);if(!e)break;
@@ -938,7 +1047,7 @@ function syncApply(snap){
   try{
     const prevShown=S.shown;
     clearTimeout(S.timer);S.typing=null;S.rejecting=false;
-    const sameCase=st.scen===S.scen&&JSON.stringify([st.p,st.cp,st.decisions])===JSON.stringify([S.p,S.cp,S.decisions]);
+    const sameCase=st.scen===S.scen&&JSON.stringify([st.p,st.cp,st.decisions,st.case&&st.case.id])===JSON.stringify([S.p,S.cp,S.decisions,isCase()?S.case.id:null]);
     if(!sameCase)syncRebuild(st);
     S.shown=Math.max(0,Math.min(st.shown|0,S.events.length));
     for(let i=0;i<S.shown;i++){const e=S.events[i];if(e.onShow&&!e.applied){e.onShow();e.applied=true}if(e.hl)S.hl[e.hl.tab]=e.hl.key}
@@ -963,6 +1072,7 @@ async function syncStream(){
       buf+=dec.decode(value,{stream:true});let i;
       while((i=buf.indexOf('\n\n'))>=0){
         const chunk=buf.slice(0,i);buf=buf.slice(i+2);
+        if(/^event: cases$/m.test(chunk)){loadCases();continue}
         if(!/^event: state$/m.test(chunk))continue;
         const data=chunk.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('\n');
         try{const snap=JSON.parse(data);
@@ -978,8 +1088,83 @@ setInterval(()=>{const st=SYNC.remote;
   if(!HUB||!SYNC.connected||!st||!st.playing||st.driver===ME||S.playing)return;
   if(Date.now()-SYNC.lastAt>6000&&!awaiting()&&S.shown<S.events.length){S.playing=true;schedule(150);syncPush()}},2000);
 
+/* ===== 待處理案件（起點在選布平台）=====
+   選布平台的案件清單（GET /api/agent-hub/cases）：每 5 秒更新，即時推送說有變動時也立刻更新。
+   點一件案件就用客戶的真實輸入跑對應的劇本並自動播放；推進到等待業務確認時標為「待業務確認」，
+   業務核准（或修改後核准）後由選布平台寫回：樣品申請改為已核准／替客戶建立已核准的打色樣申請。 */
+const CASE_STATUS={new:{t:'新案件',c:'--st-sub'},working:{t:'處理中',c:'--st-work'},waiting:{t:'待業務確認',c:'--st-wait'},done:{t:'已完成',c:'--st-ok'}};
+const CASE_KIND={sample_request:'樣品申請',custom_colour:'自訂顏色'};
+let CASES=[],CASES_ERR='';
+function fmtWhen(s){if(!s)return '';const d=caseTime({created_at:s}),m=Math.round((Date.now()-d.getTime())/60000);
+  if(m<1)return '剛剛';if(m<60)return `${m} 分鐘前`;if(m<24*60)return `${Math.round(m/60)} 小時前`;return `${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
+function caseSummary(c){const i=c.input||{};
+  if(c.kind==='sample_request'){const it=i.items||[];return `${it.length} 款：${it.slice(0,3).map(x=>x.article_no).join('、')}${it.length>3?'…':''}${i.color_reference?'・附指定顏色':''}`}
+  if(c.kind==='custom_colour'){const col=i.colour||{};return `${i.article_no||''} ${i.name||''}・「${col.name||''}」`}
+  return ''}
+function renderInbox(){
+  const box=$('inbox');if(!box)return;
+  if(!HUB){$('inbox-note').textContent='以選布平台帳號登入後，客戶在選布平台送出的樣品申請與 ColorMind 選色會出現在這裡。';box.innerHTML='';return}
+  const open=CASES.filter(c=>c.status!=='done'),done=CASES.filter(c=>c.status==='done').slice(0,5);
+  $('inbox-note').textContent=CASES_ERR||(open.length?`${open.length} 件待處理・點一件開始處理`:'目前沒有待處理的案件。客戶在選布平台送出樣品申請、或用 ColorMind 選色後，會出現在這裡。');
+  const cur=isCase()?S.case.id:null;
+  box.innerHTML=[...open,...done].map(c=>{const st=CASE_STATUS[c.status]||CASE_STATUS.new;
+    return `<button type="button" class="case" data-id="${c.id}" aria-current="${c.id===cur}"><span class="pill" style="--sc:var(${st.c})">${st.t}</span><span class="mono sub">C-${c.id}</span><span class="grow"><strong>${CASE_KIND[c.kind]||esc(c.kind)}</strong>・${esc(custName(c))}<span class="sub">　${esc(caseSummary(c))}</span></span><span class="sub">${esc(fmtWhen(c.created_at))}</span></button>`}).join('');
+  box.querySelectorAll('.case').forEach(b=>b.onclick=()=>{const c=CASES.find(x=>x.id===+b.dataset.id);if(c)openCase(c)});
+}
+async function loadCases(){
+  if(!HUB||SYNC.expired)return;
+  try{
+    const r=await fetch(HUB.url+'/api/agent-hub/cases',{headers:{Authorization:'Bearer '+HUB.token}});
+    if(r.status===401){SYNC.expired=true;syncBadge();return}
+    const b=await r.json();
+    if(Array.isArray(b.cases)){CASES=b.cases;CASES_ERR='';
+      if(isCase()){const c=CASES.find(x=>x.id===S.case.id);if(c)S.case.status=c.status}
+      renderInbox();if(isCase())renderParams()}
+  }catch(e){CASES_ERR='暫時讀不到選布平台的案件，稍後會自動重試';renderInbox()}
+}
+/* 案件狀態：start（有人打開）→ wait（等業務確認）→ decide（業務核准，選布平台寫回）；寫回只送一次，第二次會被擋下 */
+async function caseAction(action,extra){
+  if(!HUB||!isCase())return;
+  const id=S.case.id;
+  try{
+    const r=await fetch(`${HUB.url}/api/agent-hub/cases/${id}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+HUB.token},body:JSON.stringify({action,...(extra||{})})});
+    const b=await r.json().catch(()=>null);
+    if(action==='decide'&&!r.ok)CASES_ERR=b&&b.error==='already_done'?`案件 C-${id} 已經有人決定過，選布平台保留第一次的決定`:`案件 C-${id} 寫回選布平台失敗（${r.status}），請稍後重試`;
+    if(b&&b.case){const k=CASES.findIndex(x=>x.id===id);if(k>=0)CASES[k]=b.case;if(isCase()&&S.case.id===id)S.case.status=b.case.status}
+  }catch(e){if(action==='decide')CASES_ERR=`案件 C-${id} 寫回選布平台失敗（連線中斷），請稍後重試`}
+  renderInbox();if(isCase())renderParams();
+}
+function openCase(c){
+  const k=caseScen(c.kind);if(k<0)return;
+  stopPlay();S.scen=k;S.case={id:c.id,kind:c.kind,input:c.input,created_at:c.created_at,status:c.status};
+  $('scenario').value='';
+  start(true);renderParams();renderInbox();
+  if(c.status==='done'){
+    // 已完成：直接顯示整件案件與當時的決定，不再送出
+    const d=c.outcome&&c.outcome.decision,e=[...S.events].reverse().find(x=>x.status==='INPUT_REQUIRED'&&!x.decided);
+    if(d&&e){e.decided=d;S.decisions.push({kind:d,reason:''});S.events.push(...S.plan.post(d,e))}
+    S.shown=S.events.length;S.sel=S.events[S.shown-1].id;
+    for(const x of S.events){if(x.onShow&&!x.applied){x.onShow();x.applied=true}if(x.hl)S.hl[x.hl.tab]=x.hl.key}
+    render();syncPush();return}
+  if(c.status==='new')caseAction('start');
+  S.playing=true;schedule(300);syncPush();
+}
+/* 即時推送連不上時（例如經過不支援串流的代理）：每 5 秒讀一次共用狀態與案件清單 */
+setInterval(()=>{
+  loadCases();
+  if(!HUB||SYNC.connected||SYNC.expired)return;
+  (async()=>{try{
+    const r=await fetch(HUB.url+'/api/agent-hub/state',{headers:{Authorization:'Bearer '+HUB.token}});
+    if(r.status===401){SYNC.expired=true;syncBadge();return}
+    const b=await r.json();SYNC.polling=true;
+    if(b.state==null){if(b.rev===0&&SYNC.rev===0)syncPush()}else syncApply(b);
+    syncBadge();
+  }catch(e){}})();
+},5000);
+
 renderParams();start(true);
 syncBadge();syncStream();
+renderInbox();loadCases();
 </script>
 </body>
 </html>
