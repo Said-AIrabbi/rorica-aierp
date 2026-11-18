@@ -4,7 +4,7 @@
  * 由 src/lib/colormind-return.ts 呼叫：使用者在 ColorMind 按「帶回配方」後回到 ERP（?code=…#/four-modules），
  * 網址上的 code 一載入就換成配方（code 只能換一次、約 15 分鐘內有效）。
  */
-import { REDEEM_PATH, callColorMind, json, sameOrigin } from '../_lib/colormind'
+import { REDEEM_PATH, callColorMind, json, sameOrigin } from '../_lib/colormind.js'
 
 // Node.js 執行環境（Vercel 的 Edge 已不建議使用；Node 的連線錯誤也比較看得出原因），機房見 vercel.json 的 regions
 

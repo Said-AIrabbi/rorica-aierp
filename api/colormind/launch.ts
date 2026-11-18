@@ -5,7 +5,7 @@
  * return_url 原樣送出（COLORMIND_RETURN_URL，例如 http://localhost:5173/#/four-modules），不加任何參數：
  * ColorMind 帶回時會把 code 加在 ? 之後、# 之前，由 src/lib/colormind-return.ts 讀取。
  */
-import { LAUNCH_PATH, callColorMind, json, returnUrlFor, sameOrigin } from '../_lib/colormind'
+import { LAUNCH_PATH, callColorMind, json, returnUrlFor, sameOrigin } from '../_lib/colormind.js'
 
 // Node.js 執行環境（Vercel 的 Edge 已不建議使用；Node 的連線錯誤也比較看得出原因），機房見 vercel.json 的 regions
 
