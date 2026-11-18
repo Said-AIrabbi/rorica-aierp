@@ -71,8 +71,11 @@ export async function callColorMind(path: string, body: unknown): Promise<{ stat
       headers: { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
     })
-  } catch {
-    return { status: 502, body: { error: '連不上 ColorMind，請稍後再試' } }
+  } catch (e) {
+    // detail：連線失敗的技術原因（錯誤代碼，不含金鑰），方便判斷是網路、DNS 還是憑證
+    const cause = (e as { cause?: { code?: unknown; message?: unknown } }).cause
+    const detail = String(cause?.code ?? cause?.message ?? (e instanceof Error ? e.message : e)).slice(0, 200)
+    return { status: 502, body: { error: '連不上 ColorMind，請稍後再試', detail } }
   }
   const data = (await res.json().catch(() => null)) as { error?: unknown; detail?: unknown } | null
   if (res.ok) return { status: 200, body: data }
