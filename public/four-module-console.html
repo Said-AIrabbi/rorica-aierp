@@ -692,8 +692,48 @@ const SCENARIOS=[
     return {pre,post:k=>[ev('sales','sample','回覆','COMPLETED',k==='modify'?'修改後核准':'核准',{tag:'業務核准',src:'人工',dt:700}),
       ev('sample','designer','回覆','COMPLETED','選布平台已替客戶建立打色樣申請（已核准），客戶可在「我的申請」看到',{tag:'回寫選布平台',mod:'plat'})],
       revise:'修正後的打色樣建議',note:rec};
-  }}
+  }},
+ {key:'cp',case:'photo_search',name:'照片找布',lanes:['designer','finder','inventory','sales'],desc:'',build(c){return searchCase.call(this,c,'photo')}},
+ {key:'ct',case:'text_search',name:'文字找布',lanes:['designer','finder','inventory','sales'],desc:'',build(c){return searchCase.call(this,c,'text')}}
 ];
+/* 照片找布／文字找布（延伸情境 3）：選布平台的搜尋結果（前 5 筆、吻合度）→ 庫存代理人逐款查現貨 → 有現貨的排前面 →
+   業務核准後加進客戶的「我的收藏」。找不到結果時改為轉業務親自跟進，不回寫。 */
+const CRIT={color_family:'顏色',fabric_type:'布種',construction:'織法',sheen:'光澤',transparency:'透明度',hand_feel:'手感',drape:'垂墜',uses:'用途',style:'風格'};
+/* 選布平台判讀條件的代碼（core/catalog/types.ts、core/tenant/schema.ts）→ 中文；沒列到的原樣顯示 */
+const CRIT_ZH={white:'白',ivory:'象牙白',champagne:'香檳',blush:'淡粉',nude:'裸色',black:'黑',grey:'灰',navy:'海軍藍',blue:'藍',green:'綠',red:'紅',brown:'棕',yellow:'黃',purple:'紫',other:'其他',
+  lace:'蕾絲',satin:'緞',mikado:'米卡多緞',tulle:'網紗',chiffon:'雪紡',organza:'歐根紗',crepe:'縐布',velvet:'絲絨',jacquard:'提花',poplin:'府綢',linen:'麻',wool:'羊毛',knit:'針織',denim:'丹寧',functional:'機能布',lining:'裡布',taffeta:'塔夫綢',
+  corded:'繩繡',chantilly:'香緹',guipure:'化學蕾絲',['3d_floral']:'立體花',beaded:'釘珠',sequin:'亮片',embroidered:'刺繡',plain:'素面',
+  matte:'霧面',subtle:'微光',high:'高光澤',opaque:'不透',semi:'半透',sheer:'透',soft:'柔軟',structured:'挺',fluid:'垂墜',
+  bodice:'上身',skirt:'裙身',overlay:'外層',train:'拖尾',veil:'頭紗',sleeve:'袖',dress:'洋裝',shirt:'襯衫',jacket:'外套',trousers:'褲',sportswear:'運動服',home:'家居'};
+const zhVal=v=>CRIT_ZH[v]||v;
+function critText(cr){const t=Object.entries(cr||{}).filter(([k,v])=>CRIT[k]&&v!=null&&v!==''&&!(Array.isArray(v)&&!v.length)).map(([k,v])=>`${CRIT[k]} ${Array.isArray(v)?v.map(zhVal).join('/'):zhVal(v)}`);return t.length?t.join('・'):'沒有明確條件'}
+function searchCase(c,mode){
+  const i=c.input||{},cust=custName(c),top=(i.top||[]).slice(0,5);
+  AG.designer.name=(i.customer&&(i.customer.company||i.customer.name))||'客戶';
+  const asked=mode==='photo'?`上傳照片找布${i.text?`，補充「${i.text}」`:''}`:`文字找布：「${i.query}」${(i.queries||[]).length>1?`（30 分鐘內共搜尋 ${(i.queries||[]).length} 次：${i.queries.slice(0,-1).map(q=>`「${q}」`).join('、')} 之後改為這次）`:''}`;
+  const pre=[ev('designer','finder','請求','SUBMITTED',asked,{tag:mode==='photo'?'上傳照片':'文字搜尋',mod:'plat',src:'選布平台',payload:mode==='photo'?{image_id:i.image_id,text:i.text||''}:{query:i.query,queries:i.queries},dt:600}),
+    ev('finder','finder','呼叫工具','WORKING',`${mode==='photo'?'判讀照片':'理解需求'}：${critText(i.criteria)}`,{tag:mode==='photo'?'AI 判讀':'理解需求',payload:{criteria:i.criteria||{}},src:'選布平台'})];
+  if(i.no_results||!top.length){
+    this.desc=`${cust} 在選布平台${mode==='photo'?'用照片':'用文字'}找布，但沒有找到符合的布。選布代理人轉給業務，由業務親自聯絡客戶、了解需求後手動推薦；選布平台不變。`;
+    pre.push(ev('finder','finder','回覆','COMPLETED','選布平台找不到符合的布（0 筆）',{tag:'搜尋結果',payload:{results:0},src:'選布平台'}));
+    const rec=`找不到符合的布。建議業務親自聯絡 ${cust}，確認用途、顏色與預算後手動推薦`;
+    pre.push(ev('finder','sales','等待人工','INPUT_REQUIRED',rec,{tag:'轉業務跟進',payload:{query:i.query||i.text||'',criteria:i.criteria||{}},final:true}));
+    return {pre,post:k=>[ev('sales','finder','回覆','COMPLETED',k==='modify'?'調整後由業務跟進':'由業務親自跟進',{tag:'業務接手',src:'人工',dt:700}),
+      ev('finder','designer','回覆','COMPLETED','已轉業務跟進；選布平台不變',{tag:'業務跟進',mod:'hub'})],revise:'補充後的跟進建議',note:rec,articles:[]};
+  }
+  const maps=top.map(t=>({t,...erpFor(t.article_no)})),res=maps.map(m=>({...m,r:queryInventory(m.sku,m.color,1)}));
+  const ranked=[...res].sort((a,b)=>(b.r.hasStock-a.r.hasStock)||((b.t.match_pct||0)-(a.t.match_pct||0)));
+  const inStock=ranked.filter(x=>x.r.hasStock),pick=(inStock.length?inStock:ranked).slice(0,3);
+  this.desc=`${cust} 在選布平台${mode==='photo'?'用照片':'用文字'}找布，找到 ${i.results} 筆。庫存代理人逐款查現貨，有現貨的排前面；業務核准推薦清單後，選布平台把這幾款加進客戶的「我的收藏」。`;
+  pre.push(ev('finder','finder','回覆','COMPLETED',`選布平台找到 ${i.results} 筆，前 ${top.length} 筆：${top.map(t=>`${t.article_no} ${t.name}${t.match_pct!=null?` ${t.match_pct}%`:''}`).join('、')}`,{tag:'搜尋結果',payload:{results:i.results,top:top.map(t=>({article_no:t.article_no,match_pct:t.match_pct}))},src:'選布平台'}));
+  pre.push(ev('finder','inventory','請求','WORKING',`查前 ${maps.length} 款的現貨：${maps.map(m=>`${m.t.article_no} → ${m.sku}（${m.color}）`).join('、')}`,{tag:`查 ${maps.length} 款現貨`,payload:{items:maps.map(m=>({article_no:m.t.article_no,erp:m.sku,color:m.color}))},src:'示範對應（選布平台貨號尚未對應 ERP 品號）'}));
+  pre.push(ev('inventory','finder','回覆','COMPLETED',r=>res.map(x=>`${x.t.article_no} ${r==='biz'?(x.r.hasStock?x.r.availableY+'Y':'0Y'):(x.r.hasStock?'有現貨':'需訂製')}`).join('、'),{tag:'現貨結果',payload:Object.fromEntries(res.map(x=>[x.t.article_no,{availableY:x.r.availableY,hasStock:x.r.hasStock}])),internal:res.map(x=>x.t.article_no),src:'ERP 快照計算',hl:res[0]?{tab:'erp',key:res[0].sku+'|'+res[0].color}:undefined}));
+  const rec=`推薦清單（有現貨優先）：${pick.map((x,k)=>`${k+1}. ${x.t.article_no} ${x.t.name}${x.t.match_pct!=null?` ${x.t.match_pct}%`:''}${x.r.hasStock?'':'（需訂製）'}`).join('　')}；核准後加進 ${cust} 的「我的收藏」`;
+  pre.push(ev('finder','sales','等待人工','INPUT_REQUIRED',rec,{tag:'推薦待確認',payload:{articles:pick.map(x=>x.t.article_no)},final:true}));
+  return {pre,post:k=>[ev('sales','finder','回覆','COMPLETED',k==='modify'?'調整說明後核准':'核准推薦清單',{tag:'業務核准',src:'人工',dt:700}),
+    ev('finder','designer','回覆','COMPLETED',`已把 ${pick.length} 款加進客戶的「我的收藏」，客戶下次打開就看得到`,{tag:'回寫選布平台',mod:'plat'})],
+    revise:'修正後的推薦清單',note:rec,articles:pick.map(x=>x.t.article_no)};
+}
 const AG_DEFAULT=Object.fromEntries(Object.entries(AG).map(([k,v])=>[k,v.name]));
 const SIZE={none:'不需樣布',color_chip:'色卡小片',a4_card:'A4 樣布',half_meter:'半碼'};
 const TIMING={'1m':'1 個月內','3m':'3 個月內','6m':'6 個月內',later:'之後'};
@@ -797,7 +837,7 @@ function decide(kind,reason,extra){
   S.rejecting=false;S.playing=true;S.typing=null;render();schedule(350/S.speed);
   syncPush();
   // 案件的最後一關：業務核准（或修改後核准）由選布平台寫回（申請單改為已核准／建立打色樣申請）；只有按下的這個畫面送
-  if(isCase()&&e.final&&kind!=='reject')caseAction('decide',{decision:kind,note:kind==='modify'?`${S.plan.note}（業務修改後核准）`:S.plan.note});
+  if(isCase()&&e.final&&kind!=='reject')caseAction('decide',{decision:kind,note:kind==='modify'?`${S.plan.note}（業務修改後核准）`:S.plan.note,articles:S.plan.articles||[]});
 }
 
 function boardState(){
@@ -1093,13 +1133,15 @@ setInterval(()=>{const st=SYNC.remote;
    點一件案件就用客戶的真實輸入跑對應的劇本並自動播放；推進到等待業務確認時標為「待業務確認」，
    業務核准（或修改後核准）後由選布平台寫回：樣品申請改為已核准／替客戶建立已核准的打色樣申請。 */
 const CASE_STATUS={new:{t:'新案件',c:'--st-sub'},working:{t:'處理中',c:'--st-work'},waiting:{t:'待業務確認',c:'--st-wait'},done:{t:'已完成',c:'--st-ok'}};
-const CASE_KIND={sample_request:'樣品申請',custom_colour:'自訂顏色'};
+const CASE_KIND={sample_request:'樣品申請',custom_colour:'自訂顏色',photo_search:'照片找布',text_search:'文字找布'};
 let CASES=[],CASES_ERR='';
 function fmtWhen(s){if(!s)return '';const d=caseTime({created_at:s}),m=Math.round((Date.now()-d.getTime())/60000);
   if(m<1)return '剛剛';if(m<60)return `${m} 分鐘前`;if(m<24*60)return `${Math.round(m/60)} 小時前`;return `${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
 function caseSummary(c){const i=c.input||{};
   if(c.kind==='sample_request'){const it=i.items||[];return `${it.length} 款：${it.slice(0,3).map(x=>x.article_no).join('、')}${it.length>3?'…':''}${i.color_reference?'・附指定顏色':''}`}
   if(c.kind==='custom_colour'){const col=i.colour||{};return `${i.article_no||''} ${i.name||''}・「${col.name||''}」`}
+  if(c.kind==='photo_search')return `${i.no_results?'找不到符合的布':`找到 ${i.results} 筆`}${i.text?`・補充「${i.text}」`:''}`;
+  if(c.kind==='text_search')return `「${i.query||''}」・${i.no_results?'找不到符合的布':`找到 ${i.results} 筆`}${(i.queries||[]).length>1?`・共搜尋 ${i.queries.length} 次`:''}`;
   return ''}
 function renderInbox(){
   const box=$('inbox');if(!box)return;
