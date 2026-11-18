@@ -62,18 +62,150 @@ export function getCurrentAccount(): Account | undefined {
  * 免得訊息本身變成「這個帳號存在」的線索。
  */
 export function signIn(code: string, password: string): Account {
+  const lockedFor = signInLockRemainingSeconds()
+  if (lockedFor > 0) throw new Error(`登入失敗次數過多，請 ${lockedFor} 秒後再試`)
+
   const account = accounts.find((a) => a.code.toLowerCase() === code.trim().toLowerCase())
   if (!account || account.password !== password || account.status === '停用') {
-    throw new Error('帳號或密碼錯誤，或該帳號已停用')
+    const lock = recordFailedSignIn()
+    // 錯在帳號、密碼或停用，訊息一律相同，不透露哪一項有問題
+    throw new Error(lock > 0 ? `登入失敗次數過多，請 ${lock} 秒後再試` : '帳號或密碼錯誤，或該帳號已停用')
   }
+  clearFailedSignIns()
   currentAccountId = account.id
   writeStored(account.id)
+  signedInAccountId = account.id
+  writeSignedIn(account.id)
   return account
+}
+
+/**
+ * 以選布平台單一登入：通行證已由 lib/sso.ts 驗過，這裡依 email 對應帳號主檔的「信箱」。
+ * 對應不到或帳號已停用一律拒絕——ERP 的權限只看 ERP 自己的帳號角色，選布平台的身分不帶進來。
+ */
+export function signInWithSsoEmail(email: string): Account {
+  const target = email.trim().toLowerCase()
+  const account = accounts.find((a) => a.mailbox.trim().toLowerCase() === target)
+  if (!account || account.status === '停用') {
+    throw new Error(`選布平台帳號 ${target} 沒有對應的 ERP 帳號（或已停用）。請管理員在帳戶主檔把信箱設成相同的 email。`)
+  }
+  clearFailedSignIns()
+  currentAccountId = account.id
+  writeStored(account.id)
+  signedInAccountId = account.id
+  writeSignedIn(account.id)
+  return account
+}
+
+/**
+ * 連續登入失敗的暫時鎖定：同一個瀏覽器連錯 MAX_FAILED_SIGN_INS 次，鎖 LOCK_SECONDS 秒。
+ *
+ * 不分帳號計次——若依帳號計，等於告訴對方「這個帳號存在」（與上面錯誤訊息一致的考量）。
+ * 存在 localStorage 而非記憶體，重新整理頁面不會歸零；讀寫失敗（無痕、封鎖網站資料）時退回記憶體。
+ * 這仍是前端的把關，正式系統須在伺服器端依帳號與來源 IP 限制（docs/backend-infra-requirements.md）。
+ */
+const MAX_FAILED_SIGN_INS = 5
+const LOCK_SECONDS = 60
+const FAILED_KEY = 'rorica-erp-failed-sign-ins'
+
+let failedMemory: { count: number; lockedUntil: number } = { count: 0, lockedUntil: 0 }
+
+function readFailed(): { count: number; lockedUntil: number } {
+  try {
+    const raw = window.localStorage.getItem(FAILED_KEY)
+    if (raw) return JSON.parse(raw) as { count: number; lockedUntil: number }
+  } catch {
+    // 讀不到就用記憶體裡那份
+  }
+  return failedMemory
+}
+
+function writeFailed(state: { count: number; lockedUntil: number }): void {
+  failedMemory = state
+  try {
+    window.localStorage.setItem(FAILED_KEY, JSON.stringify(state))
+  } catch {
+    // 寫不進去仍以記憶體計次
+  }
+}
+
+/** 目前還要鎖幾秒；未鎖定回 0 */
+export function signInLockRemainingSeconds(): number {
+  if (typeof window === 'undefined') return 0
+  return Math.max(0, Math.ceil((readFailed().lockedUntil - Date.now()) / 1000))
+}
+
+/** 記一次失敗，達上限即上鎖並歸零計數；回傳上鎖秒數（未上鎖為 0） */
+function recordFailedSignIn(): number {
+  if (typeof window === 'undefined') return 0
+  const count = readFailed().count + 1
+  if (count >= MAX_FAILED_SIGN_INS) {
+    writeFailed({ count: 0, lockedUntil: Date.now() + LOCK_SECONDS * 1000 })
+    return LOCK_SECONDS
+  }
+  writeFailed({ count, lockedUntil: 0 })
+  return 0
+}
+
+function clearFailedSignIns(): void {
+  if (typeof window === 'undefined') return
+  writeFailed({ count: 0, lockedUntil: 0 })
+}
+
+/**
+ * 管理員切換身分（代入）：畫面與權限照被切換的帳號，但「實際登入者」仍記為管理員本人，
+ * 所以切到業務之後還能再切、或一鍵回到本人。登出時一併清除。
+ *
+ * 判斷的是實際登入者是不是管理員，不是目前代入的身分——
+ * 否則切到業務後就失去切換權，管理員本人反而回不來。
+ * 頁首選單只對實際登入者為管理員時顯示，這裡是資料層的第二道。
+ */
+const SIGNED_IN_KEY = 'rorica-erp-signed-in-account'
+
+function readSignedIn(): string | null {
+  try {
+    return window.sessionStorage.getItem(SIGNED_IN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeSignedIn(id: string | null): void {
+  try {
+    if (id === null) window.sessionStorage.removeItem(SIGNED_IN_KEY)
+    else window.sessionStorage.setItem(SIGNED_IN_KEY, id)
+  } catch {
+    // 存不進去不影響本次瀏覽
+  }
+}
+
+/** 實際以帳密登入的帳號 id；沒有代入時與目前身分相同 */
+let signedInAccountId: string | null = typeof window === 'undefined' ? null : (readSignedIn() ?? currentAccountId)
+
+/** 實際以帳密登入的帳號（代入別人時，這裡仍是管理員本人） */
+export function getSignedInAccount(): Account | undefined {
+  const id = signedInAccountId ?? currentAccountId
+  return id === null ? undefined : accounts.find((a) => a.id === id)
+}
+
+/** 實際登入者是否為管理員：決定能不能切換身分 */
+export function canSwitchAccount(): boolean {
+  return Boolean(getSignedInAccount()?.roles.includes('管理員'))
+}
+
+export function switchAccountAsAdmin(id: string): void {
+  if (!canSwitchAccount()) throw new Error('只有管理員可以切換身分')
+  const target = accounts.find((a) => a.id === id)
+  if (!target || target.status === '停用') throw new Error('該帳號不存在或已停用')
+  currentAccountId = id
+  writeStored(id)
 }
 
 export function signOut(): void {
   currentAccountId = null
   writeStored(null)
+  signedInAccountId = null
+  writeSignedIn(null)
 }
 
 /**

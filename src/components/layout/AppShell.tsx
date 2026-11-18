@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar, MobileNav } from './Sidebar'
 import { Header } from './Header'
+import { connectEmbed, isEmbedded } from '@/lib/embed'
 
 export function AppShell() {
   const [navOpen, setNavOpen] = useState(false)
@@ -9,6 +10,8 @@ export function AppShell() {
 
   // 換頁後關閉抽屜：手機上點完連結若抽屜還開著，會擋住剛載入的頁面
   useEffect(() => setNavOpen(false), [pathname])
+
+  if (isEmbedded()) return <EmbeddedShell />
 
   return (
     <div className="flex h-dvh bg-surface-muted print:h-auto print:block">
@@ -22,6 +25,17 @@ export function AppShell() {
           </div>
         </main>
       </div>
+    </div>
+  )
+}
+
+/** 嵌在選布平台裡：只有頁面本身，沒有側欄、頁首與外距；主題與高度和上層對接（見 lib/embed.ts） */
+function EmbeddedShell() {
+  const content = useRef<HTMLDivElement>(null)
+  useEffect(() => (content.current ? connectEmbed(content.current) : undefined), [])
+  return (
+    <div ref={content} className="bg-background">
+      <Outlet />
     </div>
   )
 }

@@ -11,9 +11,17 @@ import { initPrototypeStorage, onRemoteSnapshotApplied } from '@/prototype-stora
 import { resetDocumentEventBaseline } from '@/mocks/document-events'
 import './index.css'
 import { applyTheme, loadThemeId } from '@/lib/theme'
+import { finishColorMindReturn, takeColorMindCode } from '@/lib/colormind-return'
 
 // 顏色主題（決策173）在畫面出來之前就套上，避免先閃一下預設的淺色
 applyTheme(loadThemeId())
+
+// ColorMind 按「帶回配方」後回到這裡（?code=…#/four-modules）：只換配方交回協作中心，不開 ERP 畫面
+const colorMindCode = takeColorMindCode()
+if (colorMindCode) await finishColorMindReturn(colorMindCode)
+else await startApp()
+
+async function startApp(): Promise<void> {
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,3 +58,4 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 )
+}

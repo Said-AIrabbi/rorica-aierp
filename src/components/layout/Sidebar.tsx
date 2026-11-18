@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   Boxes,
   Building2,
+  ExternalLink,
+  Search,
   Tags,
   Home,
   Layers,
@@ -17,11 +19,13 @@ import {
   ShoppingCart,
   Users,
   Warehouse,
+  Workflow,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCurrentAccount } from '@/lib/current-account-context'
 import type { DocKey, MasterKey } from '@/lib/permissions'
+import { FABRIC_PORTAL_URL } from '@/lib/sso'
 
 /**
  * 側欄即權限規格的第①層「功能權限」：該角色是否看得到這張單據的列表與建單入口。
@@ -121,6 +125,27 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <div>
           <NavItem to="/" label="首頁總覽" icon={Home} />
           <NavItem to="/inventory" label="現貨/無現貨總覽" icon={Warehouse} />
+        </div>
+
+        <div>
+          <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            模組串接
+          </div>
+          <NavItem to="/four-modules" label="Agents協作中心" icon={Workflow} />
+          {/*
+            選布平台（fabric-portal）是獨立系統，各自登入，故開新分頁而非站內路由。
+            網址由 VITE_FABRIC_PORTAL_URL 設定，未設定時指向本機開發站 localhost:3000。
+          */}
+          <a
+            href={FABRIC_PORTAL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-ink-body transition-colors hover:bg-muted"
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            <span className="truncate">選布平台</span>
+            <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          </a>
         </div>
 
         <div>

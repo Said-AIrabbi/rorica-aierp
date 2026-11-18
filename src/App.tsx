@@ -40,6 +40,7 @@ import { CompanyProfilePage } from '@/features/settings/CompanyProfilePage'
 import { AccountListPage } from '@/features/masters/accounts/AccountListPage'
 import { AccountDetailPage } from '@/features/masters/accounts/AccountDetailPage'
 import { RequireAction, RequireAdmin, RequireView } from '@/components/shared/ReadOnlyNotice'
+import { FourModuleConsolePage } from '@/features/four-modules/FourModuleConsolePage'
 
 export default function App() {
   return (
@@ -48,6 +49,9 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
 
         <Route path="/inventory" element={<StockOverviewPage />} />
+
+        {/* 四模組串接（four-modules 分支）：協作中心嵌入頁，資料唯讀取自 ERP */}
+        <Route path="/four-modules" element={<FourModuleConsolePage />} />
 
         {/*
           單據頁面依權限分三層把關（權限規格第七章第 7 節）：
