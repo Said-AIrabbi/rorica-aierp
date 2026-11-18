@@ -15,7 +15,10 @@ const DROP_REQUEST = ['host', 'connection', 'content-length', 'accept-encoding',
 /** 不原樣回傳的回應標頭：fetch 已解壓縮，長度與編碼要由平台重新決定 */
 const DROP_RESPONSE = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
 
-/** 要轉發的路徑：Vercel 改寫後的網址可能仍是原路徑，也可能帶在 ?__portal= 裡（vercel.json），兩種都接受 */
+/**
+ * 要轉發的路徑：Vercel 改寫後的網址可能仍是原路徑，也可能帶在 ?__portal= 裡（vercel.json），兩種都接受。
+ * Vercel 會把規則擷取的參數附加到查詢字串，所以參數一律命名 __portal，並在這裡拿掉，不轉給選布平台。
+ */
 export function portalPath(url: URL): { path: string; search: string } {
   const params = new URLSearchParams(url.search)
   const fromQuery = params.get('__portal')

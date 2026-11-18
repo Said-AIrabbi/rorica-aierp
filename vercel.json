@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     { "source": "/portal", "destination": "/api/portal" },
-    { "source": "/portal/:path*", "destination": "/api/portal?__portal=:path*" }
+    { "source": "/portal/", "destination": "/api/portal" },
+    { "source": "/portal/:__portal*", "destination": "/api/portal" }
   ]
 }
