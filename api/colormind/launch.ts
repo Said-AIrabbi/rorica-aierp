@@ -7,9 +7,9 @@
  */
 import { LAUNCH_PATH, callColorMind, json, returnUrlFor, sameOrigin } from '../_lib/colormind'
 
-export const config = { runtime: 'edge' }
+// Node.js 執行環境（Vercel 的 Edge 已不建議使用；Node 的連線錯誤也比較看得出原因），機房見 vercel.json 的 regions
 
-export default async function handler(req: Request): Promise<Response> {
+async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: `不支援的方法 ${req.method}` }, 405)
   if (!sameOrigin(req)) return json({ error: 'forbidden' }, 403)
 
@@ -24,3 +24,5 @@ export default async function handler(req: Request): Promise<Response> {
   const r = await callColorMind(LAUNCH_PATH, { 色樣名稱: name, L: l, a, b, return_url: returnUrlFor(req) })
   return json(r.body, r.status)
 }
+
+export default { fetch: handler }

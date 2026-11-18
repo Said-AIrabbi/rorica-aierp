@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["hkg1"],
   "rewrites": [
     { "source": "/portal", "destination": "/api/portal" },
     { "source": "/portal/", "destination": "/api/portal" },

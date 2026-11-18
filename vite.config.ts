@@ -64,8 +64,10 @@ function localApi(): Plugin {
             headers,
             body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
           })
-          const mod = (await server.ssrLoadModule(file)) as { default: (r: Request) => Promise<Response> }
-          const response = await mod.default(request)
+          // Edge 寫法 export default function；Node 寫法 export default { fetch }
+          type Handler = (r: Request) => Promise<Response>
+          const mod = (await server.ssrLoadModule(file)) as { default: Handler | { fetch: Handler } }
+          const response = await (typeof mod.default === 'function' ? mod.default(request) : mod.default.fetch(request))
           res.statusCode = response.status
           response.headers.forEach((v, k) => {
             if (k !== 'set-cookie') res.setHeader(k, v)
