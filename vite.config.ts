@@ -13,6 +13,12 @@ const LOCAL_API_ROUTES: Record<string, string> = {
   '/api/colormind/launch': '/api/colormind/launch.ts',
   '/api/colormind/redeem': '/api/colormind/redeem.ts',
 }
+/** 整段路徑都交給同一支函式的（/portal 與 /portal/… → 選布平台轉發，見 api/portal.ts） */
+const LOCAL_API_PREFIXES: [string, string][] = [['/portal', '/api/portal.ts']]
+
+function localRoute(pathname: string): string | undefined {
+  return LOCAL_API_ROUTES[pathname] ?? LOCAL_API_PREFIXES.find(([p]) => pathname === p || pathname.startsWith(`${p}/`))?.[1]
+}
 
 /** 只讀 .env 檔本身（vite 的 loadEnv 在前綴為空時會把整個 process.env 也混進來）；後讀的蓋前面的 */
 function fileEnv(mode: string): Record<string, string> {
@@ -45,7 +51,7 @@ function localApi(): Plugin {
 
       server.middlewares.use(async (req, res, next) => {
         const pathname = (req.url ?? '').split('?')[0]
-        const file = LOCAL_API_ROUTES[pathname]
+        const file = localRoute(pathname)
         if (!file) return next()
         try {
           const chunks: Buffer[] = []
@@ -61,9 +67,25 @@ function localApi(): Plugin {
           const mod = (await server.ssrLoadModule(file)) as { default: (r: Request) => Promise<Response> }
           const response = await mod.default(request)
           res.statusCode = response.status
-          response.headers.forEach((v, k) => res.setHeader(k, v))
-          res.end(Buffer.from(await response.arrayBuffer()))
+          response.headers.forEach((v, k) => {
+            if (k !== 'set-cookie') res.setHeader(k, v)
+          })
+          // 多個 Set-Cookie 要分開送，forEach 合併成一行瀏覽器只認得第一個
+          const cookies = response.headers.getSetCookie()
+          if (cookies.length) res.setHeader('set-cookie', cookies)
+          if (!response.body) return void res.end()
+          // 邊收邊送：即時推送（text/event-stream）不能等整個回應結束
+          res.flushHeaders()
+          const reader = response.body.getReader()
+          res.on('close', () => void reader.cancel().catch(() => {}))
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            res.write(value)
+          }
+          res.end()
         } catch (error) {
+          if (res.headersSent) return void res.end()
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json; charset=utf-8')
           res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))

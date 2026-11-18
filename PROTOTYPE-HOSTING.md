@@ -123,6 +123,27 @@ https://<你的網址>/?ws=sales#/         ← 另一份，完全獨立
 
 程式兩組命名都支援（`api/snapshot.ts` 的 `upstash()`），因為 Vercel 的整合依版本會注入不同名稱。
 
+### 4. 選布平台掛在同一個網址（/portal）
+
+ERP 與選布平台共用 Vercel 這個網址：根目錄是 ERP，`/portal/…` 由 `vercel.json` 改寫到 `api/portal.ts`，
+再原樣轉給選布平台（以 `BASE_PATH=/portal` 建置，見 fabric-portal 的 `docs/base-path.md`）。
+
+```
+瀏覽器 → https://<本站>/portal/…  → api/portal.ts（Edge）→ PORTAL_ORIGIN/portal/…（選布平台）
+```
+
+| Key | Value | 說明 |
+|---|---|---|
+| `PORTAL_ORIGIN` | 選布平台的網址，例如 `https://xxxx.trycloudflare.com` | 伺服器端；換網址只要改它再 **Redeploy** |
+| `VITE_FABRIC_PORTAL_URL` | `/portal` | 側欄連結、單一登入、Agents協作中心都改走本站 |
+| `VITE_ERP_SSO_PUBLIC_KEY` | 選布平台簽通行證的公鑰 | 與選布平台的 `ERP_SSO_PRIVATE_KEY` 成對 |
+| `COLORMIND_RETURN_URL` | `https://<本站>/#/four-modules` | ColorMind 允許清單要有本站網址 |
+
+選布平台那邊要設 `ERP_SSO_RETURN_URLS=https://<本站>/`、`COLORMIND_RETURN_URL=https://<本站>/portal/colormind/return`。
+
+`PORTAL_ORIGIN` 沒設時 `/portal` 回 503，ERP 本身不受影響。
+本機測試：`.env.portal.local` 放上述值（`PORTAL_ORIGIN=http://localhost:<選布平台埠>`），`npx vite --mode portal --port 5174`。
+
 ## 出事的時候
 
 | 症狀 | 可能原因 | 處理 |
@@ -131,6 +152,8 @@ https://<你的網址>/?ws=sales#/         ← 另一份，完全獨立
 | 主控台出現「尚未連結 Upstash Redis」 | Upstash 沒連到這個專案 | Storage 分頁重新連結，然後 Redeploy |
 | 一直跳「資料已被其他人更新」 | 有人同時在操作，或上一個分頁沒關 | 重新載入即可 |
 | 資料整包不見 | 免費方案不保證永久保存 | 換工作區重來；重要內容本來就該先匯出 |
+| `/portal` 顯示「選布平台尚未設定」 | `PORTAL_ORIGIN` 沒設或沒重新部署 | 設好後 **Redeploy** |
+| `/portal` 顯示「暫時連不到選布平台」 | 選布平台那台停了，或臨時通道重開後網址變了 | 開回來；網址變了就改 `PORTAL_ORIGIN` 再 Redeploy |
 
 ## 已知限制（刻意的）
 

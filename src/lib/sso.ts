@@ -14,8 +14,14 @@
  * 這仍是原型——ERP 的登入狀態本身存在瀏覽器裡，正式系統須由後端建立連線階段。
  */
 
-/** 選布平台網址：部署後以環境變數指定，本機開發預設 localhost:3000 */
-export const FABRIC_PORTAL_URL = (import.meta.env.VITE_FABRIC_PORTAL_URL || 'http://localhost:3000').replace(/\/+$/, '')
+/**
+ * 選布平台網址：部署後以環境變數指定，本機開發預設 localhost:3000。
+ * 可以是完整網址，也可以是本站路徑（/portal：選布平台經 api/portal.ts 掛在同一個網址下），一律換算成完整網址。
+ */
+export const FABRIC_PORTAL_URL = new URL(
+  (import.meta.env.VITE_FABRIC_PORTAL_URL || 'http://localhost:3000').replace(/\/+$/, ''),
+  typeof window === 'undefined' ? 'http://localhost' : window.location.origin,
+).href.replace(/\/+$/, '')
 
 /** 選布平台簽通行證用的公鑰（SPKI DER 的 base64）；沒有設定時登入頁不顯示單一登入按鈕 */
 const PUBLIC_KEY_B64: string = import.meta.env.VITE_ERP_SSO_PUBLIC_KEY ?? ''
