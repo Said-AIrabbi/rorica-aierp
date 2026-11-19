@@ -32,6 +32,37 @@ export interface ColorMindResult {
   recipes: ColorMindRecipe[]
 }
 
+/**
+ * ColorMind 換取結果整理成 ERP 用的形狀（{色樣名稱, L, a, b, recipes}）。
+ * 現行的回傳是 items：客戶在 ColorMind 點選要帶回的顏色（各自的色名、Lab、RGB、染料）；
+ * 帶回的顏色一律是客戶點選的那一個（第一個），不是一開始送去的目標色。舊的回傳（recipes：CMYK＋RGB）原樣通過。
+ * 沒有點選任何顏色時回 null。
+ */
+export function normalizeRedeemed(data: unknown): ColorMindResult | null {
+  if (!data || typeof data !== 'object') return null
+  const o = data as Record<string, unknown>
+  if (!Array.isArray(o.items)) return o as unknown as ColorMindResult
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  const picked = o.items
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+    .map((x, i) => {
+      const zh = typeof x['色樣名稱'] === 'string' ? x['色樣名稱'].trim() : ''
+      const en = typeof x['英文色名'] === 'string' ? x['英文色名'].trim() : ''
+      return { name: zh && en ? `${zh} ${en}` : zh || en, L: n(x.L), a: n(x.a), b: n(x.b), R: n(x.R), G: n(x.G), B: n(x.B), no: n(x.id) ?? i + 1 }
+    })
+    .filter((x) => [x.L, x.a, x.b, x.R, x.G, x.B].every((v) => v !== null))
+  const first = picked[0]
+  if (!first) return null
+  return {
+    色樣名稱: first.name,
+    L: first.L!,
+    a: first.a!,
+    b: first.b!,
+    // 新的回傳沒有 CMYK（改用染料配方），以 0 補位
+    recipes: picked.map((x) => ({ 序號: x.no, C: 0, M: 0, Y: 0, K: 0, R: x.R!, G: x.G!, B: x.B! })),
+  }
+}
+
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
