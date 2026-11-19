@@ -83,6 +83,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,.row-hit:focus-vis
 .arrow{color:var(--ink-2)}
 .meta{margin-left:auto;display:flex;gap:6px;align-items:center;color:var(--ink-2);font-size:11.5px}
 .tag{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--surface-2);color:var(--ink-2)}
+/* 案件：每一步標示是選布平台真的發生過的事，還是代理人依開案資料產生的草稿 */
+.rtag{font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid}
+.rtag.real{color:var(--st-ok);border-color:var(--st-ok);font-weight:600}
+.rtag.draft{color:var(--ink-2);border-color:var(--line);border-style:dashed}
 .msg-body{font-size:14px;overflow-wrap:anywhere}
 .approve{display:grid;gap:8px;margin-top:4px;padding:10px;border-radius:8px;background:color-mix(in srgb,var(--st-wait) 10%,transparent);border:1px solid color-mix(in srgb,var(--st-wait) 40%,var(--line))}
 .approve .acts{display:flex;flex-wrap:wrap;gap:8px}
@@ -360,6 +364,9 @@ const ERPNO=BRIDGE?BRIDGE.erpNo:{'S75':'1-11','3760':'1-07','630-1GU':'1-23','KK
 const ATTR={'S75':['高','佳','柔'],'3760':['極高','佳','中'],'630-1GU':['低','中','挺'],'KK98':['中','低','挺'],'N120':['低','佳','柔'],'90125':['中','中','中'],'WT-7012':['中','低','挺']};
 const MODS={plat:{name:'選布平台',c:'--m-plat',d:'找布、布料資料、樣品與詢價'},hub:{name:'代理人協作',c:'--m-hub',d:'協調層、事件表、人工確認'},erp:{name:'ERP 串接',c:'--m-erp',d:'庫存唯讀查詢、定期同步'},col:{name:'色彩資料庫',c:'--m-col',d:'Lab 色樣、配方、實測色差'}};
 function modOf(e){if(e.mod)return e.mod;if(e.from==='color'||e.to==='color')return 'col';if(e.from==='inventory'||e.to==='inventory')return 'erp';if(e.status==='INPUT_REQUIRED'||e.from==='sales')return 'hub';return 'plat'}
+/* 案件裡真的發生過的事：客戶在選布平台的操作、業務按下的決定、寫回選布平台；其餘是代理人的草稿 */
+function isReal(e){return e.real===true||e.src==='人工'||String(e.src||'').startsWith('選布平台')||e.tag==='回寫選布平台'}
+function rtag(e){return isCase()?(isReal(e)?'<span class="rtag real" title="這一步真的發生在選布平台（客戶操作、業務決定或寫回）">選布平台實際發生</span>':'<span class="rtag draft" title="代理人依開案當下的資料產生的草稿，沒有對應的真實操作">代理人草稿</span>'):''}
 function mtag(k){return `<span class="mtag" style="--mc:var(${MODS[k].c})">${MODS[k].name}</span>`}
 
 /* color science: CIELAB (D65/10° treated as D65/2° for display) */
@@ -462,7 +469,7 @@ function stockText(res,role,need){
 
 let uid=0;
 function ev(from,to,type,status,text,o={}){
-  return {id:'EV-'+String(++uid).padStart(4,'0'),from,to,type,status,text,tag:o.tag||'',payload:o.payload||{},internal:o.internal||[],dt:o.dt??1100,src:o.src||'劇本',group:o.group||'',mod:o.mod,onShow:o.onShow,hl:o.hl,stage:o.stage,revise:o.revise,final:o.final};
+  return {id:'EV-'+String(++uid).padStart(4,'0'),from,to,type,status,text,tag:o.tag||'',payload:o.payload||{},internal:o.internal||[],dt:o.dt??1100,src:o.src||'劇本',group:o.group||'',mod:o.mod,onShow:o.onShow,hl:o.hl,stage:o.stage,revise:o.revise,final:o.final,real:o.real};
 }
 const T=(e,role)=>typeof e.text==='function'?e.text(role):e.text;
 
@@ -665,10 +672,12 @@ const SCENARIOS=[
     const h=i.history||{};
     pre.push(ev('sample','sample','呼叫工具','WORKING',isNew?`查客戶紀錄：${cust} 首次申請，尚無寄樣紀錄`:`查客戶紀錄：過往申請 ${h.requests||0} 次，已核准或寄出 ${h.approved||0} 次`,{tag:'客戶紀錄',payload:{history:h,tier:i.customer&&i.customer.tier},src:'選布平台'}));
     const rec=`審核建議：${can.length?`核准 ${can.map(x=>x.it.article_no).join('、')}`:'目前沒有剪得出樣布的品項'}${cannot.length?`；${cannot.map(x=>x.it.article_no).join('、')} 改寄色卡或等新貨`:''}${colourLine}${isNew?'；新客戶，建議先確認公司資料再寄出':''}`;
+    /* 寫進客戶「我的申請」的審核說明：只寫客戶需要知道的（新客戶提醒、庫存量等內部建議留在協作中心） */
+    const cnote=[can.length?`${can.map(x=>x.it.article_no).join('、')} 已核准，我們會盡快備樣寄出`:'',cannot.length?`${cannot.map(x=>x.it.article_no).join('、')} 目前無法剪樣，將改寄色卡或於新貨到後通知您`:'',colourLine?(colourLine.includes('可用色號')?'您指定的顏色可用我們現有的色號':'您指定的顏色將另寄打色樣確認'):''].filter(Boolean).join('；')+'。';
     pre.push(ev('sample','sales','等待人工','INPUT_REQUIRED',rec,{tag:'審核待確認',payload:{approve:can.map(x=>x.it.article_no),hold:cannot.map(x=>x.it.article_no),new_customer:isNew},final:true}));
     return {pre,post:k=>[ev('sales','sample','回覆','COMPLETED',k==='modify'?'修改審核建議後核准':'核准',{tag:'業務核准',src:'人工',dt:700}),
-      ev('sample','customer','回覆','COMPLETED',`申請 #${i.request_id} 已在選布平台改為「已核准」，客戶可在「我的申請」看到`,{tag:'回寫選布平台',mod:'plat'})],
-      revise:'修正後的審核建議（已依退回意見調整）',note:rec,
+      ev('sample','customer','回覆','COMPLETED',`申請 #${i.request_id} 已在選布平台改為「已核准」；客戶在「我的申請」看到的說明：「AI推薦：${cnote}」`,{tag:'回寫選布平台',mod:'plat'})],
+      revise:'修正後的審核建議（已依退回意見調整）',note:rec,customerNote:cnote,
       declineNote:'暫不寄樣',declineText:`申請 #${i.request_id} 已在選布平台改為「已婉拒」，客戶可在「我的申請」看到`};
   }},
  {key:'cc',case:'custom_colour',name:'自訂顏色',lanes:['designer','finder','color','inventory','sample','sales'],desc:'',
@@ -689,10 +698,11 @@ const SCENARIOS=[
     pre.push(ev('inventory','color','回覆','COMPLETED',r=>reuse?`${base}（${near.x.name}）${g.hasStock?'可剪樣':'無可用布卷'}${r==='biz'?`（可用 ${g.availableY}Y）`:''}`:`${base} 胚布 ${stockText(g,r,qty)}`,{tag:'庫存結果',payload:{...g},internal:['availableY','rolls','reservedY'],src:'ERP 快照計算'}));
     pre.push(ev('color','sample','請求','WORKING',`規劃 ${i.article_no} 的打色樣`,{tag:'規劃寄樣',payload:{article_no:i.article_no}}));
     const rec=`建議：為 ${cust} 建立打色樣申請 —— ${i.article_no} ${i.name}，A4 色卡，顏色「${col.name}」；${reuse?`沿用色號 ${near.x.id}${g.hasStock?'，可直接剪樣':'，需等新貨'}`:`依 ColorMind 配方 #${no} 打色，約 2 週`}`;
+    const cnote=`已依您在 ColorMind 選的顏色「${col.name}」建立 ${i.article_no} 的打色樣申請${reuse?'，可沿用我們現有的色號':'，將依配方打色，約 2 週'}。`;
     pre.push(ev('sample','sales','等待人工','INPUT_REQUIRED',rec,{tag:'打色樣待確認',payload:{article_no:i.article_no,reference:col.reference},final:true}));
     return {pre,post:k=>[ev('sales','sample','回覆','COMPLETED',k==='modify'?'修改後核准':'核准',{tag:'業務核准',src:'人工',dt:700}),
-      ev('sample','designer','回覆','COMPLETED','選布平台已替客戶建立打色樣申請（已核准），客戶可在「我的申請」看到',{tag:'回寫選布平台',mod:'plat'})],
-      revise:'修正後的打色樣建議',note:rec,
+      ev('sample','designer','回覆','COMPLETED',`選布平台已替客戶建立打色樣申請（已核准，標示「AI推薦」）；客戶在「我的申請」看到的說明：「AI推薦：${cnote}」`,{tag:'回寫選布平台',mod:'plat'})],
+      revise:'修正後的打色樣建議',note:rec,customerNote:cnote,
       declineNote:'不打色樣',declineText:'已結案，不建立打色樣申請；選布平台不變'};
   }},
  {key:'cp',case:'photo_search',name:'照片找布',lanes:['designer','finder','inventory','sales'],desc:'',build(c){return searchCase.call(this,c,'photo')}},
@@ -751,7 +761,7 @@ function inquiryCase(c){
   this.desc=`${cust} 來信詢價，業務帶進選布平台（詢價單 #${i.inquiry_id}）。詢價代理人依品項查 ERP 現貨${par?'（多款平行查詢）':''}，不足時請選布代理人找替代布；業務核准後，回覆草稿寫進詢價單並標為已確認，業務在詢價頁按「寄出」才會寄給客戶。`;
   pre.push(ev('inquiry','sales','等待人工','INPUT_REQUIRED',r=>r==='biz'?biz:cus,{tag:'草稿待確認',payload:{draft:biz,reply_lang:i.lang},internal:['draft'],final:true}));
   return {pre,post:k=>[ev('sales','inquiry','回覆','COMPLETED',k==='modify'?'修改一句後核准':'核准回覆草稿',{tag:'業務核准',src:'人工',dt:700}),
-    ev('inquiry','customer','回覆','COMPLETED',`回覆草稿已寫進詢價單 #${i.inquiry_id} 並標為已確認；業務在詢價頁按「寄出」即寄給客戶`,{tag:'回寫選布平台',mod:'plat'})],
+    ev('inquiry','customer','回覆','COMPLETED',`回覆草稿已寫進詢價單 #${i.inquiry_id} 並標為已確認（標示「AI推薦草稿」，寄給客戶的信不含這個標示）；業務在詢價頁按「寄出」即寄給客戶`,{tag:'回寫選布平台',mod:'plat'})],
     revise:'修正後的回覆草稿（已補上交期說明）',note:biz,reply,declineNote:'不回覆此詢價',declineText:`已結案；詢價單 #${i.inquiry_id} 維持原狀，由業務自行處理`};
 }
 /* 建檔新布（延伸情境 5）：業務在選布平台上架新布（上架即生效）→ 建檔代理人判讀屬性，同時對 ERP 品號與捲數、
@@ -791,9 +801,14 @@ function searchCase(c,mode){
   const asked=mode==='photo'?`上傳照片找布${i.text?`，補充「${i.text}」`:''}`:`文字找布：「${i.query}」${(i.queries||[]).length>1?`（30 分鐘內共搜尋 ${(i.queries||[]).length} 次：${i.queries.slice(0,-1).map(q=>`「${q}」`).join('、')} 之後改為這次）`:''}`;
   const pre=[ev('designer','finder','請求','SUBMITTED',asked,{tag:mode==='photo'?'上傳照片':'文字搜尋',mod:'plat',src:'選布平台',payload:mode==='photo'?{image_id:i.image_id,text:i.text||''}:{query:i.query,queries:i.queries},dt:600}),
     ev('finder','finder','呼叫工具','WORKING',`${mode==='photo'?'判讀照片':'理解需求'}：${critText(i.criteria)}`,{tag:mode==='photo'?'AI 判讀':'理解需求',payload:{criteria:i.criteria||{}},src:'選布平台'})];
+  /* 開案的原因：客戶看了結果之後的動作（點開布料頁、加進收藏），找不到結果時是停手幾分鐘沒再搜尋 */
+  const acts=()=>(i.actions||[]).slice(0,8).map(a=>{
+    const what=a.type==='viewed'?`客戶點開 ${a.article_no} 的布料頁`:a.type==='picked'?`客戶把 ${a.article_no} 加進「我的收藏」`:a.type==='quiet'?`客戶 ${a.minutes||3} 分鐘沒有再搜尋`:'客戶在選布平台有新動作';
+    return ev('designer','finder','狀態變更','COMPLETED',what,{tag:'客戶動作',mod:'plat',src:'選布平台',real:true,payload:a,dt:600});
+  });
   if(i.no_results||!top.length){
-    this.desc=`${cust} 在選布平台${mode==='photo'?'用照片':'用文字'}找布，但沒有找到符合的布。選布代理人轉給業務，由業務親自聯絡客戶、了解需求後手動推薦；選布平台不變。`;
-    pre.push(ev('finder','finder','回覆','COMPLETED','選布平台找不到符合的布（0 筆）',{tag:'搜尋結果',payload:{results:0},src:'選布平台'}));
+    this.desc=`${cust} 在選布平台${mode==='photo'?'用照片':'用文字'}找布，但沒有找到符合的布，停手幾分鐘後才開案。選布代理人轉給業務，由業務親自聯絡客戶、了解需求後手動推薦；選布平台不變。`;
+    pre.push(ev('finder','finder','回覆','COMPLETED','選布平台找不到符合的布（0 筆）',{tag:'搜尋結果',payload:{results:0},src:'選布平台'}),...acts());
     const rec=`找不到符合的布。建議業務親自聯絡 ${cust}，確認用途、顏色與預算後手動推薦`;
     pre.push(ev('finder','sales','等待人工','INPUT_REQUIRED',rec,{tag:'轉業務跟進',payload:{query:i.query||i.text||'',criteria:i.criteria||{}},final:true}));
     return {pre,post:k=>[ev('sales','finder','回覆','COMPLETED',k==='modify'?'調整後由業務跟進':'由業務親自跟進',{tag:'業務接手',src:'人工',dt:700}),
@@ -802,14 +817,14 @@ function searchCase(c,mode){
   const maps=top.map(t=>({t,...erpFor(t.article_no)})),res=maps.map(m=>({...m,r:queryInventory(m.sku,m.color,1)}));
   const ranked=[...res].sort((a,b)=>(b.r.hasStock-a.r.hasStock)||((b.t.match_pct||0)-(a.t.match_pct||0)));
   const inStock=ranked.filter(x=>x.r.hasStock),pick=(inStock.length?inStock:ranked).slice(0,3);
-  this.desc=`${cust} 在選布平台${mode==='photo'?'用照片':'用文字'}找布，找到 ${i.results} 筆。庫存代理人逐款查現貨，有現貨的排前面；業務核准推薦清單後，選布平台把這幾款加進客戶的「我的收藏」。`;
-  pre.push(ev('finder','finder','回覆','COMPLETED',`選布平台找到 ${i.results} 筆，前 ${top.length} 筆：${top.map(t=>`${t.article_no} ${t.name}${t.match_pct!=null?` ${t.match_pct}%`:''}`).join('、')}`,{tag:'搜尋結果',payload:{results:i.results,top:top.map(t=>({article_no:t.article_no,match_pct:t.match_pct}))},src:'選布平台'}));
+  this.desc=`${cust} 在選布平台${mode==='photo'?'用照片':'用文字'}找布，找到 ${i.results} 筆；客戶點開或收藏了其中一款之後才開案。庫存代理人逐款查現貨，有現貨的排前面；業務核准推薦清單後，選布平台把這幾款加進客戶的「我的收藏」。`;
+  pre.push(ev('finder','finder','回覆','COMPLETED',`選布平台找到 ${i.results} 筆，前 ${top.length} 筆：${top.map(t=>`${t.article_no} ${t.name}${t.match_pct!=null?` ${t.match_pct}%`:''}`).join('、')}`,{tag:'搜尋結果',payload:{results:i.results,top:top.map(t=>({article_no:t.article_no,match_pct:t.match_pct}))},src:'選布平台'}),...acts());
   pre.push(ev('finder','inventory','請求','WORKING',`查前 ${maps.length} 款的現貨：${maps.map(m=>`${m.t.article_no} → ${m.sku}（${m.color}）`).join('、')}`,{tag:`查 ${maps.length} 款現貨`,payload:{items:maps.map(m=>({article_no:m.t.article_no,erp:m.sku,color:m.color}))},src:'示範對應（選布平台貨號尚未對應 ERP 品號）'}));
   pre.push(ev('inventory','finder','回覆','COMPLETED',r=>res.map(x=>`${x.t.article_no} ${r==='biz'?(x.r.hasStock?x.r.availableY+'Y':'0Y'):(x.r.hasStock?'有現貨':'需訂製')}`).join('、'),{tag:'現貨結果',payload:Object.fromEntries(res.map(x=>[x.t.article_no,{availableY:x.r.availableY,hasStock:x.r.hasStock}])),internal:res.map(x=>x.t.article_no),src:'ERP 快照計算',hl:res[0]?{tab:'erp',key:res[0].sku+'|'+res[0].color}:undefined}));
   const rec=`推薦清單（有現貨優先）：${pick.map((x,k)=>`${k+1}. ${x.t.article_no} ${x.t.name}${x.t.match_pct!=null?` ${x.t.match_pct}%`:''}${x.r.hasStock?'':'（需訂製）'}`).join('　')}；核准後加進 ${cust} 的「我的收藏」`;
   pre.push(ev('finder','sales','等待人工','INPUT_REQUIRED',rec,{tag:'推薦待確認',payload:{articles:pick.map(x=>x.t.article_no)},final:true}));
   return {pre,post:k=>[ev('sales','finder','回覆','COMPLETED',k==='modify'?'調整說明後核准':'核准推薦清單',{tag:'業務核准',src:'人工',dt:700}),
-    ev('finder','designer','回覆','COMPLETED',`已把 ${pick.length} 款加進客戶的「我的收藏」，客戶下次打開就看得到`,{tag:'回寫選布平台',mod:'plat'})],
+    ev('finder','designer','回覆','COMPLETED',`已把 ${pick.length} 款加進客戶的「我的收藏」，標示「AI推薦」，客戶下次打開就看得到`,{tag:'回寫選布平台',mod:'plat'})],
     revise:'修正後的推薦清單',note:rec,articles:pick.map(x=>x.t.article_no),declineNote:'不推薦',declineText:'已結案，「我的收藏」不變'};
 }
 const AG_DEFAULT=Object.fromEntries(Object.entries(AG).map(([k,v])=>[k,v.name]));
@@ -921,11 +936,11 @@ function decide(kind,reason,extra){
   if(extra&&extra.cm)applyCM(extra.cm);
   S.events.push(...decisionEvents(kind,e,reason));
   S.rejecting=false;S.playing=true;S.typing=null;render();schedule(350/S.speed);
-  syncPush();
+  syncPush(true);
   // 案件的最後一關：業務核准（或修改後核准）由選布平台寫回（申請單改為已核准／建立打色樣申請）；只有按下的這個畫面送
   if(isCase()&&e.final&&kind!=='reject')caseAction('decide',{decision:kind,
     note:kind==='decline'?`業務婉拒：${S.plan.declineNote||S.plan.note}`:kind==='modify'?`${S.plan.note}（業務修改後核准）`:S.plan.note,
-    articles:S.plan.articles||[],reply:S.plan.reply||''});
+    articles:S.plan.articles||[],reply:S.plan.reply||'',customer_note:S.plan.customerNote||''});
 }
 
 function boardState(){
@@ -999,7 +1014,7 @@ function renderThread(){
     if(e.type!=='回覆'&&e.from!==e.to&&e.to!==owner&&!['customer','designer'].includes(e.from)){html+=`<div class="handoff">交接：${AG[e.from].name} → ${AG[e.to].name}</div>`}
     owner=e.type==='回覆'?e.to:e.to;
     const st=STATUS[e.status];const pending=i===S.shown-1&&awaiting();
-    html+=`<article class="msg ${e.id===S.sel?'sel':''} ${e.id===S.fresh&&!REDUCE?'enter':''} ${e.status==='INPUT_REQUIRED'&&e.id===S.fresh?'enter-wait':''}" data-id="${e.id}" tabindex="0" style="--c:var(${AG[e.from].c})"><div class="msg-head">${who(e.from)}<span class="arrow" aria-hidden="true">→</span>${who(e.to)}<span class="tag">${e.type}</span>${mtag(modOf(e))}${e.group?`<span class="tag">${e.group}</span>`:''}<span class="meta"><span class="pill" style="--sc:var(${st.c})">${st.t}</span><span class="mono">${clock(i)}</span></span></div><div class="msg-body">${T(e,S.role==='biz'?'biz':'cust')}</div><div class="sub">資料來源：${e.src}</div>${pending?approveBox():''}</article>`;
+    html+=`<article class="msg ${e.id===S.sel?'sel':''} ${e.id===S.fresh&&!REDUCE?'enter':''} ${e.status==='INPUT_REQUIRED'&&e.id===S.fresh?'enter-wait':''}" data-id="${e.id}" tabindex="0" style="--c:var(${AG[e.from].c})"><div class="msg-head">${who(e.from)}<span class="arrow" aria-hidden="true">→</span>${who(e.to)}<span class="tag">${e.type}</span>${mtag(modOf(e))}${rtag(e)}${e.group?`<span class="tag">${e.group}</span>`:''}<span class="meta"><span class="pill" style="--sc:var(${st.c})">${st.t}</span><span class="mono">${clock(i)}</span></span></div><div class="msg-body">${T(e,S.role==='biz'?'biz':'cust')}</div><div class="sub">資料來源：${e.src}</div>${pending?approveBox():''}</article>`;
   });
   if(S.typing){const t=S.typing;
     if(t.type!=='回覆'&&t.from!==t.to&&t.to!==owner&&!['customer','designer'].includes(t.from))html+=`<div class="handoff enter">交接：${AG[t.from].name} → ${AG[t.to].name}</div>`;
@@ -1057,7 +1072,7 @@ function renderControls(){
   $('sp1').setAttribute('aria-pressed',S.speed===1);$('sp2').setAttribute('aria-pressed',S.speed===2);
 }
 function renderParams(){
-  const sc=SCENARIOS[S.scen];$('scen-desc').textContent=sc.desc;
+  const sc=SCENARIOS[S.scen];$('scen-desc').textContent=sc.desc+(isCase()?' 標「選布平台實際發生」的是真的發生過的事；標「代理人草稿」的是代理人依開案當下資料產生的草稿，沒有對應的真實操作。':'');
   $('scen-title').textContent=isCase()?`案件 C-${S.case.id}｜${sc.name}`:'情境說明（示範）';
   if(sc.case){const c=S.case||{};const st=CASE_STATUS[c.status]||CASE_STATUS.new;
     $('params').innerHTML=c.id?`<span class="pill" style="--sc:var(${st.c})">${st.t}</span><span class="sub">${esc(custName(c))}・${esc(fmtWhen(c.created_at))} 送出</span>`:'';
@@ -1139,14 +1154,19 @@ const SYNC={rev:0,applying:false,inFlight:false,dirty:false,lastAt:0,connected:f
 function syncSnapshot(){return {v:1,writer:ME,scen:S.scen,p:S.p,cp:S.cp,case:isCase()?{id:S.case.id,kind:S.case.kind,input:S.case.input,created_at:S.case.created_at}:null,shown:S.shown,decisions:S.decisions,playing:S.playing,driver:S.playing?ME:null}}
 function syncBadge(){const b=$('sync');b.hidden=false;
   b.textContent=!HUB?'單機模式（未與選布平台同步）':SYNC.expired?'同步存取證已失效，請重新以選布平台帳號登入':SYNC.connected?`即時同步中${SYNC.by?'・最後操作：'+SYNC.by:''}`:SYNC.polling?`同步中（每 5 秒更新）${SYNC.by?'・最後操作：'+SYNC.by:''}`:'同步連線中…';}
-async function syncPush(){
+/* mine：這次是本機使用者親手做的事（點開案件、核准／婉拒）。伺服器版本較新（409）時不讓舊的共用畫面蓋掉它，
+   改以伺服器的最新版本號重送一次；其餘（播放進度等）照舊以伺服器為準 */
+async function syncPush(mine){
   if(!HUB||SYNC.applying||SYNC.expired)return;
+  if(mine)SYNC.mine=true;
   if(SYNC.inFlight){SYNC.dirty=true;return}
+  const own=SYNC.mine;SYNC.mine=false;
   SYNC.inFlight=true;
   try{
     const r=await fetch(HUB.url+'/api/agent-hub/state',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+HUB.token},body:JSON.stringify({baseRev:SYNC.rev,state:syncSnapshot()})});
     const b=await r.json().catch(()=>null);
     if(r.ok&&b){SYNC.rev=b.rev;SYNC.by=b.updatedBy||'';SYNC.lastAt=Date.now();SYNC.remote=b.state}
+    else if(r.status===409&&b&&own&&typeof b.rev==='number'){SYNC.rev=b.rev;SYNC.mine=true;SYNC.dirty=true}
     else if(r.status===409&&b){SYNC.dirty=false;syncApply(b)}
     else if(r.status===401){SYNC.expired=true}
   }catch(e){/* 斷線時本機照常操作，重新連上後以伺服器狀態為準 */}
@@ -1277,9 +1297,9 @@ function openCase(c){
     if(d&&e){e.decided=d;S.decisions.push({kind:d,reason:''});S.events.push(...decisionEvents(d,e,''))}
     S.shown=S.events.length;S.sel=S.events[S.shown-1].id;
     for(const x of S.events){if(x.onShow&&!x.applied){x.onShow();x.applied=true}if(x.hl)S.hl[x.hl.tab]=x.hl.key}
-    render();syncPush();return}
+    render();syncPush(true);return}
   if(c.status==='new')caseAction('start');
-  S.playing=true;schedule(300);syncPush();
+  S.playing=true;schedule(300);syncPush(true);
 }
 /* 即時推送連不上時（例如經過不支援串流的代理）：每 5 秒讀一次共用狀態與案件清單 */
 setInterval(()=>{
