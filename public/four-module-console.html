@@ -420,8 +420,9 @@ const COLOR_SEED=BRIDGE?BRIDGE.colorSeed:[
   ['TN120071-1B','IVORY','N120',[92.4,0.9,7.4],'分光儀量測']
 ];
 let CDB;
+const COL_ROWS=300;
 function resetColorDB(){CDB={samples:RECIPE_DB
-  ?RECIPE_DB.map(r=>({id:r.id,name:`${r.en}（${r.zh}）`,base:'PET',lab:r.lab,src:'PET 染色配方',status:'已驗證',dyes:r.dyes}))
+  ?RECIPE_DB.map(r=>({id:r.id,name:`${r.en}（${r.zh}）`,base:r.base||'PET',lab:r.lab,src:r.src||'PET 染色配方',status:'已驗證',dyes:r.dyes||[]}))
   :COLOR_SEED.map(([id,name,base,lab,src])=>({id,name,base,lab,src,status:'已驗證'})),measurements:[],newIds:new Set()}}
 resetColorDB();
 function findNearest(lab,base){const pool=CDB.samples.filter(x=>x.base===base);const list=(pool.length?pool:CDB.samples).map(x=>({x,d:dE00(lab,x.lab)})).sort((p,q)=>p.d-q.d);return list[0]}
@@ -708,7 +709,10 @@ const SCENARIOS=[
  {key:'cp',case:'photo_search',name:'照片找布',lanes:['designer','finder','inventory','sales'],desc:'',build(c){return searchCase.call(this,c,'photo')}},
  {key:'ct',case:'text_search',name:'文字找布',lanes:['designer','finder','inventory','sales'],desc:'',build(c){return searchCase.call(this,c,'text')}},
  {key:'ci',case:'inquiry',name:'詢價',lanes:['customer','inquiry','inventory','sales'],desc:'',build(c){return inquiryCase.call(this,c)}},
- {key:'cf',case:'new_fabric',name:'建檔新布',lanes:['sales','catalog','inventory','finder'],desc:'',build(c){return newFabricCase.call(this,c)}}
+ {key:'cf',case:'new_fabric',name:'建檔新布',lanes:['sales','catalog','inventory','finder'],desc:'',build(c){return newFabricCase.call(this,c)}},
+ {key:'cb',case:'sample_feedback',name:'寄樣回饋',lanes:['customer','sample','finder','inventory','sales'],desc:'',build(c){return feedbackCase.call(this,c)}},
+ {key:'cl',case:'trade_lead',name:'展後跟進',lanes:['customer','inquiry','inventory','finder','sales'],desc:'',build(c){return leadCase.call(this,c)}},
+ {key:'cr',case:'showroom_interest',name:'買家展示間',lanes:['customer','finder','inventory','sales'],desc:'',build(c){return showroomCase.call(this,c)}}
 ];
 /* 詢價（延伸情境 1、2）：業務把客戶來信帶進選布平台（詢價單）→ 依品項查 ERP 現貨（多款時平行查詢）→ 不足時以選布平台的
    相似款找替代布 → 回覆草稿（業務視角中文；寄給客戶的信用詢價單的語言）→ 業務核准後寫進詢價單並標為已確認（不自動寄出）。
@@ -784,6 +788,99 @@ function newFabricCase(c){
     ev('catalog','sales','狀態變更','COMPLETED',`${i.article_no} 維持在選布平台上架`,{tag:'維持上架',mod:'plat'})],
     revise:'修正後的建檔檢查',note:rec,declineNote:dup?`與 ${sim[0].article_no} 重複`:'不上架',declineText:`已在選布平台下架 ${i.article_no}`};
 }
+/* 寄樣回饋：客戶收到樣品後在「我的申請」逐款回饋（符合／接近／不符、方向）→ 寄樣代理人整理 → 符合的查下單庫存、
+   不符的請選布代理人找相近的替代布 → 下一步建議；業務核准後替代布加進「我的收藏」（AI推薦），申請單寫上給客戶看的下一步。 */
+const ASPECT_ZH={color:'顏色',hand:'手感',stiffness:'挺度',sheen:'光澤',drape:'垂墜',overall:'整體'},VERDICT_ZH={match:'符合',close:'接近',mismatch:'不符'};
+function feedbackCase(c){
+  const i=c.input||{},cust=custName(c),items=(i.items||[]).slice(0,8);
+  AG.customer.name=(i.customer&&(i.customer.company||i.customer.name))||'客戶';
+  const fbText=it=>(it.feedback||[]).map(x=>`${ASPECT_ZH[x.aspect]||x.aspect}${VERDICT_ZH[x.verdict]||x.verdict}${x.direction?`（${x.direction}）`:''}`).join('、');
+  const ok=items.filter(it=>(it.feedback||[]).every(x=>x.verdict==='match')),off=items.filter(it=>!(it.feedback||[]).every(x=>x.verdict==='match'));
+  this.desc=`${cust} 收到樣品申請 #${i.request_id} 的樣品後，在選布平台回饋了 ${items.length} 款。寄樣代理人整理回饋：符合的查下單庫存，不符的請選布代理人找相近的替代布；業務核准後，替代布加進客戶的「我的收藏」，申請單寫上給客戶看的下一步。`;
+  const pre=[ev('customer','sample','請求','SUBMITTED',`樣品申請 #${i.request_id} 的回饋：${items.map(it=>`${it.article_no} ${fbText(it)}`).join('；')}`,{tag:'樣品回饋',mod:'plat',src:'選布平台',payload:{request_id:i.request_id,items:items.map(it=>({article_no:it.article_no,feedback:it.feedback}))},dt:600})];
+  pre.push(ev('sample','sample','呼叫工具','WORKING',`整理回饋：${ok.length} 款符合${off.length?`，${off.length} 款需要調整（${off.map(x=>x.article_no).join('、')}）`:''}`,{tag:'整理回饋',payload:{match:ok.map(x=>x.article_no),adjust:off.map(x=>x.article_no)}}));
+  const okRes=ok.map(it=>({it,...erpFor(it.article_no)})).map(m=>({...m,r:queryInventory(m.sku,m.color,100)}));
+  if(okRes.length){
+    pre.push(ev('sample','inventory','請求','WORKING',`查符合款的下單庫存（以 100Y 估）：${okRes.map(m=>`${m.it.article_no} → ${m.sku}（${m.color}）`).join('、')}`,{tag:'查下單庫存',payload:{items:okRes.map(m=>m.it.article_no),need_y:100}}));
+    pre.push(ev('inventory','sample','回覆','COMPLETED',r=>okRes.map(m=>`${m.it.article_no}：${stockText(m.r,r,100)}`).join('；'),{tag:'庫存結果',payload:Object.fromEntries(okRes.map(m=>[m.it.article_no,{availableY:m.r.availableY}])),internal:['availableY']}));
+  }
+  const picks=[],lines=[];
+  for(const it of off){
+    const colourOff=(it.feedback||[]).some(x=>x.aspect==='color'&&x.verdict!=='match');
+    const alts=(it.alternatives||[]).slice(0,3).map(a=>({a,...erpFor(a.article_no)})).map(a=>({...a,r:queryInventory(a.sku,a.color,1)}));
+    pre.push(ev('sample','finder','請求','WORKING',`${it.article_no} ${fbText(it)}，找相近的替代布`,{tag:'找替代布',payload:{base:it.article_no,feedback:it.feedback}}));
+    if(alts.length){
+      pre.push(ev('finder','inventory','請求','WORKING',`查候選 ${alts.map(a=>`${a.a.article_no}（相似度 ${a.a.match_pct}%）`).join('、')} 的現貨`,{tag:'查候選庫存',payload:{candidates:alts.map(a=>a.a.article_no)}}));
+      pre.push(ev('inventory','finder','回覆','COMPLETED',r=>alts.map(a=>`${a.a.article_no}：${a.r.hasStock?(r==='biz'?`可用 ${a.r.availableY}Y`:'有現貨'):'需訂製'}`).join('；'),{tag:'候選結果',payload:Object.fromEntries(alts.map(a=>[a.a.article_no,{hasStock:a.r.hasStock}]))}));
+    }
+    const best=alts.find(a=>a.r.hasStock)||alts[0];
+    pre.push(ev('finder','sample','回覆','COMPLETED',best?`建議以 ${best.a.article_no} ${best.a.name}（相似度 ${best.a.match_pct}%）替代${colourOff?'；顏色也可用 ColorMind 另打色樣':''}`:`沒有相近的替代布${colourOff?'，建議用 ColorMind 打色樣':'，建議業務親自了解需求'}`,{tag:best?'推薦替代布':'無替代',payload:{base:it.article_no,alternative:best?best.a.article_no:null}}));
+    if(best&&!picks.includes(best.a.article_no))picks.push(best.a.article_no);
+    lines.push({it,best,colourOff});
+  }
+  const biz=`下一步建議：${[ok.length?`${ok.map(x=>x.article_no).join('、')} 符合，建議業務報價`:'',...lines.map(l=>l.best?`${l.it.article_no} 改推 ${l.best.a.article_no}`:`${l.it.article_no} ${l.colourOff?'改用 ColorMind 打色樣':'由業務了解需求'}`)].filter(Boolean).join('；')}${picks.length?`；核准後把 ${picks.join('、')} 加進客戶的「我的收藏」`:''}`;
+  /* 寫在客戶申請單上的下一步：只寫客戶需要知道的 */
+  const cnote=[ok.length?`${ok.map(x=>x.article_no).join('、')} 符合您的需求，業務會盡快與您聯絡報價`:'',...lines.map(l=>l.best?`${l.it.article_no} 與您的期望有落差，已將相近的 ${l.best.a.article_no} 加入您的收藏`:l.colourOff?`${l.it.article_no} 的顏色可依您的需求另打色樣，業務會與您確認`:`${l.it.article_no} 業務會再與您確認需求`)].filter(Boolean).join('；')+'。';
+  pre.push(ev('sample','sales','等待人工','INPUT_REQUIRED',biz,{tag:'下一步待確認',payload:{match:ok.map(x=>x.article_no),picks},final:true}));
+  return {pre,post:k=>[ev('sales','sample','回覆','COMPLETED',k==='modify'?'修改後核准':'核准',{tag:'業務核准',src:'人工',dt:700}),
+    ev('sample','customer','回覆','COMPLETED',`申請 #${i.request_id} 已寫上下一步；客戶在「我的申請」看到：「AI推薦：${cnote}」${picks.length?`；${picks.join('、')} 加進「我的收藏」，標示「AI推薦」`:''}`,{tag:'回寫選布平台',mod:'plat'})],
+    revise:'修正後的下一步建議',note:biz,customerNote:cnote,articles:picks,declineNote:'暫不跟進',declineText:'已結案；選布平台不變'};
+}
+/* 展後跟進：業務在展會看板按「產生跟進建議」，每筆名單一件 → 詢價代理人整理買家在攤位掃過的布、查現貨、
+   請選布代理人找相近款 → 擬跟進信（語言依買家）；業務核准後名單改為「已聯絡」，草稿寫進備註（不自動寄出）。 */
+function leadCase(c){
+  const i=c.input||{},cust=custName(c),fab=(i.fabrics||[]).slice(0,8),en=i.lang!=='zh',who=(i.customer&&i.customer.name)||'';
+  AG.customer.name=(i.customer&&(i.customer.company||i.customer.name))||'買家';
+  const show=i.show||{};
+  this.desc=`業務把展會「${show.name||''}」的名單交給協作中心：${cust}${i.source==='scan'?` 在攤位掃了 ${fab.length} 款布`:'（業務手動新增的名單）'}。詢價代理人整理買家看過的布、查現貨、找相近款，擬一封跟進信；業務核准後，名單改為「已聯絡」，草稿寫進名單備註（不會自動寄出）。`;
+  const pre=[ev('customer','inquiry','請求','SUBMITTED',`展會「${show.name||''}」${show.date?`（${show.date}）`:''}的名單：${cust}${i.customer&&i.customer.email?`，${i.customer.email}`:''}；${fab.length?`掃過 ${fab.map(x=>`${x.article_no} ${x.name}`).join('、')}`:'沒有掃描紀錄'}${i.note?`；業務備註：${i.note}`:''}`,{tag:'展會名單',mod:'plat',src:'選布平台',payload:{lead_id:i.lead_id,fabrics:fab.map(x=>x.article_no)},dt:600})];
+  const res=fab.map(x=>({x,...erpFor(x.article_no)})).map(m=>({...m,r:queryInventory(m.sku,m.color,1)}));
+  const alts=[...new Map(Object.values(i.alternatives||{}).flat().map(a=>[a.article_no,a])).values()].filter(a=>!fab.some(x=>x.article_no===a.article_no)).slice(0,3);
+  if(res.length){
+    pre.push(ev('inquiry','inventory','請求','WORKING',`查買家看過的 ${res.length} 款現貨：${res.map(m=>`${m.x.article_no} → ${m.sku}（${m.color}）`).join('、')}`,{tag:`查 ${res.length} 款現貨`,payload:{items:res.map(m=>m.x.article_no)}}));
+    pre.push(ev('inventory','inquiry','回覆','COMPLETED',r=>res.map(m=>`${m.x.article_no}：${m.r.hasStock?(r==='biz'?`可用 ${m.r.availableY}Y`:'有現貨'):'需訂製'}`).join('；'),{tag:'現貨結果',payload:Object.fromEntries(res.map(m=>[m.x.article_no,{hasStock:m.r.hasStock}]))}));
+  }
+  if(alts.length){
+    pre.push(ev('inquiry','finder','請求','WORKING','找和買家看過的布相近、可以一起推薦的款',{tag:'找相近款',payload:{base:fab.map(x=>x.article_no)}}));
+    pre.push(ev('finder','inquiry','回覆','COMPLETED',`相近款：${alts.map(a=>`${a.article_no} ${a.name}（${a.match_pct}%）`).join('、')}`,{tag:'相近款',payload:{alternatives:alts.map(a=>a.article_no)}}));
+  }
+  const NL=String.fromCharCode(10);
+  const reply=en
+    ?[`Dear ${who||'Sir or Madam'},`,'',`Thank you for visiting us${show.name?` at ${show.name}`:''}.`,'',...(res.length?['You looked at:',...res.map(m=>`- ${m.x.article_no}: ${m.r.hasStock?'available from stock':'made to order'}`),'']:[]),...(alts.length?[`You may also like: ${alts.map(a=>a.article_no).join(', ')}.`,'']:[]),'We would be happy to send samples or a quotation. Please let us know your project and timing.','','Best regards'].join(NL)
+    :[`${who||'您好'}：`,'',`感謝您${show.name?`在「${show.name}」`:''}蒞臨我們的攤位。`,'',...(res.length?['您看過的布款：',...res.map(m=>`・${m.x.article_no} ${m.x.name}：${m.r.hasStock?'有現貨':'可訂製'}`),'']:[]),...(alts.length?[`另外推薦您參考：${alts.map(a=>`${a.article_no} ${a.name}`).join('、')}。`,'']:[]),'如需樣布或報價，歡迎告訴我們您的需求與時程。','','敬祝 商祺'].join(NL);
+  const biz=`跟進信草稿（${en?'英文':'中文'}）：${fab.length?`買家看過 ${fab.length} 款（${res.filter(m=>m.r.hasStock).length} 款有現貨）`:'沒有掃描紀錄'}${alts.length?`，另推薦 ${alts.map(a=>a.article_no).join('、')}`:''}；核准後名單改為「已聯絡」，草稿寫進名單備註（不會自動寄出）`;
+  pre.push(ev('inquiry','sales','等待人工','INPUT_REQUIRED',biz,{tag:'草稿待確認',payload:{draft:reply,lang:i.lang},internal:['draft'],final:true}));
+  return {pre,post:k=>[ev('sales','inquiry','回覆','COMPLETED',k==='modify'?'修改一句後核准':'核准跟進信草稿',{tag:'業務核准',src:'人工',dt:700}),
+    ev('inquiry','customer','回覆','COMPLETED','名單已改為「已聯絡」，跟進信草稿寫進名單備註（標示「AI推薦草稿」）；業務確認後自行寄出',{tag:'回寫選布平台',mod:'plat'})],
+    revise:'修正後的跟進信草稿',note:biz,reply,declineNote:'不跟進',declineText:'已結案；名單維持原狀'};
+}
+/* 買家展示間：買家打開業務分享的展示間連結、點看某款布 → 選布代理人依看最多的布找相近、展示間還沒有的款 →
+   庫存代理人查現貨 → 推薦清單；業務核准後加進這個展示間（AI推薦），買家下次打開就看得到。 */
+function showroomCase(c){
+  const i=c.input||{},cust=custName(c),fab=i.fabrics||[],viewed=i.viewed||[],sug=(i.suggestions||[]).slice(0,5);
+  AG.customer.name=(i.customer&&(i.customer.company||i.customer.name))||'買家';
+  const nameOf=no=>{const x=fab.find(f=>f.article_no===no);return x?`${no} ${x.name}`:no};
+  const pre=[ev('customer','finder','請求','SUBMITTED',`買家展示間（開啟 ${i.open_count||0} 次）：點看 ${viewed.map(nameOf).join('、')}；瀏覽次數 ${fab.filter(f=>f.views>0).map(f=>`${f.article_no} ${f.views} 次`).join('、')||'—'}`,{tag:'展示間瀏覽',mod:'plat',src:'選布平台',payload:{room_id:i.room_id,viewed,views:Object.fromEntries(fab.map(f=>[f.article_no,f.views]))},dt:600}),
+    ev('finder','finder','呼叫工具','WORKING',`看最多的是 ${(i.top||[]).map(nameOf).join('、')||'—'}，找相近、展示間還沒有的款`,{tag:'找相近款',payload:{top:i.top||[]}})];
+  if(!sug.length){
+    this.desc=`${cust} 打開買家展示間、點看了 ${viewed.join('、')}，但目錄裡找不到展示間以外的相近款。建議業務親自聯絡買家。`;
+    const rec=`沒有找到展示間以外的相近款。建議業務親自聯絡 ${cust}，了解需求`;
+    pre.push(ev('finder','sales','等待人工','INPUT_REQUIRED',rec,{tag:'轉業務跟進',final:true}));
+    return {pre,post:k=>[ev('sales','finder','回覆','COMPLETED','由業務親自跟進',{tag:'業務接手',src:'人工',dt:700}),ev('finder','customer','回覆','COMPLETED','已轉業務跟進；展示間不變',{tag:'業務跟進',mod:'hub'})],revise:'補充後的跟進建議',note:rec,articles:[],declineNote:'不跟進',declineText:'已結案；展示間不變'};
+  }
+  this.desc=`${cust} 打開業務分享的買家展示間，點看了 ${viewed.join('、')}。選布代理人依看最多的布找相近、展示間還沒有的款，庫存代理人查現貨；業務核准後，推薦的布加進這個展示間（標示「AI推薦」），買家下次打開就看得到。`;
+  const res=sug.map(s=>({s,...erpFor(s.article_no)})).map(m=>({...m,r:queryInventory(m.sku,m.color,1)}));
+  pre.push(ev('finder','finder','回覆','COMPLETED',`相近款：${sug.map(s=>`${s.article_no} ${s.name}（${s.match_pct}%）`).join('、')}`,{tag:'相近款',payload:{suggestions:sug.map(s=>s.article_no)}}));
+  pre.push(ev('finder','inventory','請求','WORKING',`查 ${res.length} 款現貨：${res.map(m=>`${m.s.article_no} → ${m.sku}（${m.color}）`).join('、')}`,{tag:`查 ${res.length} 款現貨`,payload:{items:res.map(m=>m.s.article_no)},src:'示範對應（選布平台貨號尚未對應 ERP 品號）'}));
+  pre.push(ev('inventory','finder','回覆','COMPLETED',r=>res.map(m=>`${m.s.article_no}：${m.r.hasStock?(r==='biz'?`可用 ${m.r.availableY}Y`:'有現貨'):'需訂製'}`).join('；'),{tag:'現貨結果',payload:Object.fromEntries(res.map(m=>[m.s.article_no,{hasStock:m.r.hasStock}]))}));
+  const ranked=[...res].sort((a,b)=>(b.r.hasStock-a.r.hasStock)||((b.s.match_pct||0)-(a.s.match_pct||0)));
+  const inStock=ranked.filter(x=>x.r.hasStock),pick=(inStock.length?inStock:ranked).slice(0,3);
+  const rec=`推薦加進展示間（有現貨優先）：${pick.map((x,k)=>`${k+1}. ${x.s.article_no} ${x.s.name} ${x.s.match_pct}%${x.r.hasStock?'':'（需訂製）'}`).join('　')}；核准後買家下次打開就看得到`;
+  pre.push(ev('finder','sales','等待人工','INPUT_REQUIRED',rec,{tag:'推薦待確認',payload:{articles:pick.map(x=>x.s.article_no)},final:true}));
+  return {pre,post:k=>[ev('sales','finder','回覆','COMPLETED',k==='modify'?'調整說明後核准':'核准推薦清單',{tag:'業務核准',src:'人工',dt:700}),
+    ev('finder','customer','回覆','COMPLETED',`已把 ${pick.length} 款加進買家展示間，標示「AI推薦」，買家下次打開就看得到`,{tag:'回寫選布平台',mod:'plat'})],
+    revise:'修正後的推薦清單',note:rec,articles:pick.map(x=>x.s.article_no),declineNote:'不推薦',declineText:'已結案；展示間不變'};
+}
 /* 照片找布／文字找布（延伸情境 3）：選布平台的搜尋結果（前 5 筆、吻合度）→ 庫存代理人逐款查現貨 → 有現貨的排前面 →
    業務核准後加進客戶的「我的收藏」。找不到結果時改為轉業務親自跟進，不回寫。 */
 const CRIT={color_family:'顏色',fabric_type:'布種',construction:'織法',sheen:'光澤',transparency:'透明度',hand_feel:'手感',drape:'垂墜',uses:'用途',style:'風格'};
@@ -832,7 +929,11 @@ const SIZE={none:'不需樣布',color_chip:'色卡小片',a4_card:'A4 樣布',ha
 const TIMING={'1m':'1 個月內','3m':'3 個月內','6m':'6 個月內',later:'之後'};
 function hashOf(s){let h=2166136261;for(const ch of String(s))h=Math.imul(h^ch.charCodeAt(0),16777619);return h>>>0}
 /* 選布平台的貨號還沒有對應到 ERP 品號：以貨號固定挑一個有布卷的 ERP 品號與顏色（示範對應，同一貨號每次相同） */
+/* 選布平台貨號 → ERP 品號與顏色的示範對應：固定下來，ERP 庫存增減（例如成果查核點載入大量模擬庫存）時劇本的現貨結果不變；
+   表裡沒有的貨號才依雜湊從有布卷的品號挑（同一貨號每次相同） */
+const DEMO_ERP_MAP={"DT-C01B":["4034","正黑"],"DT-C02B":["3176-M2","丁香紫"],"DT-L01B":["3176-M2","丁香紫"],"DT-L02B":["4034","正黑"],"DT-L03B":["N447","奶油白"],"DT-L04B":["XO3004-2","深卡其"],"DT-M01B":["4278","正黑"],"DT-M01C":["4181","丁香紫"],"DT-S01B":["4034","正黑"],"DT-S01C":["N120","珍珠白"],"DT-S02B":["3176-M2","丁香紫"],"DT-T01B":["4287","正黑"],"PH-C01":["3810R","深卡其"],"PH-C02":["N120","珍珠白"],"PH-C03":["4034","正黑"],"PH-L01":["N120","珍珠白"],"PH-L02":["3810R","深卡其"],"PH-L03":["N423","鵝黃"],"PH-L04":["7764","象牙白"],"PH-L05":["4287","正黑"],"PH-L06":["4278","正黑"],"PH-L07":["4181","丁香紫"],"PH-L08":["7764","象牙白"],"PH-L09":["4287","正黑"],"PH-L10":["N447","奶油白"],"PH-L11":["XO3004-2","深卡其"],"PH-L12":["3176-M2","丁香紫"],"PH-M01":["8014-3","奶油白"],"PH-M02":["N447","奶油白"],"PH-M03":["XO3004-2","深卡其"],"PH-M04":["N120","珍珠白"],"PH-O01":["XO3004-2","深卡其"],"PH-O02":["3176-M2","丁香紫"],"PH-R01":["N447","奶油白"],"PH-R02":["8014-3","奶油白"],"PH-S01":["4278","正黑"],"PH-S02":["4287","正黑"],"PH-S03":["7764","象牙白"],"PH-S04":["N423","鵝黃"],"PH-S05":["3810R","深卡其"],"PH-T01":["3176-M2","丁香紫"],"PH-T02":["XO3004-2","深卡其"],"PH-T03":["N447","奶油白"],"PH-T04":["4034","正黑"]};
 function erpFor(article,pool){
+  if(!(pool&&pool.length)&&DEMO_ERP_MAP[article]){const [sku,color]=DEMO_ERP_MAP[article];return {sku,color}}
   const skus=(pool&&pool.length?pool:Object.keys(SNAPSHOT.items).filter(s=>colorsOf(s).length));
   const sku=skus[hashOf(article)%skus.length],cs=colorsOf(sku);
   return {sku,color:cs.length?cs[hashOf(article+'#')%cs.length]:'GREIGE'};
@@ -1110,7 +1211,9 @@ function renderData(){
     const groups={};SNAPSHOT.rolls.forEach(r=>{const k=r.sku+'|'+r.color;(groups[k]=groups[k]||{sku:r.sku,color:r.color,rs:[]}).rs.push(r)});
     h=`<div class="tbl-wrap"><table class="dt"><thead><tr><th>產品編號</th><th>貨號</th><th>顏色</th>${biz?'<th>可用碼數</th><th>捲數</th><th>已預留</th>':'<th>現貨狀態</th>'}</tr></thead><tbody>${Object.entries(groups).map(([k,g])=>{const q=queryInventory(g.sku,g.color,1);return `<tr class="${S.hl.erp===k?'hl':''}"><td class="mono">${ERPNO[g.sku]}</td><td class="mono">${g.sku}</td><td>${g.color==='GREIGE'?'胚布（未染）':g.color}</td>${biz?`<td class="mono">${q.availableY}Y</td><td class="mono">${q.rolls}</td><td class="mono">${q.reservedY?q.reservedY+'Y':'—'}</td>`:`<td>${q.hasStock?'有現貨':'需訂製'}</td>`}</tr>`}).join('')}</tbody></table></div><div class="data-note">ERP 串接只讀不寫，每 15 分鐘同步；資料時間 ${SNAPSHOT.asOf} ${SNAPSHOT.time||'14:00'}（${DATA_LABEL}）。${biz?'':'切換為業務視角才顯示數量。'}</div>`;
   }else if(S.tab==='col'){
-    const rows=CDB.samples.map(x=>`<tr class="${CDB.newIds.has(x.id)?'new':S.hl.col===x.id?'hl':''}"><td><span class="sw" style="background:${lab2rgb(x.lab)}" aria-hidden="true"></span></td><td class="mono">${x.id}</td><td>${x.name}</td><td class="${RECIPE_DB?'':'mono'}">${RECIPE_DB?(x.dyes&&x.dyes.length?(biz?dyeTxt(x):`${x.dyes.length} 種染料`):'—'):x.base}</td><td class="mono">${f1(x.lab[0])}</td><td class="mono">${f1(x.lab[1])}</td><td class="mono">${f1(x.lab[2])}</td><td>${x.src}</td></tr>`).join('');
+    /* 色彩庫可能上萬筆：只列本案相關（新增、標示中）與前 300 筆，避免畫面卡住 */
+    const shownCol=CDB.samples.length>COL_ROWS?[...new Map([...CDB.samples.filter(x=>CDB.newIds.has(x.id)||S.hl.col===x.id),...CDB.samples.slice(0,COL_ROWS)].map(x=>[x.id,x])).values()]:CDB.samples;
+    const rows=shownCol.map(x=>`<tr class="${CDB.newIds.has(x.id)?'new':S.hl.col===x.id?'hl':''}"><td><span class="sw" style="background:${lab2rgb(x.lab)}" aria-hidden="true"></span></td><td class="mono">${x.id}</td><td>${x.name}</td><td class="${RECIPE_DB?'':'mono'}">${RECIPE_DB?(x.dyes&&x.dyes.length?(biz?dyeTxt(x):`${x.dyes.length} 種染料`):'—'):x.base}</td><td class="mono">${f1(x.lab[0])}</td><td class="mono">${f1(x.lab[1])}</td><td class="mono">${f1(x.lab[2])}</td><td>${x.src}</td></tr>`).join('');
     const sc=SCENARIOS[S.scen];let near='';
     if(sc.params==='color'&&S.plan&&S.plan.match){const M=S.plan.match,cp={target:M.target},n={x:M.near,d:M.d};
       near=`<div class="subh">本案對色結果</div><div class="target"><span class="sw big" style="background:${lab2rgb(cp.target.lab)}" title="指定顏色"></span><span class="sw big" style="background:${lab2rgb(n.x.lab)}" title="最接近色樣"></span><div><div>指定「${cp.target.name}」→ 最接近 <span class="mono">${n.x.id}</span>（${n.x.name}）</div><div class="sub">ΔE00 <span class="mono">${f2(n.d)}</span>・門檻 1.0・${n.d<=1?`可沿用既有${KIND}`:RECIPE_DB?'需要 ColorMind 預測':'需要新配方'}</div>${CDB.newIds.size?`<div class="sub">實測回填後已新增色樣 <span class="mono">${[...CDB.newIds][0]}</span>，下次相同顏色可直接沿用。</div>`:''}</div></div>`;
@@ -1119,7 +1222,7 @@ function renderData(){
       else if(M.cm){const c=M.cm;near+=`<div class="subh">ColorMind 預測配方（${c.recipes.length} 組）</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>序號</th><th>色塊</th><th>C</th><th>M</th><th>Y</th><th>K</th><th>R</th><th>G</th><th>B</th></tr></thead><tbody>${c.recipes.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.序號}</td><td><span class="sw" style="background:rgb(${r.R},${r.G},${r.B})" aria-hidden="true"></span></td><td class="mono">${r.C}</td><td class="mono">${r.M}</td><td class="mono">${r.Y}</td><td class="mono">${r.K}</td><td class="mono">${r.R}</td><td class="mono">${r.G}</td><td class="mono">${r.B}</td></tr>`).join('')}</tbody></table></div><div class="data-note">送出「${c.色樣名稱}」L* ${c.L}・a* ${c.a}・b* ${c.b}；${c.live?'ColorMind 測試站回傳。':'以模擬結果帶回，格式與 ColorMind 回傳相同。'}</div>`:`<div class="sub">已取得 ${c.recipes.length} 組預測配方；配方內容只對內部角色顯示。</div>`}`}
       else if(!M.reuse){const rs=M.recs;near+=`<div class="subh">候選配方</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>參考色樣</th><th>染料與濃度（% owf）</th><th>預估 ΔE00</th></tr></thead><tbody>${rs.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.no}</td><td class="mono">${r.from}</td><td>${r.dyes.map(d=>`${d.dye} ${d.c.toFixed(3)}`).join('、')}</td><td class="mono">${f2(r.pred)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="sub">已備妥 ${rs.length} 組候選配方；配方內容只對內部角色顯示。</div>`}`}}
     const ms=CDB.measurements.length?`<div class="subh">實測紀錄</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>新增色樣</th><th>實測 L*</th><th>a*</th><th>b*</th><th>ΔE00</th><th>日期</th></tr></thead><tbody>${CDB.measurements.map(m=>`<tr class="new"><td class="mono">${m.recipe}</td><td class="mono">${m.sample}</td><td class="mono">${f1(m.lab[0])}</td><td class="mono">${f1(m.lab[1])}</td><td class="mono">${f1(m.lab[2])}</td><td class="mono">${f2(m.d)}</td><td class="mono">${m.date}</td></tr>`).join('')}</tbody></table></div>`:'';
-    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩資料庫：PET 染色配方 ${RECIPE_DB.length} 筆，L* 超過 100 與欄位有問題的列不收錄；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測，由業務到 ColorMind 確認並帶回`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
+    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆${shownCol.length<CDB.samples.length?`，列出 ${shownCol.length} 筆`:''}）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩庫 ${RECIPE_DB.length} 筆（歷史染色配方去識別化＋模擬色彩資料，來源見各列）；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測，由業務到 ColorMind 確認並帶回`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
   }else{
     const vis=S.events.slice(0,S.shown);
     h=vis.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>事件</th><th>發起者</th><th>接收者</th><th>模組</th><th>工具／標籤</th><th>狀態</th></tr></thead><tbody>${vis.map(e=>`<tr class="${e.id===S.sel?'hl':''}"><td class="mono">${e.id}</td><td>${AG[e.from].name}</td><td>${AG[e.to].name}</td><td>${mtag(modOf(e))}</td><td class="mono">${e.tag}</td><td>${STATUS[e.status].t} <span class="sub mono">${e.status}</span></td></tr>`).join('')}</tbody></table></div><div class="data-note">代理人協作模組的事件表，也是協作畫面的資料來源；任務狀態採 A2A v1.0 命名。</div>`:`<div class="empty">尚未有事件。按「播放」後，每一筆代理人之間的呼叫都會寫進這裡。</div>`;
@@ -1131,7 +1234,7 @@ function render(){renderMods();renderBoard();renderLanes();renderThread();render
 // 示範選單只列示範情境；開著案件時選單顯示「（案件）」
 $('scenario').innerHTML=`<option value="" disabled hidden>（案件）</option>`+SCENARIOS.map((s,i)=>s.case?'':`<option value="${i}">${s.name}</option>`).join('');
 $('scenario').onchange=e=>{S.scen=+e.target.value;S.case=null;start(false);renderParams();renderInbox()};
-$('asof').textContent=`ERP 快照 ${SNAPSHOT.asOf}・色彩資料庫 ${COLOR_SEED.length} 色・${DATA_LABEL}`;
+$('asof').textContent=`ERP 快照 ${SNAPSHOT.asOf}・色彩資料庫 ${RECIPE_DB?RECIPE_DB.length:COLOR_SEED.length} 色・${DATA_LABEL}`;
 $('role-cust').onclick=()=>{S.role='cust';render()};
 $('role-biz').onclick=()=>{S.role='biz';render()};
 $('sp1').onclick=()=>{S.speed=1;render()};
@@ -1241,7 +1344,7 @@ setInterval(()=>{const st=SYNC.remote;
    點一件案件就用客戶的真實輸入跑對應的劇本並自動播放；推進到等待業務確認時標為「待業務確認」，
    業務核准（或修改後核准）後由選布平台寫回：樣品申請改為已核准／替客戶建立已核准的打色樣申請。 */
 const CASE_STATUS={new:{t:'新案件',c:'--st-sub'},working:{t:'處理中',c:'--st-work'},waiting:{t:'待業務確認',c:'--st-wait'},done:{t:'已完成',c:'--st-ok'}};
-const CASE_KIND={sample_request:'樣品申請',custom_colour:'自訂顏色',photo_search:'照片找布',text_search:'文字找布',inquiry:'詢價',new_fabric:'建檔新布'};
+const CASE_KIND={sample_request:'樣品申請',custom_colour:'自訂顏色',photo_search:'照片找布',text_search:'文字找布',inquiry:'詢價',new_fabric:'建檔新布',sample_feedback:'寄樣回饋',trade_lead:'展後跟進',showroom_interest:'買家展示間'};
 let CASES=[],CASES_ERR='';
 function fmtWhen(s){if(!s)return '';const d=caseTime({created_at:s}),m=Math.round((Date.now()-d.getTime())/60000);
   if(m<1)return '剛剛';if(m<60)return `${m} 分鐘前`;if(m<24*60)return `${Math.round(m/60)} 小時前`;return `${d.getMonth()+1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
@@ -1252,6 +1355,9 @@ function caseSummary(c){const i=c.input||{};
   if(c.kind==='text_search')return `「${i.query||''}」・${i.no_results?'找不到符合的布':`找到 ${i.results} 筆`}${(i.queries||[]).length>1?`・共搜尋 ${i.queries.length} 次`:''}`;
   if(c.kind==='inquiry')return `「${i.subject||'（無主旨）'}」・${(i.items||[]).length} 個品項${(i.missing||[]).length?'・缺資料':''}`;
   if(c.kind==='new_fabric')return `${i.article_no||''} ${i.name||''}${i.duplicate?'・疑似重複':''}`;
+  if(c.kind==='sample_feedback'){const it=i.items||[];return `申請 #${i.request_id}・${it.length} 款回饋${it.some(x=>(x.feedback||[]).some(f=>f.verdict!=='match'))?'・有需調整':''}`}
+  if(c.kind==='trade_lead')return `${(i.show&&i.show.name)||'展會'}・${(i.fabrics||[]).length?`掃過 ${(i.fabrics||[]).length} 款`:'手動名單'}`;
+  if(c.kind==='showroom_interest')return `點看 ${(i.viewed||[]).slice(0,3).join('、')}${(i.viewed||[]).length>3?'…':''}`;
   return ''}
 function renderInbox(){
   const box=$('inbox');if(!box)return;

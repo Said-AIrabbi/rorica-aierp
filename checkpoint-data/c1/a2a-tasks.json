@@ -1,0 +1,3090 @@
+{
+ "note": "模擬資料（2026 成果查核點用，非真實交易）；model-a／model-b 代表兩個不同的 AI 模型（實際採用哪兩個待確認）",
+ "count": 100,
+ "tasks": [
+  {
+   "task_no": 1,
+   "messageId": "0fae8bb0-18e4-4670-118a-3a9f0242cd34",
+   "contextId": "ctx-ORD-01000",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26007",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3732-M2",
+      "color": "霧灰",
+      "qty_yd": 236
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3308",
+      "color": "薄荷綠",
+      "qty_yd": 115
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 283
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 421
+     }
+    ],
+    "context_id": "ctx-ORD-01000"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 2,
+   "messageId": "1259714d-dbaa-bca6-a70d-fa5afa192e4c",
+   "contextId": "ctx-ORD-01001",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     33.473,
+     37.878,
+     5.554
+    ],
+    "context_id": "ctx-ORD-01001"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 3,
+   "messageId": "ca04e906-02c7-69cb-8003-6aa53845d7d1",
+   "contextId": "ctx-ORD-01002",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-03.png",
+    "context_id": "ctx-ORD-01002"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 4,
+   "messageId": "165c6400-8d60-42a3-20ac-38ca169eea8b",
+   "contextId": "ctx-ORD-01003",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26028",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "CHIFFON-6 (7550)",
+      "color": "薄荷綠",
+      "qty_yd": 296
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3176-M2",
+      "color": "奶油白",
+      "qty_yd": 238
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "WT-7012",
+      "color": "奶油白",
+      "qty_yd": 290
+     }
+    ],
+    "context_id": "ctx-ORD-01003"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 5,
+   "messageId": "fe49951b-a8f4-97fe-0db1-1fbbddb23a37",
+   "contextId": "ctx-ORD-01004",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26035",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90126",
+      "color": "鵝黃",
+      "qty_yd": 963
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 286
+     }
+    ],
+    "context_id": "ctx-ORD-01004"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 6,
+   "messageId": "5bef6092-8e16-8f3e-c070-e52933aad730",
+   "contextId": "ctx-ORD-01005",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26042",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "SI-3966",
+      "color": "丁香紫",
+      "qty_yd": 363
+     }
+    ],
+    "context_id": "ctx-ORD-01005"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 7,
+   "messageId": "0952951a-e84d-1524-b552-933fc87c59eb",
+   "contextId": "ctx-ORD-01006",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     63.203,
+     65.537,
+     1.366
+    ],
+    "context_id": "ctx-ORD-01006"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 8,
+   "messageId": "0398d95d-47f2-7c50-6e04-a72043f08341",
+   "contextId": "ctx-ORD-01007",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-08.png",
+    "context_id": "ctx-ORD-01007"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 9,
+   "messageId": "cde9b88b-40ff-132b-6736-412637a450ce",
+   "contextId": "ctx-ORD-01008",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26063",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N442",
+      "color": "酒紅",
+      "qty_yd": 128
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "90086",
+      "color": "正黑",
+      "qty_yd": 189
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3300",
+      "color": "霧灰",
+      "qty_yd": 377
+     }
+    ],
+    "context_id": "ctx-ORD-01008"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 10,
+   "messageId": "5d6fce1f-f2ef-ab67-d427-efce68e01030",
+   "contextId": "ctx-ORD-01009",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26070",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "7765",
+      "color": "薄荷綠",
+      "qty_yd": 1088
+     }
+    ],
+    "context_id": "ctx-ORD-01009"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 11,
+   "messageId": "26229222-130d-2c71-5fcb-12b43af84c7f",
+   "contextId": "ctx-ORD-01010",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26077",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3389",
+      "color": "深卡其",
+      "qty_yd": 209
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3819",
+      "color": "霧灰",
+      "qty_yd": 297
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "NC7013",
+      "color": "薄荷綠",
+      "qty_yd": 269
+     }
+    ],
+    "context_id": "ctx-ORD-01010"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 12,
+   "messageId": "78e3ad10-e623-24a4-3087-ffa9a31481fe",
+   "contextId": "ctx-ORD-01011",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     43.85,
+     -28.193,
+     -4.259
+    ],
+    "context_id": "ctx-ORD-01011"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 13,
+   "messageId": "7f98a47d-a3f7-6a6f-8c4b-88c767587468",
+   "contextId": "ctx-ORD-01012",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-13.png",
+    "context_id": "ctx-ORD-01012"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 14,
+   "messageId": "ea4fb120-8660-95dc-40c7-f66ff2aab77e",
+   "contextId": "ctx-ORD-01013",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26098",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "4287",
+      "color": "香檳金",
+      "qty_yd": 241
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3363-1",
+      "color": "深卡其",
+      "qty_yd": 100
+     }
+    ],
+    "context_id": "ctx-ORD-01013"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 15,
+   "messageId": "2d3753db-33f3-5f65-a357-fc0c7c3b3e03",
+   "contextId": "ctx-ORD-01014",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26105",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N429",
+      "color": "正黑",
+      "qty_yd": 870
+     }
+    ],
+    "context_id": "ctx-ORD-01014"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 16,
+   "messageId": "f7d5b84f-0430-7cd1-21d6-46bb9a0766ea",
+   "contextId": "ctx-ORD-01015",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26112",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90124",
+      "color": "銀灰",
+      "qty_yd": 254
+     }
+    ],
+    "context_id": "ctx-ORD-01015"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 17,
+   "messageId": "ebb5df0c-2883-5138-064e-dbcb25ece95e",
+   "contextId": "ctx-ORD-01016",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     59.892,
+     46.298,
+     34.638
+    ],
+    "context_id": "ctx-ORD-01016"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 18,
+   "messageId": "0f7287e9-07d8-10aa-2247-324320fca47e",
+   "contextId": "ctx-ORD-01017",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-18.png",
+    "context_id": "ctx-ORD-01017"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 19,
+   "messageId": "4cf23504-4364-e3a0-47d8-db980b20d707",
+   "contextId": "ctx-ORD-01018",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26133",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 264
+     }
+    ],
+    "context_id": "ctx-ORD-01018"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 20,
+   "messageId": "b739690e-1a0a-971e-e1e6-45ee7766f175",
+   "contextId": "ctx-ORD-01019",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26140",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "4172",
+      "color": "奶油白",
+      "qty_yd": 801
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "W2020",
+      "color": "奶油白",
+      "qty_yd": 198
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "2080C",
+      "color": "玫瑰粉",
+      "qty_yd": 286
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "71025",
+      "color": "天空藍",
+      "qty_yd": 140
+     }
+    ],
+    "context_id": "ctx-ORD-01019"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 21,
+   "messageId": "bfcd692d-7c60-0c4b-d3ac-8f002ae0eedd",
+   "contextId": "ctx-ORD-01020",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26147",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N429",
+      "color": "正黑",
+      "qty_yd": 414
+     }
+    ],
+    "context_id": "ctx-ORD-01020"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 22,
+   "messageId": "be77850b-cadc-91fc-1a93-1bb74b90861f",
+   "contextId": "ctx-ORD-01021",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     33.473,
+     37.878,
+     5.554
+    ],
+    "context_id": "ctx-ORD-01021"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 23,
+   "messageId": "e34f5edf-d240-5999-c60f-3216dde4141c",
+   "contextId": "ctx-ORD-01022",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-03.png",
+    "context_id": "ctx-ORD-01022"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 24,
+   "messageId": "431d502d-0d4a-94b4-69a0-a48dae247313",
+   "contextId": "ctx-ORD-01023",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26168",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N426",
+      "color": "奶油白",
+      "qty_yd": 126
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "KK28-R",
+      "color": "霧灰",
+      "qty_yd": 154
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "N421",
+      "color": "寶石藍",
+      "qty_yd": 188
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "7764",
+      "color": "寶石藍",
+      "qty_yd": 156
+     }
+    ],
+    "context_id": "ctx-ORD-01023"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 25,
+   "messageId": "f787a3ef-408c-5396-e7a8-0d45b188711c",
+   "contextId": "ctx-ORD-01024",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26175",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 906
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "4181",
+      "color": "香檳金",
+      "qty_yd": 89
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3736",
+      "color": "鵝黃",
+      "qty_yd": 125
+     }
+    ],
+    "context_id": "ctx-ORD-01024"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 26,
+   "messageId": "01d61386-4bb4-9919-ec91-49f1d846a93e",
+   "contextId": "ctx-ORD-01025",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26182",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3363-1",
+      "color": "深卡其",
+      "qty_yd": 85
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "N424",
+      "color": "酒紅",
+      "qty_yd": 109
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "NC7015",
+      "color": "玫瑰粉",
+      "qty_yd": 601
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "4172",
+      "color": "奶油白",
+      "qty_yd": 265
+     }
+    ],
+    "context_id": "ctx-ORD-01025"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 27,
+   "messageId": "26d15e34-2cfa-1a8b-0107-76ba4cb2db93",
+   "contextId": "ctx-ORD-01026",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     63.203,
+     65.537,
+     1.366
+    ],
+    "context_id": "ctx-ORD-01026"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 28,
+   "messageId": "d0a9ef52-a918-6b93-b5a8-141e3b6ec86f",
+   "contextId": "ctx-ORD-01027",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-08.png",
+    "context_id": "ctx-ORD-01027"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 29,
+   "messageId": "12113ada-eaff-e53d-ffba-d1ba6217792c",
+   "contextId": "ctx-ORD-01028",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26203",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 348
+     }
+    ],
+    "context_id": "ctx-ORD-01028"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 30,
+   "messageId": "4e6bc45e-4a9b-4c57-c05d-bc470a4a3b00",
+   "contextId": "ctx-ORD-01029",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26210",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N415",
+      "color": "香檳金",
+      "qty_yd": 816
+     }
+    ],
+    "context_id": "ctx-ORD-01029"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 31,
+   "messageId": "a5eaae3b-ffba-f006-7b4f-12521e0646bb",
+   "contextId": "ctx-ORD-01030",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26007",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3732-M2",
+      "color": "霧灰",
+      "qty_yd": 236
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3308",
+      "color": "薄荷綠",
+      "qty_yd": 115
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 283
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 421
+     }
+    ],
+    "context_id": "ctx-ORD-01030"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 32,
+   "messageId": "6eb4782c-6278-5fad-48db-51af2a253644",
+   "contextId": "ctx-ORD-01031",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     43.85,
+     -28.193,
+     -4.259
+    ],
+    "context_id": "ctx-ORD-01031"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 33,
+   "messageId": "9c294507-9cee-f700-6a41-ccd299e7b879",
+   "contextId": "ctx-ORD-01032",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-13.png",
+    "context_id": "ctx-ORD-01032"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 34,
+   "messageId": "263fbb44-a159-baf5-8864-43c75dd0c866",
+   "contextId": "ctx-ORD-01033",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26028",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "CHIFFON-6 (7550)",
+      "color": "薄荷綠",
+      "qty_yd": 296
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3176-M2",
+      "color": "奶油白",
+      "qty_yd": 238
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "WT-7012",
+      "color": "奶油白",
+      "qty_yd": 290
+     }
+    ],
+    "context_id": "ctx-ORD-01033"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 35,
+   "messageId": "1d21b63d-93aa-d57d-dee4-9ade0977f662",
+   "contextId": "ctx-ORD-01034",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26035",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90126",
+      "color": "鵝黃",
+      "qty_yd": 963
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 286
+     }
+    ],
+    "context_id": "ctx-ORD-01034"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 36,
+   "messageId": "f1e12621-1bff-c345-1789-226e701aa1f5",
+   "contextId": "ctx-ORD-01035",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26042",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "SI-3966",
+      "color": "丁香紫",
+      "qty_yd": 363
+     }
+    ],
+    "context_id": "ctx-ORD-01035"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 37,
+   "messageId": "bf8662ad-c5cb-b3bb-a1bc-2bba350049e3",
+   "contextId": "ctx-ORD-01036",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     59.892,
+     46.298,
+     34.638
+    ],
+    "context_id": "ctx-ORD-01036"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 38,
+   "messageId": "e890e96c-0785-12b5-fcd7-432d249e41a3",
+   "contextId": "ctx-ORD-01037",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-18.png",
+    "context_id": "ctx-ORD-01037"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 39,
+   "messageId": "46f549c2-02a1-70df-2ef9-3f5e0802643c",
+   "contextId": "ctx-ORD-01038",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26063",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N442",
+      "color": "酒紅",
+      "qty_yd": 128
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "90086",
+      "color": "正黑",
+      "qty_yd": 189
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3300",
+      "color": "霧灰",
+      "qty_yd": 377
+     }
+    ],
+    "context_id": "ctx-ORD-01038"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 40,
+   "messageId": "c4a7587a-90ee-b8e8-6494-ac147b7f57ee",
+   "contextId": "ctx-ORD-01039",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26070",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "7765",
+      "color": "薄荷綠",
+      "qty_yd": 1088
+     }
+    ],
+    "context_id": "ctx-ORD-01039"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 41,
+   "messageId": "3cc8f188-e4f6-bfb8-0f62-8648c126897f",
+   "contextId": "ctx-ORD-01040",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26077",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3389",
+      "color": "深卡其",
+      "qty_yd": 209
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3819",
+      "color": "霧灰",
+      "qty_yd": 297
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "NC7013",
+      "color": "薄荷綠",
+      "qty_yd": 269
+     }
+    ],
+    "context_id": "ctx-ORD-01040"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 42,
+   "messageId": "eb6a3cf0-4696-af61-8961-8dd9731fa9be",
+   "contextId": "ctx-ORD-01041",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     33.473,
+     37.878,
+     5.554
+    ],
+    "context_id": "ctx-ORD-01041"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 43,
+   "messageId": "3dca2813-49f2-11de-f082-9bda45f5ebef",
+   "contextId": "ctx-ORD-01042",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-03.png",
+    "context_id": "ctx-ORD-01042"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 44,
+   "messageId": "a9b1ec15-9c18-f61e-d358-86867cae0373",
+   "contextId": "ctx-ORD-01043",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26098",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "4287",
+      "color": "香檳金",
+      "qty_yd": 241
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3363-1",
+      "color": "深卡其",
+      "qty_yd": 100
+     }
+    ],
+    "context_id": "ctx-ORD-01043"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 45,
+   "messageId": "512a3c9b-19b0-20a8-f0c0-c046193334cf",
+   "contextId": "ctx-ORD-01044",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26105",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N429",
+      "color": "正黑",
+      "qty_yd": 870
+     }
+    ],
+    "context_id": "ctx-ORD-01044"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 46,
+   "messageId": "da00201a-3dd3-6cb5-64dc-bd017088bc88",
+   "contextId": "ctx-ORD-01045",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26112",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90124",
+      "color": "銀灰",
+      "qty_yd": 254
+     }
+    ],
+    "context_id": "ctx-ORD-01045"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 47,
+   "messageId": "54498f26-991c-0cb1-cfa7-aedfd95e86db",
+   "contextId": "ctx-ORD-01046",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     63.203,
+     65.537,
+     1.366
+    ],
+    "context_id": "ctx-ORD-01046"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 48,
+   "messageId": "5a6811fc-b869-809d-735b-54f3cf04d14a",
+   "contextId": "ctx-ORD-01047",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-08.png",
+    "context_id": "ctx-ORD-01047"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 49,
+   "messageId": "e7ae998f-81db-7689-4e6e-f8f5dcfca0f7",
+   "contextId": "ctx-ORD-01048",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26133",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 264
+     }
+    ],
+    "context_id": "ctx-ORD-01048"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 50,
+   "messageId": "ecc3d782-1c8e-aa1e-311b-008a11094a06",
+   "contextId": "ctx-ORD-01049",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26140",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "4172",
+      "color": "奶油白",
+      "qty_yd": 801
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "W2020",
+      "color": "奶油白",
+      "qty_yd": 198
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "2080C",
+      "color": "玫瑰粉",
+      "qty_yd": 286
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "71025",
+      "color": "天空藍",
+      "qty_yd": 140
+     }
+    ],
+    "context_id": "ctx-ORD-01049"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 51,
+   "messageId": "c5048bb5-8ce0-ce5b-ba0f-a5f9363f9cc2",
+   "contextId": "ctx-ORD-01050",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26147",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N429",
+      "color": "正黑",
+      "qty_yd": 414
+     }
+    ],
+    "context_id": "ctx-ORD-01050"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 52,
+   "messageId": "0e170cc1-6619-79de-07da-c28f4a156cb7",
+   "contextId": "ctx-ORD-01051",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     43.85,
+     -28.193,
+     -4.259
+    ],
+    "context_id": "ctx-ORD-01051"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 53,
+   "messageId": "d679b0d0-e0b2-5b79-d7c8-68f7f426047a",
+   "contextId": "ctx-ORD-01052",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-13.png",
+    "context_id": "ctx-ORD-01052"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 54,
+   "messageId": "02410a19-6a41-0e63-5c58-fb4b04023f0b",
+   "contextId": "ctx-ORD-01053",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26168",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N426",
+      "color": "奶油白",
+      "qty_yd": 126
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "KK28-R",
+      "color": "霧灰",
+      "qty_yd": 154
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "N421",
+      "color": "寶石藍",
+      "qty_yd": 188
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "7764",
+      "color": "寶石藍",
+      "qty_yd": 156
+     }
+    ],
+    "context_id": "ctx-ORD-01053"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 55,
+   "messageId": "44cd740a-f6eb-9b66-d021-e798b978b193",
+   "contextId": "ctx-ORD-01054",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26175",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 906
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "4181",
+      "color": "香檳金",
+      "qty_yd": 89
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3736",
+      "color": "鵝黃",
+      "qty_yd": 125
+     }
+    ],
+    "context_id": "ctx-ORD-01054"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 56,
+   "messageId": "2a03e3da-d36e-7e33-22ee-d3a1937c77a4",
+   "contextId": "ctx-ORD-01055",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26182",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3363-1",
+      "color": "深卡其",
+      "qty_yd": 85
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "N424",
+      "color": "酒紅",
+      "qty_yd": 109
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "NC7015",
+      "color": "玫瑰粉",
+      "qty_yd": 601
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "4172",
+      "color": "奶油白",
+      "qty_yd": 265
+     }
+    ],
+    "context_id": "ctx-ORD-01055"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 57,
+   "messageId": "3bc010f3-943f-44da-12a3-58f320b5fca2",
+   "contextId": "ctx-ORD-01056",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     59.892,
+     46.298,
+     34.638
+    ],
+    "context_id": "ctx-ORD-01056"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 58,
+   "messageId": "3ac54f71-7e20-f3ef-e979-13849ad7fe50",
+   "contextId": "ctx-ORD-01057",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-18.png",
+    "context_id": "ctx-ORD-01057"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 59,
+   "messageId": "b2210668-f948-8ac7-fda2-5f33f61c54ff",
+   "contextId": "ctx-ORD-01058",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26203",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 348
+     }
+    ],
+    "context_id": "ctx-ORD-01058"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 60,
+   "messageId": "1ae8e28e-969c-8ea2-d233-8e5d8a63fc15",
+   "contextId": "ctx-ORD-01059",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26210",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N415",
+      "color": "香檳金",
+      "qty_yd": 816
+     }
+    ],
+    "context_id": "ctx-ORD-01059"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 61,
+   "messageId": "d5647e98-da8a-14ea-a25b-699b305ed2dd",
+   "contextId": "ctx-ORD-01060",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26007",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3732-M2",
+      "color": "霧灰",
+      "qty_yd": 236
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3308",
+      "color": "薄荷綠",
+      "qty_yd": 115
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 283
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 421
+     }
+    ],
+    "context_id": "ctx-ORD-01060"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 62,
+   "messageId": "2e9adeb7-de83-4c9f-2065-b5c745151529",
+   "contextId": "ctx-ORD-01061",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     33.473,
+     37.878,
+     5.554
+    ],
+    "context_id": "ctx-ORD-01061"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 63,
+   "messageId": "873e5dc5-8a22-d5b3-b342-025cc6033846",
+   "contextId": "ctx-ORD-01062",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-03.png",
+    "context_id": "ctx-ORD-01062"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 64,
+   "messageId": "c8c40adf-b1d2-8b6c-af5b-f1c5cbdcb82c",
+   "contextId": "ctx-ORD-01063",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26028",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "CHIFFON-6 (7550)",
+      "color": "薄荷綠",
+      "qty_yd": 296
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3176-M2",
+      "color": "奶油白",
+      "qty_yd": 238
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "WT-7012",
+      "color": "奶油白",
+      "qty_yd": 290
+     }
+    ],
+    "context_id": "ctx-ORD-01063"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 65,
+   "messageId": "184fa24b-5fb2-6688-164d-eb3ce992510b",
+   "contextId": "ctx-ORD-01064",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26035",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90126",
+      "color": "鵝黃",
+      "qty_yd": 963
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 286
+     }
+    ],
+    "context_id": "ctx-ORD-01064"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 66,
+   "messageId": "84f7faa8-dbb4-d032-6965-a235942697d1",
+   "contextId": "ctx-ORD-01065",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26042",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "SI-3966",
+      "color": "丁香紫",
+      "qty_yd": 363
+     }
+    ],
+    "context_id": "ctx-ORD-01065"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 67,
+   "messageId": "6a719890-0036-00e1-5444-1e5597acc392",
+   "contextId": "ctx-ORD-01066",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     63.203,
+     65.537,
+     1.366
+    ],
+    "context_id": "ctx-ORD-01066"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 68,
+   "messageId": "b8705940-f4fa-c4d3-657a-7c3a28d9d6c0",
+   "contextId": "ctx-ORD-01067",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-08.png",
+    "context_id": "ctx-ORD-01067"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 69,
+   "messageId": "33b20547-aa3d-007a-628d-ff0a96f99f55",
+   "contextId": "ctx-ORD-01068",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26063",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N442",
+      "color": "酒紅",
+      "qty_yd": 128
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "90086",
+      "color": "正黑",
+      "qty_yd": 189
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3300",
+      "color": "霧灰",
+      "qty_yd": 377
+     }
+    ],
+    "context_id": "ctx-ORD-01068"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 70,
+   "messageId": "c151defe-0b4a-d7b7-89b6-8426fbd20e3f",
+   "contextId": "ctx-ORD-01069",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26070",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "7765",
+      "color": "薄荷綠",
+      "qty_yd": 1088
+     }
+    ],
+    "context_id": "ctx-ORD-01069"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 71,
+   "messageId": "4c726297-c9ff-11d9-b0fa-a9326135c673",
+   "contextId": "ctx-ORD-01070",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26077",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3389",
+      "color": "深卡其",
+      "qty_yd": 209
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3819",
+      "color": "霧灰",
+      "qty_yd": 297
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "NC7013",
+      "color": "薄荷綠",
+      "qty_yd": 269
+     }
+    ],
+    "context_id": "ctx-ORD-01070"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 72,
+   "messageId": "29519379-9d43-6d06-2ae5-7da814727f9d",
+   "contextId": "ctx-ORD-01071",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     43.85,
+     -28.193,
+     -4.259
+    ],
+    "context_id": "ctx-ORD-01071"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 73,
+   "messageId": "ec0d1b0a-50ea-b1fd-c378-02ecb2b14a45",
+   "contextId": "ctx-ORD-01072",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-13.png",
+    "context_id": "ctx-ORD-01072"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 74,
+   "messageId": "f1b21345-74bc-bda3-0636-dedbe7db418a",
+   "contextId": "ctx-ORD-01073",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26098",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "4287",
+      "color": "香檳金",
+      "qty_yd": 241
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3363-1",
+      "color": "深卡其",
+      "qty_yd": 100
+     }
+    ],
+    "context_id": "ctx-ORD-01073"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 75,
+   "messageId": "d50f511b-21a4-cb0f-c18e-72c37e1826d1",
+   "contextId": "ctx-ORD-01074",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26105",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N429",
+      "color": "正黑",
+      "qty_yd": 870
+     }
+    ],
+    "context_id": "ctx-ORD-01074"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 76,
+   "messageId": "bb9c9590-c9f0-133a-1198-1691091db437",
+   "contextId": "ctx-ORD-01075",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26112",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90124",
+      "color": "銀灰",
+      "qty_yd": 254
+     }
+    ],
+    "context_id": "ctx-ORD-01075"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 77,
+   "messageId": "e0db2632-bd30-fb86-7feb-91d539587df7",
+   "contextId": "ctx-ORD-01076",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     59.892,
+     46.298,
+     34.638
+    ],
+    "context_id": "ctx-ORD-01076"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 78,
+   "messageId": "c94dba0a-354b-e2e0-471d-774527917a77",
+   "contextId": "ctx-ORD-01077",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-18.png",
+    "context_id": "ctx-ORD-01077"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 79,
+   "messageId": "af519dad-12f7-2716-ebae-319cc0f7a968",
+   "contextId": "ctx-ORD-01078",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26133",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 264
+     }
+    ],
+    "context_id": "ctx-ORD-01078"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 80,
+   "messageId": "d16c1715-000e-4c6e-4b77-8b37ef0dc707",
+   "contextId": "ctx-ORD-01079",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26140",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "4172",
+      "color": "奶油白",
+      "qty_yd": 801
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "W2020",
+      "color": "奶油白",
+      "qty_yd": 198
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "2080C",
+      "color": "玫瑰粉",
+      "qty_yd": 286
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "71025",
+      "color": "天空藍",
+      "qty_yd": 140
+     }
+    ],
+    "context_id": "ctx-ORD-01079"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 81,
+   "messageId": "3a163fcf-122f-198e-0e35-66f96eb59fe0",
+   "contextId": "ctx-ORD-01080",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26147",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N429",
+      "color": "正黑",
+      "qty_yd": 414
+     }
+    ],
+    "context_id": "ctx-ORD-01080"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 82,
+   "messageId": "b83893fe-4f54-cb93-943a-074a4d7e94c4",
+   "contextId": "ctx-ORD-01081",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     33.473,
+     37.878,
+     5.554
+    ],
+    "context_id": "ctx-ORD-01081"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 83,
+   "messageId": "5b593722-ffa8-ec90-c52c-cb66e4da29c8",
+   "contextId": "ctx-ORD-01082",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-03.png",
+    "context_id": "ctx-ORD-01082"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 84,
+   "messageId": "0d85c56b-157b-cd7b-1b59-ca43e0d1d86c",
+   "contextId": "ctx-ORD-01083",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26168",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N426",
+      "color": "奶油白",
+      "qty_yd": 126
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "KK28-R",
+      "color": "霧灰",
+      "qty_yd": 154
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "N421",
+      "color": "寶石藍",
+      "qty_yd": 188
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "7764",
+      "color": "寶石藍",
+      "qty_yd": 156
+     }
+    ],
+    "context_id": "ctx-ORD-01083"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 85,
+   "messageId": "85a1dd56-a6c8-af61-1f07-2dbf1476e046",
+   "contextId": "ctx-ORD-01084",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26175",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 906
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "4181",
+      "color": "香檳金",
+      "qty_yd": 89
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3736",
+      "color": "鵝黃",
+      "qty_yd": 125
+     }
+    ],
+    "context_id": "ctx-ORD-01084"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 86,
+   "messageId": "1c3a3ca7-f212-4735-ebd7-6dca9a2c96f6",
+   "contextId": "ctx-ORD-01085",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26182",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3363-1",
+      "color": "深卡其",
+      "qty_yd": 85
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "N424",
+      "color": "酒紅",
+      "qty_yd": 109
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "NC7015",
+      "color": "玫瑰粉",
+      "qty_yd": 601
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "4172",
+      "color": "奶油白",
+      "qty_yd": 265
+     }
+    ],
+    "context_id": "ctx-ORD-01085"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 87,
+   "messageId": "0330ef45-a89f-fe6d-a510-3f25c6e558a7",
+   "contextId": "ctx-ORD-01086",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     63.203,
+     65.537,
+     1.366
+    ],
+    "context_id": "ctx-ORD-01086"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 88,
+   "messageId": "5b97c59f-9f29-c8c3-6621-f236f8777d85",
+   "contextId": "ctx-ORD-01087",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-08.png",
+    "context_id": "ctx-ORD-01087"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 89,
+   "messageId": "4a55bec2-03e4-5602-86a8-7f6ccacf7059",
+   "contextId": "ctx-ORD-01088",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26203",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 348
+     }
+    ],
+    "context_id": "ctx-ORD-01088"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 90,
+   "messageId": "c4242eb1-9594-f06c-dcab-44c53c4874a3",
+   "contextId": "ctx-ORD-01089",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26210",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N415",
+      "color": "香檳金",
+      "qty_yd": 816
+     }
+    ],
+    "context_id": "ctx-ORD-01089"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 91,
+   "messageId": "0f41f6bd-02c8-c86a-2f48-b79143ea3e08",
+   "contextId": "ctx-ORD-01090",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26007",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "3732-M2",
+      "color": "霧灰",
+      "qty_yd": 236
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3308",
+      "color": "薄荷綠",
+      "qty_yd": 115
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3005",
+      "color": "丁香紫",
+      "qty_yd": 283
+     },
+     {
+      "line_no": 4,
+      "erp_product_name": "90079",
+      "color": "深卡其",
+      "qty_yd": 421
+     }
+    ],
+    "context_id": "ctx-ORD-01090"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 92,
+   "messageId": "7cec12b8-aefa-4935-c681-fdc7c928acc8",
+   "contextId": "ctx-ORD-01091",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     43.85,
+     -28.193,
+     -4.259
+    ],
+    "context_id": "ctx-ORD-01091"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 93,
+   "messageId": "d31958eb-6a32-d292-b823-1ecd790ef943",
+   "contextId": "ctx-ORD-01092",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-13.png",
+    "context_id": "ctx-ORD-01092"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 94,
+   "messageId": "af170f31-e823-0694-5b27-5c4ed210ea99",
+   "contextId": "ctx-ORD-01093",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-a"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26028",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "CHIFFON-6 (7550)",
+      "color": "薄荷綠",
+      "qty_yd": 296
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3176-M2",
+      "color": "奶油白",
+      "qty_yd": 238
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "WT-7012",
+      "color": "奶油白",
+      "qty_yd": 290
+     }
+    ],
+    "context_id": "ctx-ORD-01093"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 95,
+   "messageId": "c236f4c4-d3a7-997a-a9da-fc9c03e73766",
+   "contextId": "ctx-ORD-01094",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26035",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "90126",
+      "color": "鵝黃",
+      "qty_yd": 963
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "3389",
+      "color": "天空藍",
+      "qty_yd": 286
+     }
+    ],
+    "context_id": "ctx-ORD-01094"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 96,
+   "messageId": "e6e5e926-474e-12af-a5d9-bfb077a85d1e",
+   "contextId": "ctx-ORD-01095",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "allocate-rolls",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26042",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "SI-3966",
+      "color": "丁香紫",
+      "qty_yd": 363
+     }
+    ],
+    "context_id": "ctx-ORD-01095"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 97,
+   "messageId": "0d969bd5-9a56-5e1c-f636-ef64499ef48b",
+   "contextId": "ctx-ORD-01096",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-b"
+   },
+   "skill": "match-history-colour",
+   "input": {
+    "kind": "colour-request",
+    "mode": "history",
+    "line_no": 1,
+    "target_lab": [
+     59.892,
+     46.298,
+     34.638
+    ],
+    "context_id": "ctx-ORD-01096"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 98,
+   "messageId": "204a36d4-5fa3-c3fa-aeed-82f8a22747c5",
+   "contextId": "ctx-ORD-01097",
+   "from": {
+    "agent": "production",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "color-control",
+    "model": "model-a"
+   },
+   "skill": "match-print-palette",
+   "input": {
+    "kind": "colour-request",
+    "mode": "print",
+    "line_no": 1,
+    "image_ref": "b2/print-images/print-18.png",
+    "context_id": "ctx-ORD-01097"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 99,
+   "messageId": "da560702-9ac1-9784-9dc5-d2cbe80b042a",
+   "contextId": "ctx-ORD-01098",
+   "from": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "to": {
+    "agent": "shipping",
+    "model": "model-b"
+   },
+   "skill": "create-shipment",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26063",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "N442",
+      "color": "酒紅",
+      "qty_yd": 128
+     },
+     {
+      "line_no": 2,
+      "erp_product_name": "90086",
+      "color": "正黑",
+      "qty_yd": 189
+     },
+     {
+      "line_no": 3,
+      "erp_product_name": "3300",
+      "color": "霧灰",
+      "qty_yd": 377
+     }
+    ],
+    "context_id": "ctx-ORD-01098"
+   },
+   "expected_terminal_state": "completed"
+  },
+  {
+   "task_no": 100,
+   "messageId": "966f97ae-3a6d-4ba1-3b72-5765a0ff24d1",
+   "contextId": "ctx-ORD-01099",
+   "from": {
+    "agent": "order-intake",
+    "model": "model-b"
+   },
+   "to": {
+    "agent": "production",
+    "model": "model-a"
+   },
+   "skill": "route-line",
+   "input": {
+    "kind": "order-intake",
+    "order_no": "PO-26070",
+    "lines": [
+     {
+      "line_no": 1,
+      "erp_product_name": "7765",
+      "color": "薄荷綠",
+      "qty_yd": 1088
+     }
+    ],
+    "context_id": "ctx-ORD-01099"
+   },
+   "expected_terminal_state": "completed"
+  }
+ ]
+}

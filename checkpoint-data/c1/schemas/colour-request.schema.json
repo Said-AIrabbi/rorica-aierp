@@ -1,0 +1,62 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://rorica-aierp.vercel.app/a2a/schemas/colour-request.schema.json",
+ "title": "色控：配色請求與結果（生管代理人 ↔ 色控代理人）",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "kind",
+  "context_id",
+  "line_no",
+  "mode"
+ ],
+ "properties": {
+  "kind": {
+   "enum": [
+    "colour-request",
+    "colour-result"
+   ]
+  },
+  "context_id": {
+   "type": "string"
+  },
+  "line_no": {
+   "type": "integer"
+  },
+  "mode": {
+   "enum": [
+    "history",
+    "print"
+   ]
+  },
+  "target_lab": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   },
+   "minItems": 3,
+   "maxItems": 3
+  },
+  "image_ref": {
+   "type": "string"
+  },
+  "result": {
+   "type": "object",
+   "properties": {
+    "colour_id": {
+     "type": "string"
+    },
+    "dE00": {
+     "type": "number",
+     "minimum": 0
+    },
+    "recipe_id": {
+     "type": "string"
+    },
+    "pass": {
+     "type": "boolean"
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "note": "服務發現：各代理人的 Agent Card 位置（/.well-known/agent-card.json）",
+ "agents": [
+  {
+   "key": "order-intake",
+   "name": "接單代理人",
+   "card_url": "https://rorica-aierp.vercel.app/a2a/order-intake/.well-known/agent-card.json"
+  },
+  {
+   "key": "production",
+   "name": "生管代理人",
+   "card_url": "https://rorica-aierp.vercel.app/a2a/production/.well-known/agent-card.json"
+  },
+  {
+   "key": "color-control",
+   "name": "色控代理人",
+   "card_url": "https://rorica-aierp.vercel.app/a2a/color-control/.well-known/agent-card.json"
+  },
+  {
+   "key": "shipping",
+   "name": "出貨代理人",
+   "card_url": "https://rorica-aierp.vercel.app/a2a/shipping/.well-known/agent-card.json"
+  }
+ ]
+}

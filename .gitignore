@@ -33,3 +33,7 @@ docs
 tools/fake-colormind/data
 # ERP 色彩資料庫（由 PET 染色配方產生，含客戶品牌色名），不進版控
 public/private
+
+# 成果查核點：產生器的整包快照與 Agent Card 簽章私鑰（只在本機）
+checkpoint-data/.generated/
+checkpoint-data/.keys/

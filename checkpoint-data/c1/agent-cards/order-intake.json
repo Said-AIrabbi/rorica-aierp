@@ -1,0 +1,73 @@
+{
+ "protocolVersion": "0.3.0",
+ "name": "RORICA order-intake",
+ "description": "接單代理人：Reads customer purchase orders, maps them to ERP proforma invoices and checks stock.",
+ "url": "https://rorica-aierp.vercel.app/a2a/order-intake",
+ "preferredTransport": "JSONRPC",
+ "version": "0.1.0",
+ "provider": {
+  "organization": "RORICA ERP prototype",
+  "url": "https://rorica-aierp.vercel.app"
+ },
+ "capabilities": {
+  "streaming": false,
+  "pushNotifications": false,
+  "stateTransitionHistory": true
+ },
+ "defaultInputModes": [
+  "application/json",
+  "text/plain"
+ ],
+ "defaultOutputModes": [
+  "application/json"
+ ],
+ "securitySchemes": {
+  "bearer": {
+   "type": "http",
+   "scheme": "bearer",
+   "bearerFormat": "JWT"
+  }
+ },
+ "security": [
+  {
+   "bearer": []
+  }
+ ],
+ "skills": [
+  {
+   "id": "map-order",
+   "name": "Map a purchase order to an ERP PI",
+   "description": "Map a purchase order to an ERP PI",
+   "tags": [
+    "order",
+    "pi"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  },
+  {
+   "id": "check-stock",
+   "name": "Check free stock for order lines",
+   "description": "Check free stock for order lines",
+   "tags": [
+    "inventory"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  }
+ ],
+ "signatures": [
+  {
+   "protected": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiI4N0pDYVNhZGs4d3laU2RjIiwiamt1IjoiaHR0cHM6Ly9yb3JpY2EtYWllcnAudmVyY2VsLmFwcC9hMmEvandrcy5qc29uIn0",
+   "signature": "FEdBmoei2m98fzaC47aODI6_fINhct6yLyAJl42HWy1KXR84xY0b9ssLDyjg2n2krep65G9KIubtiUdynk9OjQ"
+  }
+ ]
+}

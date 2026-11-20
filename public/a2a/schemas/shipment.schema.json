@@ -1,0 +1,56 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://rorica-aierp.vercel.app/a2a/schemas/shipment.schema.json",
+ "title": "出貨：出貨與預留（生管代理人 → 出貨代理人）",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "kind",
+  "context_id",
+  "order_no"
+ ],
+ "properties": {
+  "kind": {
+   "enum": [
+    "shipment-request",
+    "shipment-result",
+    "release-reservation"
+   ]
+  },
+  "context_id": {
+   "type": "string"
+  },
+  "order_no": {
+   "type": "string"
+  },
+  "rolls": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "roll_code",
+     "qty_yd"
+    ],
+    "properties": {
+     "roll_code": {
+      "type": "string"
+     },
+     "qty_yd": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "status": {
+   "enum": [
+    "reserved",
+    "shipped",
+    "released",
+    "failed"
+   ]
+  },
+  "error_code": {
+   "type": "string"
+  }
+ }
+}

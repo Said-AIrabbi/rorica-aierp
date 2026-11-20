@@ -6,16 +6,22 @@ import { getHubAccess, type HubAccess } from '@/lib/sso'
 import { isEmbedded } from '@/lib/embed'
 import { buildConsoleBridge, type ColorDbRecord, type ConsoleBridge } from './bridge'
 
-/** 讀 public/private/color-db.json（tools/build-color-db.mjs 產生）；沒有這份檔回傳 null */
+/**
+ * 色彩庫：先讀 public/color-library/colors.json（tools/checkpoint/generate.mts 產生：歷史染色配方去識別化＋模擬色彩，可公開），
+ * 沒有才讀本機的 public/private/color-db.json（tools/build-color-db.mjs 產生，不進 git）；都沒有回傳 null。
+ */
 async function loadColorDb(): Promise<ColorDbRecord[] | null> {
-  try {
-    const r = await fetch(`${import.meta.env.BASE_URL}private/color-db.json`, { cache: 'no-store' })
-    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return null
-    const body = (await r.json()) as { records?: ColorDbRecord[] }
-    return Array.isArray(body.records) && body.records.length ? body.records : null
-  } catch {
-    return null
+  for (const path of ['color-library/colors.json', 'private/color-db.json']) {
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}${path}`, { cache: 'no-store' })
+      if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) continue
+      const body = (await r.json()) as { records?: ColorDbRecord[] }
+      if (Array.isArray(body.records) && body.records.length) return body.records
+    } catch {
+      // 下一個來源
+    }
   }
+  return null
 }
 
 declare global {

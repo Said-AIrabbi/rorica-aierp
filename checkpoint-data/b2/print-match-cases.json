@@ -1,0 +1,1321 @@
+{
+ "note": "模擬資料（2026 成果查核點用，非真實交易）；圖檔為程式產生的幾何印花，每張 3～5 色",
+ "count": 20,
+ "cases": [
+  {
+   "case_id": "B2-P-01",
+   "image": "b2/print-images/print-01.png",
+   "pattern": "stripes",
+   "palette": [
+    {
+     "rgb": [
+      205,
+      140,
+      215
+     ],
+     "hex": "#CD8CD7",
+     "lab": [
+      67.007,
+      37.094,
+      -28.585
+     ],
+     "expected_colour_id": "SIM-01408",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      194,
+      148,
+      106
+     ],
+     "hex": "#C2946A",
+     "lab": [
+      64.716,
+      11.964,
+      28.852
+     ],
+     "expected_colour_id": "SIM-09135",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      101,
+      67,
+      236
+     ],
+     "hex": "#6543EC",
+     "lab": [
+      42.517,
+      57.141,
+      -80.066
+     ],
+     "expected_colour_id": "SIM-04736",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-02",
+   "image": "b2/print-images/print-02.png",
+   "pattern": "checks",
+   "palette": [
+    {
+     "rgb": [
+      236,
+      31,
+      197
+     ],
+     "hex": "#EC1FC5",
+     "lab": [
+      54.911,
+      84.507,
+      -36.878
+     ],
+     "expected_colour_id": "SIM-07433",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      184,
+      83,
+      61
+     ],
+     "hex": "#B8533D",
+     "lab": [
+      47.897,
+      39.3,
+      32.439
+     ],
+     "expected_colour_id": "SIM-04172",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      79,
+      93,
+      188
+     ],
+     "hex": "#4F5DBC",
+     "lab": [
+      42.946,
+      23.235,
+      -51.899
+     ],
+     "expected_colour_id": "SIM-00711",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-03",
+   "image": "b2/print-images/print-03.png",
+   "pattern": "dots",
+   "palette": [
+    {
+     "rgb": [
+      90,
+      31,
+      117
+     ],
+     "hex": "#5A1F75",
+     "lab": [
+      25.07,
+      41.341,
+      -37.45
+     ],
+     "expected_colour_id": "SIM-03044",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      154,
+      135,
+      106
+     ],
+     "hex": "#9A876A",
+     "lab": [
+      57.307,
+      2.627,
+      18.253
+     ],
+     "expected_colour_id": "SIM-08094",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      236,
+      161,
+      39
+     ],
+     "hex": "#ECA127",
+     "lab": [
+      71.872,
+      18.59,
+      68.456
+     ],
+     "expected_colour_id": "SIM-04223",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      59,
+      155,
+      192
+     ],
+     "hex": "#3B9BC0",
+     "lab": [
+      60.049,
+      -16.044,
+      -27.282
+     ],
+     "expected_colour_id": "SIM-02140",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-04",
+   "image": "b2/print-images/print-04.png",
+   "pattern": "waves",
+   "palette": [
+    {
+     "rgb": [
+      36,
+      28,
+      178
+     ],
+     "hex": "#241CB2",
+     "lab": [
+      25.014,
+      52.612,
+      -75.438
+     ],
+     "expected_colour_id": "SIM-08590",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      44,
+      132,
+      42
+     ],
+     "hex": "#2C842A",
+     "lab": [
+      48.518,
+      -44.371,
+      39.618
+     ],
+     "expected_colour_id": "SIM-00739",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      170,
+      10,
+      120
+     ],
+     "hex": "#AA0A78",
+     "lab": [
+      38.056,
+      64.775,
+      -17.901
+     ],
+     "expected_colour_id": "SIM-05635",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      5,
+      88,
+      20
+     ],
+     "hex": "#055814",
+     "lab": [
+      31.948,
+      -37.544,
+      31.429
+     ],
+     "expected_colour_id": "SIM-03180",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      201,
+      127,
+      121
+     ],
+     "hex": "#C97F79",
+     "lab": [
+      60.761,
+      27.952,
+      15.289
+     ],
+     "expected_colour_id": "SIM-09467",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-05",
+   "image": "b2/print-images/print-05.png",
+   "pattern": "blocks",
+   "palette": [
+    {
+     "rgb": [
+      226,
+      161,
+      27
+     ],
+     "hex": "#E2A11B",
+     "lab": [
+      70.69,
+      14.024,
+      70.279
+     ],
+     "expected_colour_id": "SIM-01499",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      108,
+      133,
+      27
+     ],
+     "hex": "#6C851B",
+     "lab": [
+      51.885,
+      -23.796,
+      49.861
+     ],
+     "expected_colour_id": "SIM-00285",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      40,
+      20,
+      191
+     ],
+     "hex": "#2814BF",
+     "lab": [
+      25.901,
+      59.527,
+      -81.691
+     ],
+     "expected_colour_id": "SIM-03611",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      215,
+      11,
+      60
+     ],
+     "hex": "#D70B3C",
+     "lab": [
+      45.652,
+      70.711,
+      31.714
+     ],
+     "expected_colour_id": "SIM-08466",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-06",
+   "image": "b2/print-images/print-06.png",
+   "pattern": "stripes",
+   "palette": [
+    {
+     "rgb": [
+      28,
+      228,
+      207
+     ],
+     "hex": "#1CE4CF",
+     "lab": [
+      81.968,
+      -49.196,
+      -2.527
+     ],
+     "expected_colour_id": "SIM-01878",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      88,
+      152,
+      251
+     ],
+     "hex": "#5898FB",
+     "lab": [
+      62.924,
+      10.039,
+      -55.452
+     ],
+     "expected_colour_id": "SIM-02792",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      33,
+      211,
+      183
+     ],
+     "hex": "#21D3B7",
+     "lab": [
+      76.272,
+      -48.198,
+      1.958
+     ],
+     "expected_colour_id": "SIM-07245",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-07",
+   "image": "b2/print-images/print-07.png",
+   "pattern": "checks",
+   "palette": [
+    {
+     "rgb": [
+      0,
+      113,
+      126
+     ],
+     "hex": "#00717E",
+     "lab": [
+      43.236,
+      -21.904,
+      -14.869
+     ],
+     "expected_colour_id": "HIS-0272",
+     "expected_dE00": 0.908
+    },
+    {
+     "rgb": [
+      152,
+      49,
+      148
+     ],
+     "hex": "#983194",
+     "lab": [
+      39.598,
+      54.708,
+      -32.999
+     ],
+     "expected_colour_id": "SIM-09312",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      254,
+      95,
+      153
+     ],
+     "hex": "#FE5F99",
+     "lab": [
+      62.974,
+      65.139,
+      1.07
+     ],
+     "expected_colour_id": "HIS-0399",
+     "expected_dE00": 0.082
+    },
+    {
+     "rgb": [
+      24,
+      229,
+      114
+     ],
+     "hex": "#18E572",
+     "lab": [
+      80.431,
+      -69.88,
+      43.221
+     ],
+     "expected_colour_id": "SIM-00556",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-08",
+   "image": "b2/print-images/print-08.png",
+   "pattern": "dots",
+   "palette": [
+    {
+     "rgb": [
+      130,
+      184,
+      66
+     ],
+     "hex": "#82B842",
+     "lab": [
+      69.055,
+      -36.598,
+      52.596
+     ],
+     "expected_colour_id": "SIM-02877",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      77,
+      86,
+      109
+     ],
+     "hex": "#4D566D",
+     "lab": [
+      36.626,
+      2.308,
+      -14.337
+     ],
+     "expected_colour_id": "SIM-05201",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      22,
+      15,
+      56
+     ],
+     "hex": "#160F38",
+     "lab": [
+      7.206,
+      16.9,
+      -25.527
+     ],
+     "expected_colour_id": "SIM-05748",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-09",
+   "image": "b2/print-images/print-09.png",
+   "pattern": "waves",
+   "palette": [
+    {
+     "rgb": [
+      135,
+      252,
+      90
+     ],
+     "hex": "#87FC5A",
+     "lab": [
+      89.631,
+      -60.91,
+      65.14
+     ],
+     "expected_colour_id": "SIM-03374",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      141,
+      2,
+      4
+     ],
+     "hex": "#8D0204",
+     "lab": [
+      28.681,
+      51.277,
+      40.344
+     ],
+     "expected_colour_id": "SIM-04151",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      27,
+      112,
+      212
+     ],
+     "hex": "#1B70D4",
+     "lab": [
+      47.72,
+      13.166,
+      -58.135
+     ],
+     "expected_colour_id": "SIM-09122",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      22,
+      130,
+      236
+     ],
+     "hex": "#1682EC",
+     "lab": [
+      54.23,
+      10.898,
+      -61.174
+     ],
+     "expected_colour_id": "SIM-01942",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-10",
+   "image": "b2/print-images/print-10.png",
+   "pattern": "blocks",
+   "palette": [
+    {
+     "rgb": [
+      15,
+      202,
+      166
+     ],
+     "hex": "#0FCAA6",
+     "lab": [
+      72.955,
+      -49.942,
+      6.302
+     ],
+     "expected_colour_id": "SIM-02796",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      131,
+      177,
+      184
+     ],
+     "hex": "#83B1B8",
+     "lab": [
+      69.277,
+      -13.565,
+      -8.534
+     ],
+     "expected_colour_id": "SIM-06233",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      43,
+      125,
+      67
+     ],
+     "hex": "#2B7D43",
+     "lab": [
+      46.427,
+      -38.325,
+      24.476
+     ],
+     "expected_colour_id": "SIM-06512",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-11",
+   "image": "b2/print-images/print-11.png",
+   "pattern": "stripes",
+   "palette": [
+    {
+     "rgb": [
+      148,
+      8,
+      242
+     ],
+     "hex": "#9408F2",
+     "lab": [
+      42.582,
+      81.471,
+      -83.149
+     ],
+     "expected_colour_id": "SIM-04196",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      112,
+      198,
+      217
+     ],
+     "hex": "#70C6D9",
+     "lab": [
+      75.353,
+      -20.951,
+      -17.537
+     ],
+     "expected_colour_id": "HIS-0093",
+     "expected_dE00": 0.231
+    },
+    {
+     "rgb": [
+      19,
+      60,
+      108
+     ],
+     "hex": "#133C6C",
+     "lab": [
+      25.115,
+      4.874,
+      -31.955
+     ],
+     "expected_colour_id": "SIM-07050",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      58,
+      167,
+      60
+     ],
+     "hex": "#3AA73C",
+     "lab": [
+      60.661,
+      -52.193,
+      45.108
+     ],
+     "expected_colour_id": "SIM-05613",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      86,
+      121,
+      142
+     ],
+     "hex": "#56798E",
+     "lab": [
+      49.015,
+      -6.728,
+      -15.345
+     ],
+     "expected_colour_id": "SIM-05096",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-12",
+   "image": "b2/print-images/print-12.png",
+   "pattern": "checks",
+   "palette": [
+    {
+     "rgb": [
+      250,
+      102,
+      0
+     ],
+     "hex": "#FA6600",
+     "lab": [
+      61.504,
+      53.233,
+      70.471
+     ],
+     "expected_colour_id": "SIM-02758",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      85,
+      246,
+      216
+     ],
+     "hex": "#55F6D8",
+     "lab": [
+      88.353,
+      -48.614,
+      2.173
+     ],
+     "expected_colour_id": "SIM-05137",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      241,
+      80,
+      11
+     ],
+     "hex": "#F1500B",
+     "lab": [
+      56.548,
+      59.489,
+      64.864
+     ],
+     "expected_colour_id": "SIM-00202",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-13",
+   "image": "b2/print-images/print-13.png",
+   "pattern": "dots",
+   "palette": [
+    {
+     "rgb": [
+      137,
+      68,
+      222
+     ],
+     "hex": "#8944DE",
+     "lab": [
+      45.257,
+      58.729,
+      -67.491
+     ],
+     "expected_colour_id": "SIM-06282",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      145,
+      110,
+      242
+     ],
+     "hex": "#916EF2",
+     "lab": [
+      55.667,
+      43.502,
+      -61.883
+     ],
+     "expected_colour_id": "SIM-06104",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      220,
+      163,
+      26
+     ],
+     "hex": "#DCA31A",
+     "lab": [
+      70.514,
+      10.332,
+      70.09
+     ],
+     "expected_colour_id": "SIM-07672",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      104,
+      202,
+      20
+     ],
+     "hex": "#68CA14",
+     "lab": [
+      73.046,
+      -55.315,
+      69.858
+     ],
+     "expected_colour_id": "SIM-04845",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      209,
+      57,
+      25
+     ],
+     "hex": "#D13919",
+     "lab": [
+      47.69,
+      57.901,
+      51.908
+     ],
+     "expected_colour_id": "SIM-00616",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-14",
+   "image": "b2/print-images/print-14.png",
+   "pattern": "waves",
+   "palette": [
+    {
+     "rgb": [
+      46,
+      159,
+      1
+     ],
+     "hex": "#2E9F01",
+     "lab": [
+      57.443,
+      -55.493,
+      58.973
+     ],
+     "expected_colour_id": "SIM-00472",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      220,
+      12,
+      91
+     ],
+     "hex": "#DC0C5B",
+     "lab": [
+      47.28,
+      73.384,
+      14.925
+     ],
+     "expected_colour_id": "SIM-02064",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      9,
+      36,
+      201
+     ],
+     "hex": "#0924C9",
+     "lab": [
+      28.213,
+      55.185,
+      -83.756
+     ],
+     "expected_colour_id": "SIM-03306",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      18,
+      252,
+      169
+     ],
+     "hex": "#12FCA9",
+     "lab": [
+      88.263,
+      -67.905,
+      26.16
+     ],
+     "expected_colour_id": "SIM-05164",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-15",
+   "image": "b2/print-images/print-15.png",
+   "pattern": "blocks",
+   "palette": [
+    {
+     "rgb": [
+      207,
+      60,
+      242
+     ],
+     "hex": "#CF3CF2",
+     "lab": [
+      54.977,
+      79.013,
+      -62.6
+     ],
+     "expected_colour_id": "SIM-07355",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      138,
+      93,
+      1
+     ],
+     "hex": "#8A5D01",
+     "lab": [
+      43.114,
+      11.755,
+      50.745
+     ],
+     "expected_colour_id": "SIM-06808",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      48,
+      233,
+      32
+     ],
+     "hex": "#30E920",
+     "lab": [
+      81.297,
+      -76.629,
+      74.204
+     ],
+     "expected_colour_id": "SIM-00073",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      11,
+      4,
+      241
+     ],
+     "hex": "#0B04F1",
+     "lab": [
+      30.662,
+      75.286,
+      -102.708
+     ],
+     "expected_colour_id": "SIM-02198",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-16",
+   "image": "b2/print-images/print-16.png",
+   "pattern": "stripes",
+   "palette": [
+    {
+     "rgb": [
+      35,
+      40,
+      196
+     ],
+     "hex": "#2328C4",
+     "lab": [
+      29.058,
+      52.48,
+      -79.397
+     ],
+     "expected_colour_id": "SIM-05314",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      88,
+      16,
+      82
+     ],
+     "hex": "#581052",
+     "lab": [
+      20.261,
+      39.789,
+      -22.181
+     ],
+     "expected_colour_id": "SIM-00574",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      168,
+      202,
+      70
+     ],
+     "hex": "#A8CA46",
+     "lab": [
+      76.684,
+      -29.951,
+      59.783
+     ],
+     "expected_colour_id": "SIM-01482",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-17",
+   "image": "b2/print-images/print-17.png",
+   "pattern": "checks",
+   "palette": [
+    {
+     "rgb": [
+      132,
+      58,
+      25
+     ],
+     "hex": "#843A19",
+     "lab": [
+      33.987,
+      29.701,
+      34.549
+     ],
+     "expected_colour_id": "SIM-01228",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      73,
+      98,
+      26
+     ],
+     "hex": "#49621A",
+     "lab": [
+      38.246,
+      -21.265,
+      36.184
+     ],
+     "expected_colour_id": "SIM-00801",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      149,
+      99,
+      157
+     ],
+     "hex": "#95639D",
+     "lab": [
+      49.188,
+      30.331,
+      -23.445
+     ],
+     "expected_colour_id": "SIM-04529",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      174,
+      131,
+      83
+     ],
+     "hex": "#AE8353",
+     "lab": [
+      57.9,
+      10.689,
+      32.211
+     ],
+     "expected_colour_id": "SIM-06280",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      112,
+      214,
+      189
+     ],
+     "hex": "#70D6BD",
+     "lab": [
+      79.163,
+      -35.761,
+      3.171
+     ],
+     "expected_colour_id": "SIM-01970",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-18",
+   "image": "b2/print-images/print-18.png",
+   "pattern": "dots",
+   "palette": [
+    {
+     "rgb": [
+      249,
+      169,
+      240
+     ],
+     "hex": "#F9A9F0",
+     "lab": [
+      78.93,
+      40.155,
+      -23.594
+     ],
+     "expected_colour_id": "SIM-06141",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      32,
+      246,
+      125
+     ],
+     "hex": "#20F67D",
+     "lab": [
+      85.856,
+      -73.121,
+      44.744
+     ],
+     "expected_colour_id": "SIM-06802",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      53,
+      172,
+      145
+     ],
+     "hex": "#35AC91",
+     "lab": [
+      63.595,
+      -39.229,
+      4.401
+     ],
+     "expected_colour_id": "SIM-07889",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-19",
+   "image": "b2/print-images/print-19.png",
+   "pattern": "waves",
+   "palette": [
+    {
+     "rgb": [
+      246,
+      112,
+      221
+     ],
+     "hex": "#F670DD",
+     "lab": [
+      66.826,
+      64.273,
+      -31.791
+     ],
+     "expected_colour_id": "SIM-01573",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      211,
+      168,
+      6
+     ],
+     "hex": "#D3A806",
+     "lab": [
+      70.779,
+      3.433,
+      73.101
+     ],
+     "expected_colour_id": "SIM-03106",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      240,
+      89,
+      167
+     ],
+     "hex": "#F059A7",
+     "lab": [
+      60.302,
+      65.043,
+      -11.208
+     ],
+     "expected_colour_id": "SIM-04504",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      34,
+      112,
+      253
+     ],
+     "hex": "#2270FD",
+     "lab": [
+      50.711,
+      29.286,
+      -76.309
+     ],
+     "expected_colour_id": "SIM-00004",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  },
+  {
+   "case_id": "B2-P-20",
+   "image": "b2/print-images/print-20.png",
+   "pattern": "blocks",
+   "palette": [
+    {
+     "rgb": [
+      186,
+      143,
+      250
+     ],
+     "hex": "#BA8FFA",
+     "lab": [
+      67.267,
+      37.396,
+      -47.606
+     ],
+     "expected_colour_id": "SIM-05055",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      250,
+      73,
+      219
+     ],
+     "hex": "#FA49DB",
+     "lab": [
+      61.829,
+      80.155,
+      -38.401
+     ],
+     "expected_colour_id": "SIM-02132",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      17,
+      117,
+      139
+     ],
+     "hex": "#11758B",
+     "lab": [
+      45.229,
+      -18.403,
+      -19.572
+     ],
+     "expected_colour_id": "SIM-09202",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      182,
+      116,
+      26
+     ],
+     "hex": "#B6741A",
+     "lab": [
+      54.564,
+      19.262,
+      55.363
+     ],
+     "expected_colour_id": "SIM-06073",
+     "expected_dE00": 0
+    },
+    {
+     "rgb": [
+      86,
+      126,
+      44
+     ],
+     "hex": "#567E2C",
+     "lab": [
+      48.363,
+      -28.326,
+      39.063
+     ],
+     "expected_colour_id": "SIM-08449",
+     "expected_dE00": 0
+    }
+   ],
+   "pass_rule": "圖中每個顏色都配到 expected_colour_id（或 ΔE00 ≤ 1.0 的色號）"
+  }
+ ]
+}
