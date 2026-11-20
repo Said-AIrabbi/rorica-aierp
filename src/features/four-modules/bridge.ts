@@ -39,8 +39,12 @@ export interface ColorDbRecord {
   zh: string
   en: string
   lab: [number, number, number]
-  /** [染料代號, 用量 g] */
+  /** [染料代號, 用量 g]；模擬色彩沒有配方時為空 */
   dyes: [string, number][]
+  /** 來源：歷史染色配方（去識別化）／模擬色彩資料 */
+  src?: string
+  /** 胚布材質（PET、NYLON…）*/
+  base?: string
 }
 
 const YARD_PER_METER = 1 / 0.9144

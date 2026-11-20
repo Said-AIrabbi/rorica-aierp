@@ -1,0 +1,73 @@
+{
+ "protocolVersion": "0.3.0",
+ "name": "RORICA shipping",
+ "description": "出貨代理人：Builds shipping orders from allocated rolls and reports shipment status.",
+ "url": "https://rorica-aierp.vercel.app/a2a/shipping",
+ "preferredTransport": "JSONRPC",
+ "version": "0.1.0",
+ "provider": {
+  "organization": "RORICA ERP prototype",
+  "url": "https://rorica-aierp.vercel.app"
+ },
+ "capabilities": {
+  "streaming": false,
+  "pushNotifications": false,
+  "stateTransitionHistory": true
+ },
+ "defaultInputModes": [
+  "application/json",
+  "text/plain"
+ ],
+ "defaultOutputModes": [
+  "application/json"
+ ],
+ "securitySchemes": {
+  "bearer": {
+   "type": "http",
+   "scheme": "bearer",
+   "bearerFormat": "JWT"
+  }
+ },
+ "security": [
+  {
+   "bearer": []
+  }
+ ],
+ "skills": [
+  {
+   "id": "create-shipment",
+   "name": "Create a shipping order",
+   "description": "Create a shipping order",
+   "tags": [
+    "shipping"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  },
+  {
+   "id": "release-reservation",
+   "name": "Release reserved rolls (compensation)",
+   "description": "Release reserved rolls (compensation)",
+   "tags": [
+    "inventory",
+    "compensation"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  }
+ ],
+ "signatures": [
+  {
+   "protected": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiI4N0pDYVNhZGs4d3laU2RjIiwiamt1IjoiaHR0cHM6Ly9yb3JpY2EtYWllcnAudmVyY2VsLmFwcC9hMmEvandrcy5qc29uIn0",
+   "signature": "HQQkEvYdMUGmNTHpXziu2TP6UCuw3QOtKJFa05ibQwBO4m6riOXY75TzIKzIEp18xGxtVXPN9Lw2Pec8k8zeYw"
+  }
+ ]
+}

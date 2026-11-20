@@ -1,0 +1,74 @@
+{
+ "protocolVersion": "0.3.0",
+ "name": "RORICA color-control",
+ "description": "色控代理人：Matches colours to historical recipes and print palettes; returns ΔE00 and recipes.",
+ "url": "https://rorica-aierp.vercel.app/a2a/color-control",
+ "preferredTransport": "JSONRPC",
+ "version": "0.1.0",
+ "provider": {
+  "organization": "RORICA ERP prototype",
+  "url": "https://rorica-aierp.vercel.app"
+ },
+ "capabilities": {
+  "streaming": false,
+  "pushNotifications": false,
+  "stateTransitionHistory": true
+ },
+ "defaultInputModes": [
+  "application/json",
+  "text/plain"
+ ],
+ "defaultOutputModes": [
+  "application/json"
+ ],
+ "securitySchemes": {
+  "bearer": {
+   "type": "http",
+   "scheme": "bearer",
+   "bearerFormat": "JWT"
+  }
+ },
+ "security": [
+  {
+   "bearer": []
+  }
+ ],
+ "skills": [
+  {
+   "id": "match-history-colour",
+   "name": "Find the closest historical colour",
+   "description": "Find the closest historical colour",
+   "tags": [
+    "colour",
+    "lab"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  },
+  {
+   "id": "match-print-palette",
+   "name": "Match a print image palette",
+   "description": "Match a print image palette",
+   "tags": [
+    "print",
+    "colour"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  }
+ ],
+ "signatures": [
+  {
+   "protected": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiI4N0pDYVNhZGs4d3laU2RjIiwiamt1IjoiaHR0cHM6Ly9yb3JpY2EtYWllcnAudmVyY2VsLmFwcC9hMmEvandrcy5qc29uIn0",
+   "signature": "PTp_Ic8RD8-KjFAo1puJOoOCCGLH0Ry5LKV9woqB-rTF-D36WTOCasNV9Pe641nnxlRVZHaeZguLO4gPjNU8zg"
+  }
+ ]
+}

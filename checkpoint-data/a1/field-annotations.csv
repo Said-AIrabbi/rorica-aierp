@@ -1,0 +1,721 @@
+﻿order_no,line_no,source_field,source_value,erp_field,erp_value,rule
+PO-26007,,order_no,PO-26007,PI.items[].poNo,PO-26007,原樣帶入
+PO-26007,,order_date,2026-09-11,PI.createdAt,2026-09-11,日期
+PO-26007,,buyer.company,Ivory Line,PI.customerId / customerName,CUST-002 / Ivory Line,以客戶名稱比對客戶主檔
+PO-26007,,ship_from,"TAICHUNG, TW",PI.portOfLoading,TAICHUNG,港口對照表（PI_PORTS）
+PO-26007,,ship_to,"HO CHI MINH, VIETNAM",PI.destination,"HO CHI MINH, VIETNAM",原樣帶入
+PO-26007,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26007,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26007,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26007,,requested_delivery,2026-12-07,PI.leadTimeDays,90,交期天數取最接近的 30/45/60/90
+PO-26007,1,buyer_item_code,9DJX,PI.items[].roricaProductName / productId,3732-M2 / 14-94-01,以「客戶品名」比對商品主檔
+PO-26007,1,buyer_item_code,9DJX,PI.items[].customerProductName,Ivory Line#9DJX,客戶名稱#客戶品名
+PO-26007,1,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26007,1,qty + uom,236 YDS,PI.items[].yard / meter,236 / 215.8,碼數原樣，公尺＝碼×0.9144
+PO-26007,1,unit_price,2.259,PI.items[].unitPrice,2.259,原樣帶入
+PO-26007,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26007,2,buyer_item_code,OHBT,PI.items[].roricaProductName / productId,3308 / 3-2-01,以「客戶品名」比對商品主檔
+PO-26007,2,buyer_item_code,OHBT,PI.items[].customerProductName,Ivory Line#OHBT,客戶名稱#客戶品名
+PO-26007,2,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26007,2,qty + uom,115 YDS,PI.items[].yard / meter,115 / 105.2,碼數原樣，公尺＝碼×0.9144
+PO-26007,2,unit_price,4.4,PI.items[].unitPrice,4.4,原樣帶入
+PO-26007,2,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26007,3,buyer_item_code,VLMW,PI.items[].roricaProductName / productId,3005 / 4-12-01,以「客戶品名」比對商品主檔
+PO-26007,3,buyer_item_code,VLMW,PI.items[].customerProductName,Ivory Line#VLMW,客戶名稱#客戶品名
+PO-26007,3,colour,LILAC,PI.items[].color,丁香紫,色名對照（英→中）
+PO-26007,3,qty + uom,283 YDS,PI.items[].yard / meter,283 / 258.8,碼數原樣，公尺＝碼×0.9144
+PO-26007,3,unit_price,3.943,PI.items[].unitPrice,3.943,原樣帶入
+PO-26007,3,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26007,4,buyer_item_code,XMHB,PI.items[].roricaProductName / productId,90079 / 16-2-01,以「客戶品名」比對商品主檔
+PO-26007,4,buyer_item_code,XMHB,PI.items[].customerProductName,Ivory Line#XMHB,客戶名稱#客戶品名
+PO-26007,4,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26007,4,qty + uom,421 YDS,PI.items[].yard / meter,421 / 385,碼數原樣，公尺＝碼×0.9144
+PO-26007,4,unit_price,3.52,PI.items[].unitPrice,3.52,原樣帶入
+PO-26007,4,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26014,,order_no,PO-26014,PI.items[].poNo,PO-26014,原樣帶入
+PO-26014,,order_date,2026-10-03,PI.createdAt,2026-10-03,日期
+PO-26014,,buyer.company,Bella Rosa,PI.customerId / customerName,CUST-001 / Bella Rosa,以客戶名稱比對客戶主檔
+PO-26014,,ship_from,"TAICHUNG, TW",PI.portOfLoading,TAICHUNG,港口對照表（PI_PORTS）
+PO-26014,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26014,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26014,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26014,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26014,,requested_delivery,2026-11-18,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26014,1,buyer_item_code,WAPR,PI.items[].roricaProductName / productId,N424 / 11-36-01,以「客戶品名」比對商品主檔
+PO-26014,1,buyer_item_code,WAPR,PI.items[].customerProductName,Bella Rosa#WAPR,客戶名稱#客戶品名
+PO-26014,1,colour,酒紅,PI.items[].color,酒紅,色名對照（英→中）
+PO-26014,1,qty + uom,344 YDS,PI.items[].yard / meter,344 / 314.6,碼數原樣，公尺＝碼×0.9144
+PO-26014,1,unit_price,2.578,PI.items[].unitPrice,2.578,原樣帶入
+PO-26014,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26021,,order_no,PO-26021,PI.items[].poNo,PO-26021,原樣帶入
+PO-26021,,order_date,2026-09-27,PI.createdAt,2026-09-27,日期
+PO-26021,,buyer.company,雅緻服飾,PI.customerId / customerName,CUST-005 / 雅緻服飾,以客戶名稱比對客戶主檔
+PO-26021,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26021,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26021,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26021,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26021,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26021,,requested_delivery,2026-12-21,PI.leadTimeDays,90,交期天數取最接近的 30/45/60/90
+PO-26021,1,buyer_item_code,HFSU,PI.items[].roricaProductName / productId,3812R / 15-83-01,以「客戶品名」比對商品主檔
+PO-26021,1,buyer_item_code,HFSU,PI.items[].customerProductName,雅緻服飾#HFSU,客戶名稱#客戶品名
+PO-26021,1,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26021,1,qty + uom,209 YDS,PI.items[].yard / meter,209 / 191.1,碼數原樣，公尺＝碼×0.9144
+PO-26021,1,unit_price,5.588,PI.items[].unitPrice,5.588,原樣帶入
+PO-26021,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26028,,order_no,PO-26028,PI.items[].poNo,PO-26028,原樣帶入
+PO-26028,,order_date,2026-10-10,PI.createdAt,2026-10-10,日期
+PO-26028,,buyer.company,Chantilly,PI.customerId / customerName,CUST-006 / Chantilly,以客戶名稱比對客戶主檔
+PO-26028,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26028,,ship_to,"HO CHI MINH, VIETNAM",PI.destination,"HO CHI MINH, VIETNAM",原樣帶入
+PO-26028,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26028,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26028,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26028,,requested_delivery,2026-11-21,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26028,1,buyer_item_code,4KVX,PI.items[].roricaProductName / productId,CHIFFON-6 (7550) / 6-1-01,以「客戶品名」比對商品主檔
+PO-26028,1,buyer_item_code,4KVX,PI.items[].customerProductName,Chantilly#4KVX,客戶名稱#客戶品名
+PO-26028,1,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26028,1,qty + uom,271 MTR,PI.items[].yard / meter,296 / 270.7,公尺換算碼（÷0.9144）
+PO-26028,1,unit_price,7.732,PI.items[].unitPrice,7.732,原樣帶入
+PO-26028,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26028,2,buyer_item_code,28GV,PI.items[].roricaProductName / productId,3176-M2 / 14-62-01,以「客戶品名」比對商品主檔
+PO-26028,2,buyer_item_code,28GV,PI.items[].customerProductName,Chantilly#28GV,客戶名稱#客戶品名
+PO-26028,2,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26028,2,qty + uom,218 MTR,PI.items[].yard / meter,238 / 217.6,公尺換算碼（÷0.9144）
+PO-26028,2,unit_price,3.668,PI.items[].unitPrice,3.668,原樣帶入
+PO-26028,2,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26028,3,buyer_item_code,XDNS,PI.items[].roricaProductName / productId,WT-7012 / 17-2-01,以「客戶品名」比對商品主檔
+PO-26028,3,buyer_item_code,XDNS,PI.items[].customerProductName,Chantilly#XDNS,客戶名稱#客戶品名
+PO-26028,3,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26028,3,qty + uom,265 MTR,PI.items[].yard / meter,290 / 265.2,公尺換算碼（÷0.9144）
+PO-26028,3,unit_price,4.634,PI.items[].unitPrice,4.634,原樣帶入
+PO-26028,3,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26035,,order_no,PO-26035,PI.items[].poNo,PO-26035,原樣帶入
+PO-26035,,order_date,2026-09-12,PI.createdAt,2026-09-12,日期
+PO-26035,,buyer.company,Luna Bridal,PI.customerId / customerName,CUST-004 / Luna Bridal,以客戶名稱比對客戶主檔
+PO-26035,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26035,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26035,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26035,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26035,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26035,,requested_delivery,2026-11-16,PI.leadTimeDays,60,交期天數取最接近的 30/45/60/90
+PO-26035,1,buyer_item_code,1JZJ,PI.items[].roricaProductName / productId,90126 / 16-9-01,以「客戶品名」比對商品主檔
+PO-26035,1,buyer_item_code,1JZJ,PI.items[].customerProductName,Luna Bridal#1JZJ,客戶名稱#客戶品名
+PO-26035,1,colour,LIGHT YELLOW,PI.items[].color,鵝黃,色名對照（英→中）
+PO-26035,1,qty + uom,963 YDS,PI.items[].yard / meter,963 / 880.6,碼數原樣，公尺＝碼×0.9144
+PO-26035,1,unit_price,5.898,PI.items[].unitPrice,5.898,原樣帶入
+PO-26035,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26035,2,buyer_item_code,3L4D,PI.items[].roricaProductName / productId,3389 / 3-40-01,以「客戶品名」比對商品主檔
+PO-26035,2,buyer_item_code,3L4D,PI.items[].customerProductName,Luna Bridal#3L4D,客戶名稱#客戶品名
+PO-26035,2,colour,SKY BLUE,PI.items[].color,天空藍,色名對照（英→中）
+PO-26035,2,qty + uom,286 YDS,PI.items[].yard / meter,286 / 261.5,碼數原樣，公尺＝碼×0.9144
+PO-26035,2,unit_price,5.972,PI.items[].unitPrice,5.972,原樣帶入
+PO-26035,2,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26042,,order_no,PO-26042,PI.items[].poNo,PO-26042,原樣帶入
+PO-26042,,order_date,2026-10-20,PI.createdAt,2026-10-20,日期
+PO-26042,,buyer.company,維多莉亞,PI.customerId / customerName,CUST-003 / 維多莉亞,以客戶名稱比對客戶主檔
+PO-26042,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26042,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26042,,incoterm,EXW,PI.tradeTerm,EXW,貿易條件（PI_TRADE_TERMS）
+PO-26042,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26042,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26042,,requested_delivery,2026-12-16,PI.leadTimeDays,60,交期天數取最接近的 30/45/60/90
+PO-26042,1,buyer_item_code,RO4E,PI.items[].roricaProductName / productId,SI-3966 / 4-34-01,以「客戶品名」比對商品主檔
+PO-26042,1,buyer_item_code,RO4E,PI.items[].customerProductName,維多莉亞#RO4E,客戶名稱#客戶品名
+PO-26042,1,colour,LILAC,PI.items[].color,丁香紫,色名對照（英→中）
+PO-26042,1,qty + uom,332 MTR,PI.items[].yard / meter,363 / 331.9,公尺換算碼（÷0.9144）
+PO-26042,1,unit_price,2.881,PI.items[].unitPrice,2.881,原樣帶入
+PO-26042,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26049,,order_no,PO-26049,PI.items[].poNo,PO-26049,原樣帶入
+PO-26049,,order_date,2026-09-09,PI.createdAt,2026-09-09,日期
+PO-26049,,buyer.company,Ivory Line,PI.customerId / customerName,CUST-002 / Ivory Line,以客戶名稱比對客戶主檔
+PO-26049,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26049,,ship_to,"DHAKA, BANGLADESH",PI.destination,"DHAKA, BANGLADESH",原樣帶入
+PO-26049,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26049,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26049,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26049,,requested_delivery,2026-10-29,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26049,1,buyer_item_code,9DJX,PI.items[].roricaProductName / productId,3732-M2 / 14-94-01,以「客戶品名」比對商品主檔
+PO-26049,1,buyer_item_code,9DJX,PI.items[].customerProductName,Ivory Line#9DJX,客戶名稱#客戶品名
+PO-26049,1,colour,寶石藍,PI.items[].color,寶石藍,色名對照（英→中）
+PO-26049,1,qty + uom,89 YDS,PI.items[].yard / meter,89 / 81.4,碼數原樣，公尺＝碼×0.9144
+PO-26049,1,unit_price,7.01,PI.items[].unitPrice,7.01,原樣帶入
+PO-26049,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26056,,order_no,PO-26056,PI.items[].poNo,PO-26056,原樣帶入
+PO-26056,,order_date,2026-10-04,PI.createdAt,2026-10-04,日期
+PO-26056,,buyer.company,Bella Rosa,PI.customerId / customerName,CUST-001 / Bella Rosa,以客戶名稱比對客戶主檔
+PO-26056,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26056,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26056,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26056,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26056,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26056,,requested_delivery,2026-11-14,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26056,1,buyer_item_code,IWBH,PI.items[].roricaProductName / productId,2080C / 7-21-01,以「客戶品名」比對商品主檔
+PO-26056,1,buyer_item_code,IWBH,PI.items[].customerProductName,Bella Rosa#IWBH,客戶名稱#客戶品名
+PO-26056,1,colour,玫瑰粉,PI.items[].color,玫瑰粉,色名對照（英→中）
+PO-26056,1,qty + uom,246 YDS,PI.items[].yard / meter,246 / 224.9,碼數原樣，公尺＝碼×0.9144
+PO-26056,1,unit_price,5.361,PI.items[].unitPrice,5.361,原樣帶入
+PO-26056,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26056,2,buyer_item_code,GBQK,PI.items[].roricaProductName / productId,W2020 / 7-46-01,以「客戶品名」比對商品主檔
+PO-26056,2,buyer_item_code,GBQK,PI.items[].customerProductName,Bella Rosa#GBQK,客戶名稱#客戶品名
+PO-26056,2,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26056,2,qty + uom,467 YDS,PI.items[].yard / meter,467 / 427,碼數原樣，公尺＝碼×0.9144
+PO-26056,2,unit_price,4.28,PI.items[].unitPrice,4.28,原樣帶入
+PO-26056,2,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26056,3,buyer_item_code,LWNL,PI.items[].roricaProductName / productId,NP-B8 / 20-51-01,以「客戶品名」比對商品主檔
+PO-26056,3,buyer_item_code,LWNL,PI.items[].customerProductName,Bella Rosa#LWNL,客戶名稱#客戶品名
+PO-26056,3,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26056,3,qty + uom,265 YDS,PI.items[].yard / meter,265 / 242.3,碼數原樣，公尺＝碼×0.9144
+PO-26056,3,unit_price,2.619,PI.items[].unitPrice,2.619,原樣帶入
+PO-26056,3,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26056,4,buyer_item_code,RE9B,PI.items[].roricaProductName / productId,4172 / 1-27-01,以「客戶品名」比對商品主檔
+PO-26056,4,buyer_item_code,RE9B,PI.items[].customerProductName,Bella Rosa#RE9B,客戶名稱#客戶品名
+PO-26056,4,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26056,4,qty + uom,302 YDS,PI.items[].yard / meter,302 / 276.1,碼數原樣，公尺＝碼×0.9144
+PO-26056,4,unit_price,4.009,PI.items[].unitPrice,4.009,原樣帶入
+PO-26056,4,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26063,,order_no,PO-26063,PI.items[].poNo,PO-26063,原樣帶入
+PO-26063,,order_date,2026-10-15,PI.createdAt,2026-10-15,日期
+PO-26063,,buyer.company,雅緻服飾,PI.customerId / customerName,CUST-005 / 雅緻服飾,以客戶名稱比對客戶主檔
+PO-26063,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26063,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26063,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26063,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26063,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26063,,requested_delivery,2026-12-01,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26063,1,buyer_item_code,NMUX,PI.items[].roricaProductName / productId,N442 / 11-41-01,以「客戶品名」比對商品主檔
+PO-26063,1,buyer_item_code,NMUX,PI.items[].customerProductName,雅緻服飾#NMUX,客戶名稱#客戶品名
+PO-26063,1,colour,酒紅,PI.items[].color,酒紅,色名對照（英→中）
+PO-26063,1,qty + uom,128 YDS,PI.items[].yard / meter,128 / 117,碼數原樣，公尺＝碼×0.9144
+PO-26063,1,unit_price,6.411,PI.items[].unitPrice,6.411,原樣帶入
+PO-26063,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26063,2,buyer_item_code,CZFE,PI.items[].roricaProductName / productId,90086 / 16-6-01,以「客戶品名」比對商品主檔
+PO-26063,2,buyer_item_code,CZFE,PI.items[].customerProductName,雅緻服飾#CZFE,客戶名稱#客戶品名
+PO-26063,2,colour,JET BLACK,PI.items[].color,正黑,色名對照（英→中）
+PO-26063,2,qty + uom,189 YDS,PI.items[].yard / meter,189 / 172.8,碼數原樣，公尺＝碼×0.9144
+PO-26063,2,unit_price,3.096,PI.items[].unitPrice,3.096,原樣帶入
+PO-26063,2,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26063,3,buyer_item_code,OLBJ,PI.items[].roricaProductName / productId,3300 / 3-31-01,以「客戶品名」比對商品主檔
+PO-26063,3,buyer_item_code,OLBJ,PI.items[].customerProductName,雅緻服飾#OLBJ,客戶名稱#客戶品名
+PO-26063,3,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26063,3,qty + uom,377 YDS,PI.items[].yard / meter,377 / 344.7,碼數原樣，公尺＝碼×0.9144
+PO-26063,3,unit_price,3.992,PI.items[].unitPrice,3.992,原樣帶入
+PO-26063,3,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26070,,order_no,PO-26070,PI.items[].poNo,PO-26070,原樣帶入
+PO-26070,,order_date,2026-09-22,PI.createdAt,2026-09-22,日期
+PO-26070,,buyer.company,Chantilly,PI.customerId / customerName,CUST-006 / Chantilly,以客戶名稱比對客戶主檔
+PO-26070,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26070,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26070,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26070,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26070,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26070,,requested_delivery,2026-11-06,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26070,1,buyer_item_code,PSVN,PI.items[].roricaProductName / productId,7765 / 2-185-01,以「客戶品名」比對商品主檔
+PO-26070,1,buyer_item_code,PSVN,PI.items[].customerProductName,Chantilly#PSVN,客戶名稱#客戶品名
+PO-26070,1,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26070,1,qty + uom,1088 YDS,PI.items[].yard / meter,1088 / 994.9,碼數原樣，公尺＝碼×0.9144
+PO-26070,1,unit_price,3.16,PI.items[].unitPrice,3.16,原樣帶入
+PO-26070,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26077,,order_no,PO-26077,PI.items[].poNo,PO-26077,原樣帶入
+PO-26077,,order_date,2026-11-02,PI.createdAt,2026-11-02,日期
+PO-26077,,buyer.company,Luna Bridal,PI.customerId / customerName,CUST-004 / Luna Bridal,以客戶名稱比對客戶主檔
+PO-26077,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26077,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26077,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26077,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26077,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26077,,requested_delivery,2027-01-02,PI.leadTimeDays,60,交期天數取最接近的 30/45/60/90
+PO-26077,1,buyer_item_code,3L4D,PI.items[].roricaProductName / productId,3389 / 3-40-01,以「客戶品名」比對商品主檔
+PO-26077,1,buyer_item_code,3L4D,PI.items[].customerProductName,Luna Bridal#3L4D,客戶名稱#客戶品名
+PO-26077,1,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26077,1,qty + uom,209 YDS,PI.items[].yard / meter,209 / 191.1,碼數原樣，公尺＝碼×0.9144
+PO-26077,1,unit_price,7.116,PI.items[].unitPrice,7.116,原樣帶入
+PO-26077,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26077,2,buyer_item_code,ATCZ,PI.items[].roricaProductName / productId,3819 / 1-83-01,以「客戶品名」比對商品主檔
+PO-26077,2,buyer_item_code,ATCZ,PI.items[].customerProductName,Luna Bridal#ATCZ,客戶名稱#客戶品名
+PO-26077,2,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26077,2,qty + uom,297 YDS,PI.items[].yard / meter,297 / 271.6,碼數原樣，公尺＝碼×0.9144
+PO-26077,2,unit_price,5.57,PI.items[].unitPrice,5.57,原樣帶入
+PO-26077,2,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26077,3,buyer_item_code,2D0Y,PI.items[].roricaProductName / productId,NC7013 / 14-51-01,以「客戶品名」比對商品主檔
+PO-26077,3,buyer_item_code,2D0Y,PI.items[].customerProductName,Luna Bridal#2D0Y,客戶名稱#客戶品名
+PO-26077,3,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26077,3,qty + uom,269 YDS,PI.items[].yard / meter,269 / 246,碼數原樣，公尺＝碼×0.9144
+PO-26077,3,unit_price,7.548,PI.items[].unitPrice,7.548,原樣帶入
+PO-26077,3,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26084,,order_no,PO-26084,PI.items[].poNo,PO-26084,原樣帶入
+PO-26084,,order_date,2026-09-07,PI.createdAt,2026-09-07,日期
+PO-26084,,buyer.company,維多莉亞,PI.customerId / customerName,CUST-003 / 維多莉亞,以客戶名稱比對客戶主檔
+PO-26084,,ship_from,"TAICHUNG, TW",PI.portOfLoading,TAICHUNG,港口對照表（PI_PORTS）
+PO-26084,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26084,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26084,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26084,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26084,,requested_delivery,2026-10-23,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26084,1,buyer_item_code,LGAI,PI.items[].roricaProductName / productId,4034 / 2-27-01,以「客戶品名」比對商品主檔
+PO-26084,1,buyer_item_code,LGAI,PI.items[].customerProductName,維多莉亞#LGAI,客戶名稱#客戶品名
+PO-26084,1,colour,IVORY,PI.items[].color,象牙白,色名對照（英→中）
+PO-26084,1,qty + uom,436 YDS,PI.items[].yard / meter,436 / 398.7,碼數原樣，公尺＝碼×0.9144
+PO-26084,1,unit_price,2.157,PI.items[].unitPrice,2.157,原樣帶入
+PO-26084,1,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26084,2,buyer_item_code,KI99,PI.items[].roricaProductName / productId,630-1GU / 1-17-01,以「客戶品名」比對商品主檔
+PO-26084,2,buyer_item_code,KI99,PI.items[].customerProductName,維多莉亞#KI99,客戶名稱#客戶品名
+PO-26084,2,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26084,2,qty + uom,183 YDS,PI.items[].yard / meter,183 / 167.3,碼數原樣，公尺＝碼×0.9144
+PO-26084,2,unit_price,6.327,PI.items[].unitPrice,6.327,原樣帶入
+PO-26084,2,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26084,3,buyer_item_code,4YJR,PI.items[].roricaProductName / productId,3818 / 1-82-01,以「客戶品名」比對商品主檔
+PO-26084,3,buyer_item_code,4YJR,PI.items[].customerProductName,維多莉亞#4YJR,客戶名稱#客戶品名
+PO-26084,3,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26084,3,qty + uom,289 YDS,PI.items[].yard / meter,289 / 264.3,碼數原樣，公尺＝碼×0.9144
+PO-26084,3,unit_price,7.735,PI.items[].unitPrice,7.735,原樣帶入
+PO-26084,3,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26091,,order_no,PO-26091,PI.items[].poNo,PO-26091,原樣帶入
+PO-26091,,order_date,2026-10-31,PI.createdAt,2026-10-31,日期
+PO-26091,,buyer.company,Ivory Line,PI.customerId / customerName,CUST-002 / Ivory Line,以客戶名稱比對客戶主檔
+PO-26091,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26091,,ship_to,"DHAKA, BANGLADESH",PI.destination,"DHAKA, BANGLADESH",原樣帶入
+PO-26091,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26091,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26091,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26091,,requested_delivery,2026-12-14,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26091,1,buyer_item_code,OHBT,PI.items[].roricaProductName / productId,3308 / 3-2-01,以「客戶品名」比對商品主檔
+PO-26091,1,buyer_item_code,OHBT,PI.items[].customerProductName,Ivory Line#OHBT,客戶名稱#客戶品名
+PO-26091,1,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26091,1,qty + uom,90 MTR,PI.items[].yard / meter,98 / 89.6,公尺換算碼（÷0.9144）
+PO-26091,1,unit_price,3.688,PI.items[].unitPrice,3.688,原樣帶入
+PO-26091,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26091,2,buyer_item_code,RVTP,PI.items[].roricaProductName / productId,3736 / 4-6-01,以「客戶品名」比對商品主檔
+PO-26091,2,buyer_item_code,RVTP,PI.items[].customerProductName,Ivory Line#RVTP,客戶名稱#客戶品名
+PO-26091,2,colour,LIGHT YELLOW,PI.items[].color,鵝黃,色名對照（英→中）
+PO-26091,2,qty + uom,197 MTR,PI.items[].yard / meter,215 / 196.6,公尺換算碼（÷0.9144）
+PO-26091,2,unit_price,3.947,PI.items[].unitPrice,3.947,原樣帶入
+PO-26091,2,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26091,3,buyer_item_code,9DJX,PI.items[].roricaProductName / productId,3732-M2 / 14-94-01,以「客戶品名」比對商品主檔
+PO-26091,3,buyer_item_code,9DJX,PI.items[].customerProductName,Ivory Line#9DJX,客戶名稱#客戶品名
+PO-26091,3,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26091,3,qty + uom,167 MTR,PI.items[].yard / meter,183 / 167.3,公尺換算碼（÷0.9144）
+PO-26091,3,unit_price,5.085,PI.items[].unitPrice,5.085,原樣帶入
+PO-26091,3,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26098,,order_no,PO-26098,PI.items[].poNo,PO-26098,原樣帶入
+PO-26098,,order_date,2026-11-14,PI.createdAt,2026-11-14,日期
+PO-26098,,buyer.company,Bella Rosa,PI.customerId / customerName,CUST-001 / Bella Rosa,以客戶名稱比對客戶主檔
+PO-26098,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26098,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26098,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26098,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26098,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26098,,requested_delivery,2026-12-25,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26098,1,buyer_item_code,BHQH,PI.items[].roricaProductName / productId,4287 / 2-176-01,以「客戶品名」比對商品主檔
+PO-26098,1,buyer_item_code,BHQH,PI.items[].customerProductName,Bella Rosa#BHQH,客戶名稱#客戶品名
+PO-26098,1,colour,香檳金,PI.items[].color,香檳金,色名對照（英→中）
+PO-26098,1,qty + uom,241 YDS,PI.items[].yard / meter,241 / 220.4,碼數原樣，公尺＝碼×0.9144
+PO-26098,1,unit_price,6.218,PI.items[].unitPrice,6.218,原樣帶入
+PO-26098,1,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26098,2,buyer_item_code,TNVH,PI.items[].roricaProductName / productId,3363-1 / 5-15-01,以「客戶品名」比對商品主檔
+PO-26098,2,buyer_item_code,TNVH,PI.items[].customerProductName,Bella Rosa#TNVH,客戶名稱#客戶品名
+PO-26098,2,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26098,2,qty + uom,100 YDS,PI.items[].yard / meter,100 / 91.4,碼數原樣，公尺＝碼×0.9144
+PO-26098,2,unit_price,7.177,PI.items[].unitPrice,7.177,原樣帶入
+PO-26098,2,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26105,,order_no,PO-26105,PI.items[].poNo,PO-26105,原樣帶入
+PO-26105,,order_date,2026-09-13,PI.createdAt,2026-09-13,日期
+PO-26105,,buyer.company,雅緻服飾,PI.customerId / customerName,CUST-005 / 雅緻服飾,以客戶名稱比對客戶主檔
+PO-26105,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26105,,ship_to,"DHAKA, BANGLADESH",PI.destination,"DHAKA, BANGLADESH",原樣帶入
+PO-26105,,incoterm,EXW,PI.tradeTerm,EXW,貿易條件（PI_TRADE_TERMS）
+PO-26105,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26105,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26105,,requested_delivery,2026-10-31,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26105,1,buyer_item_code,TT2A,PI.items[].roricaProductName / productId,N429 / 11-39-01,以「客戶品名」比對商品主檔
+PO-26105,1,buyer_item_code,TT2A,PI.items[].customerProductName,雅緻服飾#TT2A,客戶名稱#客戶品名
+PO-26105,1,colour,JET BLACK,PI.items[].color,正黑,色名對照（英→中）
+PO-26105,1,qty + uom,870 YDS,PI.items[].yard / meter,870 / 795.5,碼數原樣，公尺＝碼×0.9144
+PO-26105,1,unit_price,6.965,PI.items[].unitPrice,6.965,原樣帶入
+PO-26105,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26112,,order_no,PO-26112,PI.items[].poNo,PO-26112,原樣帶入
+PO-26112,,order_date,2026-09-17,PI.createdAt,2026-09-17,日期
+PO-26112,,buyer.company,Chantilly,PI.customerId / customerName,CUST-006 / Chantilly,以客戶名稱比對客戶主檔
+PO-26112,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26112,,ship_to,"DHAKA, BANGLADESH",PI.destination,"DHAKA, BANGLADESH",原樣帶入
+PO-26112,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26112,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26112,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26112,,requested_delivery,2026-10-19,PI.leadTimeDays,30,交期天數取最接近的 30/45/60/90
+PO-26112,1,buyer_item_code,EDYE,PI.items[].roricaProductName / productId,90124 / 16-7-01,以「客戶品名」比對商品主檔
+PO-26112,1,buyer_item_code,EDYE,PI.items[].customerProductName,Chantilly#EDYE,客戶名稱#客戶品名
+PO-26112,1,colour,SILVER GREY,PI.items[].color,銀灰,色名對照（英→中）
+PO-26112,1,qty + uom,232 MTR,PI.items[].yard / meter,254 / 232.3,公尺換算碼（÷0.9144）
+PO-26112,1,unit_price,3.636,PI.items[].unitPrice,3.636,原樣帶入
+PO-26112,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26119,,order_no,PO-26119,PI.items[].poNo,PO-26119,原樣帶入
+PO-26119,,order_date,2026-10-06,PI.createdAt,2026-10-06,日期
+PO-26119,,buyer.company,Luna Bridal,PI.customerId / customerName,CUST-004 / Luna Bridal,以客戶名稱比對客戶主檔
+PO-26119,,ship_from,"TAICHUNG, TW",PI.portOfLoading,TAICHUNG,港口對照表（PI_PORTS）
+PO-26119,,ship_to,"DHAKA, BANGLADESH",PI.destination,"DHAKA, BANGLADESH",原樣帶入
+PO-26119,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26119,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26119,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26119,,requested_delivery,2026-11-05,PI.leadTimeDays,30,交期天數取最接近的 30/45/60/90
+PO-26119,1,buyer_item_code,PB6Y,PI.items[].roricaProductName / productId,N423 / 11-35-01,以「客戶品名」比對商品主檔
+PO-26119,1,buyer_item_code,PB6Y,PI.items[].customerProductName,Luna Bridal#PB6Y,客戶名稱#客戶品名
+PO-26119,1,colour,玫瑰粉,PI.items[].color,玫瑰粉,色名對照（英→中）
+PO-26119,1,qty + uom,401 YDS,PI.items[].yard / meter,401 / 366.7,碼數原樣，公尺＝碼×0.9144
+PO-26119,1,unit_price,7.081,PI.items[].unitPrice,7.081,原樣帶入
+PO-26119,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26119,2,buyer_item_code,3L4D,PI.items[].roricaProductName / productId,3389 / 3-40-01,以「客戶品名」比對商品主檔
+PO-26119,2,buyer_item_code,3L4D,PI.items[].customerProductName,Luna Bridal#3L4D,客戶名稱#客戶品名
+PO-26119,2,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26119,2,qty + uom,299 YDS,PI.items[].yard / meter,299 / 273.4,碼數原樣，公尺＝碼×0.9144
+PO-26119,2,unit_price,6.049,PI.items[].unitPrice,6.049,原樣帶入
+PO-26119,2,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26119,3,buyer_item_code,ATCZ,PI.items[].roricaProductName / productId,3819 / 1-83-01,以「客戶品名」比對商品主檔
+PO-26119,3,buyer_item_code,ATCZ,PI.items[].customerProductName,Luna Bridal#ATCZ,客戶名稱#客戶品名
+PO-26119,3,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26119,3,qty + uom,199 YDS,PI.items[].yard / meter,199 / 182,碼數原樣，公尺＝碼×0.9144
+PO-26119,3,unit_price,5.489,PI.items[].unitPrice,5.489,原樣帶入
+PO-26119,3,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26119,4,buyer_item_code,3L4D,PI.items[].roricaProductName / productId,3389 / 3-40-01,以「客戶品名」比對商品主檔
+PO-26119,4,buyer_item_code,3L4D,PI.items[].customerProductName,Luna Bridal#3L4D,客戶名稱#客戶品名
+PO-26119,4,colour,SKY BLUE,PI.items[].color,天空藍,色名對照（英→中）
+PO-26119,4,qty + uom,396 YDS,PI.items[].yard / meter,396 / 362.1,碼數原樣，公尺＝碼×0.9144
+PO-26119,4,unit_price,6.247,PI.items[].unitPrice,6.247,原樣帶入
+PO-26119,4,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26126,,order_no,PO-26126,PI.items[].poNo,PO-26126,原樣帶入
+PO-26126,,order_date,2026-10-12,PI.createdAt,2026-10-12,日期
+PO-26126,,buyer.company,維多莉亞,PI.customerId / customerName,CUST-003 / 維多莉亞,以客戶名稱比對客戶主檔
+PO-26126,,ship_from,"TAICHUNG, TW",PI.portOfLoading,TAICHUNG,港口對照表（PI_PORTS）
+PO-26126,,ship_to,"LOS ANGELES, USA",PI.destination,"LOS ANGELES, USA",原樣帶入
+PO-26126,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26126,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26126,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26126,,requested_delivery,2026-12-11,PI.leadTimeDays,60,交期天數取最接近的 30/45/60/90
+PO-26126,1,buyer_item_code,UFV3,PI.items[].roricaProductName / productId,2000-1A / 4-17-01,以「客戶品名」比對商品主檔
+PO-26126,1,buyer_item_code,UFV3,PI.items[].customerProductName,維多莉亞#UFV3,客戶名稱#客戶品名
+PO-26126,1,colour,IVORY,PI.items[].color,象牙白,色名對照（英→中）
+PO-26126,1,qty + uom,413 MTR,PI.items[].yard / meter,452 / 413.3,公尺換算碼（÷0.9144）
+PO-26126,1,unit_price,2.94,PI.items[].unitPrice,2.94,原樣帶入
+PO-26126,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26126,2,buyer_item_code,P7T6,PI.items[].roricaProductName / productId,WT-7007 / 17-3-01,以「客戶品名」比對商品主檔
+PO-26126,2,buyer_item_code,P7T6,PI.items[].customerProductName,維多莉亞#P7T6,客戶名稱#客戶品名
+PO-26126,2,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26126,2,qty + uom,260 MTR,PI.items[].yard / meter,284 / 259.7,公尺換算碼（÷0.9144）
+PO-26126,2,unit_price,3.337,PI.items[].unitPrice,3.337,原樣帶入
+PO-26126,2,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26126,3,buyer_item_code,MEF4,PI.items[].roricaProductName / productId,7764 / 13-42-01,以「客戶品名」比對商品主檔
+PO-26126,3,buyer_item_code,MEF4,PI.items[].customerProductName,維多莉亞#MEF4,客戶名稱#客戶品名
+PO-26126,3,colour,寶石藍,PI.items[].color,寶石藍,色名對照（英→中）
+PO-26126,3,qty + uom,187 MTR,PI.items[].yard / meter,205 / 187.5,公尺換算碼（÷0.9144）
+PO-26126,3,unit_price,3.238,PI.items[].unitPrice,3.238,原樣帶入
+PO-26126,3,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26126,4,buyer_item_code,4YJR,PI.items[].roricaProductName / productId,3818 / 1-82-01,以「客戶品名」比對商品主檔
+PO-26126,4,buyer_item_code,4YJR,PI.items[].customerProductName,維多莉亞#4YJR,客戶名稱#客戶品名
+PO-26126,4,colour,IVORY,PI.items[].color,象牙白,色名對照（英→中）
+PO-26126,4,qty + uom,318 MTR,PI.items[].yard / meter,348 / 318.2,公尺換算碼（÷0.9144）
+PO-26126,4,unit_price,4.341,PI.items[].unitPrice,4.341,原樣帶入
+PO-26126,4,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26133,,order_no,PO-26133,PI.items[].poNo,PO-26133,原樣帶入
+PO-26133,,order_date,2026-11-05,PI.createdAt,2026-11-05,日期
+PO-26133,,buyer.company,Ivory Line,PI.customerId / customerName,CUST-002 / Ivory Line,以客戶名稱比對客戶主檔
+PO-26133,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26133,,ship_to,"HO CHI MINH, VIETNAM",PI.destination,"HO CHI MINH, VIETNAM",原樣帶入
+PO-26133,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26133,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26133,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26133,,requested_delivery,2026-12-20,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26133,1,buyer_item_code,VLMW,PI.items[].roricaProductName / productId,3005 / 4-12-01,以「客戶品名」比對商品主檔
+PO-26133,1,buyer_item_code,VLMW,PI.items[].customerProductName,Ivory Line#VLMW,客戶名稱#客戶品名
+PO-26133,1,colour,LILAC,PI.items[].color,丁香紫,色名對照（英→中）
+PO-26133,1,qty + uom,264 YDS,PI.items[].yard / meter,264 / 241.4,碼數原樣，公尺＝碼×0.9144
+PO-26133,1,unit_price,3.395,PI.items[].unitPrice,3.395,原樣帶入
+PO-26133,1,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26140,,order_no,PO-26140,PI.items[].poNo,PO-26140,原樣帶入
+PO-26140,,order_date,2026-11-09,PI.createdAt,2026-11-09,日期
+PO-26140,,buyer.company,Bella Rosa,PI.customerId / customerName,CUST-001 / Bella Rosa,以客戶名稱比對客戶主檔
+PO-26140,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26140,,ship_to,"HO CHI MINH, VIETNAM",PI.destination,"HO CHI MINH, VIETNAM",原樣帶入
+PO-26140,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26140,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26140,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26140,,requested_delivery,2027-02-02,PI.leadTimeDays,90,交期天數取最接近的 30/45/60/90
+PO-26140,1,buyer_item_code,RE9B,PI.items[].roricaProductName / productId,4172 / 1-27-01,以「客戶品名」比對商品主檔
+PO-26140,1,buyer_item_code,RE9B,PI.items[].customerProductName,Bella Rosa#RE9B,客戶名稱#客戶品名
+PO-26140,1,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26140,1,qty + uom,801 YDS,PI.items[].yard / meter,801 / 732.4,碼數原樣，公尺＝碼×0.9144
+PO-26140,1,unit_price,3.908,PI.items[].unitPrice,3.908,原樣帶入
+PO-26140,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26140,2,buyer_item_code,GBQK,PI.items[].roricaProductName / productId,W2020 / 7-46-01,以「客戶品名」比對商品主檔
+PO-26140,2,buyer_item_code,GBQK,PI.items[].customerProductName,Bella Rosa#GBQK,客戶名稱#客戶品名
+PO-26140,2,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26140,2,qty + uom,198 YDS,PI.items[].yard / meter,198 / 181.1,碼數原樣，公尺＝碼×0.9144
+PO-26140,2,unit_price,3.973,PI.items[].unitPrice,3.973,原樣帶入
+PO-26140,2,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26140,3,buyer_item_code,IWBH,PI.items[].roricaProductName / productId,2080C / 7-21-01,以「客戶品名」比對商品主檔
+PO-26140,3,buyer_item_code,IWBH,PI.items[].customerProductName,Bella Rosa#IWBH,客戶名稱#客戶品名
+PO-26140,3,colour,玫瑰粉,PI.items[].color,玫瑰粉,色名對照（英→中）
+PO-26140,3,qty + uom,286 YDS,PI.items[].yard / meter,286 / 261.5,碼數原樣，公尺＝碼×0.9144
+PO-26140,3,unit_price,7.863,PI.items[].unitPrice,7.863,原樣帶入
+PO-26140,3,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26140,4,buyer_item_code,I3RG,PI.items[].roricaProductName / productId,71025 / 18-1-01,以「客戶品名」比對商品主檔
+PO-26140,4,buyer_item_code,I3RG,PI.items[].customerProductName,Bella Rosa#I3RG,客戶名稱#客戶品名
+PO-26140,4,colour,SKY BLUE,PI.items[].color,天空藍,色名對照（英→中）
+PO-26140,4,qty + uom,140 YDS,PI.items[].yard / meter,140 / 128,碼數原樣，公尺＝碼×0.9144
+PO-26140,4,unit_price,5.813,PI.items[].unitPrice,5.813,原樣帶入
+PO-26140,4,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26147,,order_no,PO-26147,PI.items[].poNo,PO-26147,原樣帶入
+PO-26147,,order_date,2026-10-02,PI.createdAt,2026-10-02,日期
+PO-26147,,buyer.company,雅緻服飾,PI.customerId / customerName,CUST-005 / 雅緻服飾,以客戶名稱比對客戶主檔
+PO-26147,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26147,,ship_to,"LOS ANGELES, USA",PI.destination,"LOS ANGELES, USA",原樣帶入
+PO-26147,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26147,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26147,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26147,,requested_delivery,2026-12-05,PI.leadTimeDays,60,交期天數取最接近的 30/45/60/90
+PO-26147,1,buyer_item_code,TT2A,PI.items[].roricaProductName / productId,N429 / 11-39-01,以「客戶品名」比對商品主檔
+PO-26147,1,buyer_item_code,TT2A,PI.items[].customerProductName,雅緻服飾#TT2A,客戶名稱#客戶品名
+PO-26147,1,colour,JET BLACK,PI.items[].color,正黑,色名對照（英→中）
+PO-26147,1,qty + uom,414 YDS,PI.items[].yard / meter,414 / 378.6,碼數原樣，公尺＝碼×0.9144
+PO-26147,1,unit_price,4.512,PI.items[].unitPrice,4.512,原樣帶入
+PO-26147,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26154,,order_no,PO-26154,PI.items[].poNo,PO-26154,原樣帶入
+PO-26154,,order_date,2026-11-07,PI.createdAt,2026-11-07,日期
+PO-26154,,buyer.company,Chantilly,PI.customerId / customerName,CUST-006 / Chantilly,以客戶名稱比對客戶主檔
+PO-26154,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26154,,ship_to,"LOS ANGELES, USA",PI.destination,"LOS ANGELES, USA",原樣帶入
+PO-26154,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26154,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26154,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26154,,requested_delivery,2026-12-27,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26154,1,buyer_item_code,4KVX,PI.items[].roricaProductName / productId,CHIFFON-6 (7550) / 6-1-01,以「客戶品名」比對商品主檔
+PO-26154,1,buyer_item_code,4KVX,PI.items[].customerProductName,Chantilly#4KVX,客戶名稱#客戶品名
+PO-26154,1,colour,淺粉,PI.items[].color,淺粉,色名對照（英→中）
+PO-26154,1,qty + uom,323 YDS,PI.items[].yard / meter,323 / 295.4,碼數原樣，公尺＝碼×0.9144
+PO-26154,1,unit_price,2.978,PI.items[].unitPrice,2.978,原樣帶入
+PO-26154,1,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26154,2,buyer_item_code,CSCO,PI.items[].roricaProductName / productId,"N307-120"" / 8-47-01",以「客戶品名」比對商品主檔
+PO-26154,2,buyer_item_code,CSCO,PI.items[].customerProductName,Chantilly#CSCO,客戶名稱#客戶品名
+PO-26154,2,colour,JET BLACK,PI.items[].color,正黑,色名對照（英→中）
+PO-26154,2,qty + uom,118 YDS,PI.items[].yard / meter,118 / 107.9,碼數原樣，公尺＝碼×0.9144
+PO-26154,2,unit_price,7.334,PI.items[].unitPrice,7.334,原樣帶入
+PO-26154,2,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26154,3,buyer_item_code,BKGD,PI.items[].roricaProductName / productId,N434 / 11-40-01,以「客戶品名」比對商品主檔
+PO-26154,3,buyer_item_code,BKGD,PI.items[].customerProductName,Chantilly#BKGD,客戶名稱#客戶品名
+PO-26154,3,colour,玫瑰粉,PI.items[].color,玫瑰粉,色名對照（英→中）
+PO-26154,3,qty + uom,90 YDS,PI.items[].yard / meter,90 / 82.3,碼數原樣，公尺＝碼×0.9144
+PO-26154,3,unit_price,2.456,PI.items[].unitPrice,2.456,原樣帶入
+PO-26154,3,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26154,4,buyer_item_code,FVUC,PI.items[].roricaProductName / productId,3720B / 2-3-01,以「客戶品名」比對商品主檔
+PO-26154,4,buyer_item_code,FVUC,PI.items[].customerProductName,Chantilly#FVUC,客戶名稱#客戶品名
+PO-26154,4,colour,酒紅,PI.items[].color,酒紅,色名對照（英→中）
+PO-26154,4,qty + uom,337 YDS,PI.items[].yard / meter,337 / 308.2,碼數原樣，公尺＝碼×0.9144
+PO-26154,4,unit_price,6.858,PI.items[].unitPrice,6.858,原樣帶入
+PO-26154,4,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26161,,order_no,PO-26161,PI.items[].poNo,PO-26161,原樣帶入
+PO-26161,,order_date,2026-10-25,PI.createdAt,2026-10-25,日期
+PO-26161,,buyer.company,Luna Bridal,PI.customerId / customerName,CUST-004 / Luna Bridal,以客戶名稱比對客戶主檔
+PO-26161,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26161,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26161,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26161,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26161,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26161,,requested_delivery,2026-11-29,PI.leadTimeDays,30,交期天數取最接近的 30/45/60/90
+PO-26161,1,buyer_item_code,ATCZ,PI.items[].roricaProductName / productId,3819 / 1-83-01,以「客戶品名」比對商品主檔
+PO-26161,1,buyer_item_code,ATCZ,PI.items[].customerProductName,Luna Bridal#ATCZ,客戶名稱#客戶品名
+PO-26161,1,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26161,1,qty + uom,129 YDS,PI.items[].yard / meter,129 / 118,碼數原樣，公尺＝碼×0.9144
+PO-26161,1,unit_price,6.383,PI.items[].unitPrice,6.383,原樣帶入
+PO-26161,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26161,2,buyer_item_code,K8E0,PI.items[].roricaProductName / productId,WH-2137 / 17-8-01,以「客戶品名」比對商品主檔
+PO-26161,2,buyer_item_code,K8E0,PI.items[].customerProductName,Luna Bridal#K8E0,客戶名稱#客戶品名
+PO-26161,2,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26161,2,qty + uom,140 YDS,PI.items[].yard / meter,140 / 128,碼數原樣，公尺＝碼×0.9144
+PO-26161,2,unit_price,5.604,PI.items[].unitPrice,5.604,原樣帶入
+PO-26161,2,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26161,3,buyer_item_code,CUWC,PI.items[].roricaProductName / productId,W3911 / 2-66-01,以「客戶品名」比對商品主檔
+PO-26161,3,buyer_item_code,CUWC,PI.items[].customerProductName,Luna Bridal#CUWC,客戶名稱#客戶品名
+PO-26161,3,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26161,3,qty + uom,524 YDS,PI.items[].yard / meter,524 / 479.1,碼數原樣，公尺＝碼×0.9144
+PO-26161,3,unit_price,7.679,PI.items[].unitPrice,7.679,原樣帶入
+PO-26161,3,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26161,4,buyer_item_code,2D0Y,PI.items[].roricaProductName / productId,NC7013 / 14-51-01,以「客戶品名」比對商品主檔
+PO-26161,4,buyer_item_code,2D0Y,PI.items[].customerProductName,Luna Bridal#2D0Y,客戶名稱#客戶品名
+PO-26161,4,colour,薄荷綠,PI.items[].color,薄荷綠,色名對照（英→中）
+PO-26161,4,qty + uom,147 YDS,PI.items[].yard / meter,147 / 134.4,碼數原樣，公尺＝碼×0.9144
+PO-26161,4,unit_price,4.126,PI.items[].unitPrice,4.126,原樣帶入
+PO-26161,4,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26168,,order_no,PO-26168,PI.items[].poNo,PO-26168,原樣帶入
+PO-26168,,order_date,2026-10-01,PI.createdAt,2026-10-01,日期
+PO-26168,,buyer.company,維多莉亞,PI.customerId / customerName,CUST-003 / 維多莉亞,以客戶名稱比對客戶主檔
+PO-26168,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26168,,ship_to,"NEW YORK, USA",PI.destination,"NEW YORK, USA",原樣帶入
+PO-26168,,incoterm,FOB,PI.tradeTerm,FOB,貿易條件（PI_TRADE_TERMS）
+PO-26168,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26168,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26168,,requested_delivery,2027-01-01,PI.leadTimeDays,90,交期天數取最接近的 30/45/60/90
+PO-26168,1,buyer_item_code,MBR9,PI.items[].roricaProductName / productId,N426 / 11-38-01,以「客戶品名」比對商品主檔
+PO-26168,1,buyer_item_code,MBR9,PI.items[].customerProductName,維多莉亞#MBR9,客戶名稱#客戶品名
+PO-26168,1,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26168,1,qty + uom,126 YDS,PI.items[].yard / meter,126 / 115.2,碼數原樣，公尺＝碼×0.9144
+PO-26168,1,unit_price,6.523,PI.items[].unitPrice,6.523,原樣帶入
+PO-26168,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26168,2,buyer_item_code,HXB3,PI.items[].roricaProductName / productId,KK28-R / 15-78-01,以「客戶品名」比對商品主檔
+PO-26168,2,buyer_item_code,HXB3,PI.items[].customerProductName,維多莉亞#HXB3,客戶名稱#客戶品名
+PO-26168,2,colour,霧灰,PI.items[].color,霧灰,色名對照（英→中）
+PO-26168,2,qty + uom,154 YDS,PI.items[].yard / meter,154 / 140.8,碼數原樣，公尺＝碼×0.9144
+PO-26168,2,unit_price,4.8,PI.items[].unitPrice,4.8,原樣帶入
+PO-26168,2,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26168,3,buyer_item_code,V31N,PI.items[].roricaProductName / productId,N421 / 11-33-01,以「客戶品名」比對商品主檔
+PO-26168,3,buyer_item_code,V31N,PI.items[].customerProductName,維多莉亞#V31N,客戶名稱#客戶品名
+PO-26168,3,colour,寶石藍,PI.items[].color,寶石藍,色名對照（英→中）
+PO-26168,3,qty + uom,188 YDS,PI.items[].yard / meter,188 / 171.9,碼數原樣，公尺＝碼×0.9144
+PO-26168,3,unit_price,6.909,PI.items[].unitPrice,6.909,原樣帶入
+PO-26168,3,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26168,4,buyer_item_code,MEF4,PI.items[].roricaProductName / productId,7764 / 13-42-01,以「客戶品名」比對商品主檔
+PO-26168,4,buyer_item_code,MEF4,PI.items[].customerProductName,維多莉亞#MEF4,客戶名稱#客戶品名
+PO-26168,4,colour,寶石藍,PI.items[].color,寶石藍,色名對照（英→中）
+PO-26168,4,qty + uom,156 YDS,PI.items[].yard / meter,156 / 142.6,碼數原樣，公尺＝碼×0.9144
+PO-26168,4,unit_price,4.566,PI.items[].unitPrice,4.566,原樣帶入
+PO-26168,4,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26175,,order_no,PO-26175,PI.items[].poNo,PO-26175,原樣帶入
+PO-26175,,order_date,2026-10-07,PI.createdAt,2026-10-07,日期
+PO-26175,,buyer.company,Ivory Line,PI.customerId / customerName,CUST-002 / Ivory Line,以客戶名稱比對客戶主檔
+PO-26175,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26175,,ship_to,"DHAKA, BANGLADESH",PI.destination,"DHAKA, BANGLADESH",原樣帶入
+PO-26175,,incoterm,EXW,PI.tradeTerm,EXW,貿易條件（PI_TRADE_TERMS）
+PO-26175,,payment_terms,L/C AT SIGHT,PI.paymentTerm,L/C AT SIGHT,原樣帶入
+PO-26175,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26175,,requested_delivery,2026-11-09,PI.leadTimeDays,30,交期天數取最接近的 30/45/60/90
+PO-26175,1,buyer_item_code,XMHB,PI.items[].roricaProductName / productId,90079 / 16-2-01,以「客戶品名」比對商品主檔
+PO-26175,1,buyer_item_code,XMHB,PI.items[].customerProductName,Ivory Line#XMHB,客戶名稱#客戶品名
+PO-26175,1,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26175,1,qty + uom,828 MTR,PI.items[].yard / meter,906 / 828.4,公尺換算碼（÷0.9144）
+PO-26175,1,unit_price,3.259,PI.items[].unitPrice,3.259,原樣帶入
+PO-26175,1,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26175,2,buyer_item_code,SDS2,PI.items[].roricaProductName / productId,4181 / 2-43-01,以「客戶品名」比對商品主檔
+PO-26175,2,buyer_item_code,SDS2,PI.items[].customerProductName,Ivory Line#SDS2,客戶名稱#客戶品名
+PO-26175,2,colour,香檳金,PI.items[].color,香檳金,色名對照（英→中）
+PO-26175,2,qty + uom,81 MTR,PI.items[].yard / meter,89 / 81.4,公尺換算碼（÷0.9144）
+PO-26175,2,unit_price,6.366,PI.items[].unitPrice,6.366,原樣帶入
+PO-26175,2,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26175,3,buyer_item_code,RVTP,PI.items[].roricaProductName / productId,3736 / 4-6-01,以「客戶品名」比對商品主檔
+PO-26175,3,buyer_item_code,RVTP,PI.items[].customerProductName,Ivory Line#RVTP,客戶名稱#客戶品名
+PO-26175,3,colour,LIGHT YELLOW,PI.items[].color,鵝黃,色名對照（英→中）
+PO-26175,3,qty + uom,114 MTR,PI.items[].yard / meter,125 / 114.3,公尺換算碼（÷0.9144）
+PO-26175,3,unit_price,7.294,PI.items[].unitPrice,7.294,原樣帶入
+PO-26175,3,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26182,,order_no,PO-26182,PI.items[].poNo,PO-26182,原樣帶入
+PO-26182,,order_date,2026-11-15,PI.createdAt,2026-11-15,日期
+PO-26182,,buyer.company,Bella Rosa,PI.customerId / customerName,CUST-001 / Bella Rosa,以客戶名稱比對客戶主檔
+PO-26182,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26182,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26182,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26182,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26182,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26182,,requested_delivery,2026-12-28,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26182,1,buyer_item_code,TNVH,PI.items[].roricaProductName / productId,3363-1 / 5-15-01,以「客戶品名」比對商品主檔
+PO-26182,1,buyer_item_code,TNVH,PI.items[].customerProductName,Bella Rosa#TNVH,客戶名稱#客戶品名
+PO-26182,1,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26182,1,qty + uom,85 YDS,PI.items[].yard / meter,85 / 77.7,碼數原樣，公尺＝碼×0.9144
+PO-26182,1,unit_price,7.464,PI.items[].unitPrice,7.464,原樣帶入
+PO-26182,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26182,2,buyer_item_code,WAPR,PI.items[].roricaProductName / productId,N424 / 11-36-01,以「客戶品名」比對商品主檔
+PO-26182,2,buyer_item_code,WAPR,PI.items[].customerProductName,Bella Rosa#WAPR,客戶名稱#客戶品名
+PO-26182,2,colour,酒紅,PI.items[].color,酒紅,色名對照（英→中）
+PO-26182,2,qty + uom,109 YDS,PI.items[].yard / meter,109 / 99.7,碼數原樣，公尺＝碼×0.9144
+PO-26182,2,unit_price,6.883,PI.items[].unitPrice,6.883,原樣帶入
+PO-26182,2,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26182,3,buyer_item_code,ONLT,PI.items[].roricaProductName / productId,NC7015 / 14-53-01,以「客戶品名」比對商品主檔
+PO-26182,3,buyer_item_code,ONLT,PI.items[].customerProductName,Bella Rosa#ONLT,客戶名稱#客戶品名
+PO-26182,3,colour,玫瑰粉,PI.items[].color,玫瑰粉,色名對照（英→中）
+PO-26182,3,qty + uom,601 YDS,PI.items[].yard / meter,601 / 549.6,碼數原樣，公尺＝碼×0.9144
+PO-26182,3,unit_price,6.114,PI.items[].unitPrice,6.114,原樣帶入
+PO-26182,3,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26182,4,buyer_item_code,RE9B,PI.items[].roricaProductName / productId,4172 / 1-27-01,以「客戶品名」比對商品主檔
+PO-26182,4,buyer_item_code,RE9B,PI.items[].customerProductName,Bella Rosa#RE9B,客戶名稱#客戶品名
+PO-26182,4,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26182,4,qty + uom,265 YDS,PI.items[].yard / meter,265 / 242.3,碼數原樣，公尺＝碼×0.9144
+PO-26182,4,unit_price,5.978,PI.items[].unitPrice,5.978,原樣帶入
+PO-26182,4,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26189,,order_no,PO-26189,PI.items[].poNo,PO-26189,原樣帶入
+PO-26189,,order_date,2026-10-10,PI.createdAt,2026-10-10,日期
+PO-26189,,buyer.company,雅緻服飾,PI.customerId / customerName,CUST-005 / 雅緻服飾,以客戶名稱比對客戶主檔
+PO-26189,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26189,,ship_to,"LOS ANGELES, USA",PI.destination,"LOS ANGELES, USA",原樣帶入
+PO-26189,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26189,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26189,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26189,,requested_delivery,2026-12-12,PI.leadTimeDays,60,交期天數取最接近的 30/45/60/90
+PO-26189,1,buyer_item_code,J3KS,PI.items[].roricaProductName / productId,NC7011 / 14-49-01,以「客戶品名」比對商品主檔
+PO-26189,1,buyer_item_code,J3KS,PI.items[].customerProductName,雅緻服飾#J3KS,客戶名稱#客戶品名
+PO-26189,1,colour,香檳金,PI.items[].color,香檳金,色名對照（英→中）
+PO-26189,1,qty + uom,124 YDS,PI.items[].yard / meter,124 / 113.4,碼數原樣，公尺＝碼×0.9144
+PO-26189,1,unit_price,2.702,PI.items[].unitPrice,2.702,原樣帶入
+PO-26189,1,packing,FIXED 50M ROLL,PI.items[].packingMethod,定碼ROLL可接疋,包裝方式對照表（PACKING_METHODS）
+PO-26189,2,buyer_item_code,ZFOA,PI.items[].roricaProductName / productId,3366 / 5-11-01,以「客戶品名」比對商品主檔
+PO-26189,2,buyer_item_code,ZFOA,PI.items[].customerProductName,雅緻服飾#ZFOA,客戶名稱#客戶品名
+PO-26189,2,colour,JET BLACK,PI.items[].color,正黑,色名對照（英→中）
+PO-26189,2,qty + uom,75 YDS,PI.items[].yard / meter,75 / 68.6,碼數原樣，公尺＝碼×0.9144
+PO-26189,2,unit_price,7.896,PI.items[].unitPrice,7.896,原樣帶入
+PO-26189,2,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26196,,order_no,PO-26196,PI.items[].poNo,PO-26196,原樣帶入
+PO-26196,,order_date,2026-10-15,PI.createdAt,2026-10-15,日期
+PO-26196,,buyer.company,Chantilly,PI.customerId / customerName,CUST-006 / Chantilly,以客戶名稱比對客戶主檔
+PO-26196,,ship_from,"KAOHSIUNG, TW",PI.portOfLoading,KAOHSIUNG,港口對照表（PI_PORTS）
+PO-26196,,ship_to,"PHNOM PENH, CAMBODIA",PI.destination,"PHNOM PENH, CAMBODIA",原樣帶入
+PO-26196,,incoterm,EXW,PI.tradeTerm,EXW,貿易條件（PI_TRADE_TERMS）
+PO-26196,,payment_terms,T/T 30 DAYS,PI.paymentTerm,T/T 30 DAYS,原樣帶入
+PO-26196,,currency,EUR,PI.currency,EUR,幣別（PI_CURRENCIES）
+PO-26196,,requested_delivery,2026-12-03,PI.leadTimeDays,45,交期天數取最接近的 30/45/60/90
+PO-26196,1,buyer_item_code,28GV,PI.items[].roricaProductName / productId,3176-M2 / 14-62-01,以「客戶品名」比對商品主檔
+PO-26196,1,buyer_item_code,28GV,PI.items[].customerProductName,Chantilly#28GV,客戶名稱#客戶品名
+PO-26196,1,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26196,1,qty + uom,354 MTR,PI.items[].yard / meter,387 / 353.9,公尺換算碼（÷0.9144）
+PO-26196,1,unit_price,4.723,PI.items[].unitPrice,4.723,原樣帶入
+PO-26196,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26196,2,buyer_item_code,4KVX,PI.items[].roricaProductName / productId,CHIFFON-6 (7550) / 6-1-01,以「客戶品名」比對商品主檔
+PO-26196,2,buyer_item_code,4KVX,PI.items[].customerProductName,Chantilly#4KVX,客戶名稱#客戶品名
+PO-26196,2,colour,淺粉,PI.items[].color,淺粉,色名對照（英→中）
+PO-26196,2,qty + uom,329 MTR,PI.items[].yard / meter,360 / 329.2,公尺換算碼（÷0.9144）
+PO-26196,2,unit_price,5.465,PI.items[].unitPrice,5.465,原樣帶入
+PO-26196,2,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26196,3,buyer_item_code,B9M5,PI.items[].roricaProductName / productId,7636 / 7-45-01,以「客戶品名」比對商品主檔
+PO-26196,3,buyer_item_code,B9M5,PI.items[].customerProductName,Chantilly#B9M5,客戶名稱#客戶品名
+PO-26196,3,colour,CREAM,PI.items[].color,奶油白,色名對照（英→中）
+PO-26196,3,qty + uom,132 MTR,PI.items[].yard / meter,144 / 131.7,公尺換算碼（÷0.9144）
+PO-26196,3,unit_price,3.946,PI.items[].unitPrice,3.946,原樣帶入
+PO-26196,3,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）
+PO-26196,4,buyer_item_code,PSVN,PI.items[].roricaProductName / productId,7765 / 2-185-01,以「客戶品名」比對商品主檔
+PO-26196,4,buyer_item_code,PSVN,PI.items[].customerProductName,Chantilly#PSVN,客戶名稱#客戶品名
+PO-26196,4,colour,DARK KHAKI,PI.items[].color,深卡其,色名對照（英→中）
+PO-26196,4,qty + uom,216 MTR,PI.items[].yard / meter,236 / 215.8,公尺換算碼（÷0.9144）
+PO-26196,4,unit_price,7.717,PI.items[].unitPrice,7.717,原樣帶入
+PO-26196,4,packing,FOLD,PI.items[].packingMethod,板捲,包裝方式對照表（PACKING_METHODS）
+PO-26203,,order_no,PO-26203,PI.items[].poNo,PO-26203,原樣帶入
+PO-26203,,order_date,2026-10-22,PI.createdAt,2026-10-22,日期
+PO-26203,,buyer.company,Luna Bridal,PI.customerId / customerName,CUST-004 / Luna Bridal,以客戶名稱比對客戶主檔
+PO-26203,,ship_from,"KEELUNG, TW",PI.portOfLoading,KEELUNG,港口對照表（PI_PORTS）
+PO-26203,,ship_to,"HAMBURG, GERMANY",PI.destination,"HAMBURG, GERMANY",原樣帶入
+PO-26203,,incoterm,CIF,PI.tradeTerm,CIF,貿易條件（PI_TRADE_TERMS）
+PO-26203,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26203,,currency,RMB,PI.currency,RMB,幣別（PI_CURRENCIES）
+PO-26203,,requested_delivery,2026-11-21,PI.leadTimeDays,30,交期天數取最接近的 30/45/60/90
+PO-26203,1,buyer_item_code,3L4D,PI.items[].roricaProductName / productId,3389 / 3-40-01,以「客戶品名」比對商品主檔
+PO-26203,1,buyer_item_code,3L4D,PI.items[].customerProductName,Luna Bridal#3L4D,客戶名稱#客戶品名
+PO-26203,1,colour,SKY BLUE,PI.items[].color,天空藍,色名對照（英→中）
+PO-26203,1,qty + uom,348 YDS,PI.items[].yard / meter,348 / 318.2,碼數原樣，公尺＝碼×0.9144
+PO-26203,1,unit_price,6.307,PI.items[].unitPrice,6.307,原樣帶入
+PO-26203,1,packing,TUBE ROLL,PI.items[].packingMethod,原疋捲,包裝方式對照表（PACKING_METHODS）
+PO-26210,,order_no,PO-26210,PI.items[].poNo,PO-26210,原樣帶入
+PO-26210,,order_date,2026-10-10,PI.createdAt,2026-10-10,日期
+PO-26210,,buyer.company,維多莉亞,PI.customerId / customerName,CUST-003 / 維多莉亞,以客戶名稱比對客戶主檔
+PO-26210,,ship_from,"TAICHUNG, TW",PI.portOfLoading,TAICHUNG,港口對照表（PI_PORTS）
+PO-26210,,ship_to,"HO CHI MINH, VIETNAM",PI.destination,"HO CHI MINH, VIETNAM",原樣帶入
+PO-26210,,incoterm,CFR,PI.tradeTerm,CFR,貿易條件（PI_TRADE_TERMS）
+PO-26210,,payment_terms,T/T IN ADVANCE,PI.paymentTerm,T/T IN ADVANCE,原樣帶入
+PO-26210,,currency,USD,PI.currency,USD,幣別（PI_CURRENCIES）
+PO-26210,,requested_delivery,2026-11-06,PI.leadTimeDays,30,交期天數取最接近的 30/45/60/90
+PO-26210,1,buyer_item_code,WCWD,PI.items[].roricaProductName / productId,N415 / 11-32-01,以「客戶品名」比對商品主檔
+PO-26210,1,buyer_item_code,WCWD,PI.items[].customerProductName,維多莉亞#WCWD,客戶名稱#客戶品名
+PO-26210,1,colour,香檳金,PI.items[].color,香檳金,色名對照（英→中）
+PO-26210,1,qty + uom,816 YDS,PI.items[].yard / meter,816 / 746.2,碼數原樣，公尺＝碼×0.9144
+PO-26210,1,unit_price,3.181,PI.items[].unitPrice,3.181,原樣帶入
+PO-26210,1,packing,ROLL,PI.items[].packingMethod,捲支,包裝方式對照表（PACKING_METHODS）

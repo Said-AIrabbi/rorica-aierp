@@ -1,0 +1,73 @@
+{
+ "protocolVersion": "0.3.0",
+ "name": "RORICA production",
+ "description": "生管代理人：Plans production: allocates rolls, or routes a line to digital printing or dyeing.",
+ "url": "https://rorica-aierp.vercel.app/a2a/production",
+ "preferredTransport": "JSONRPC",
+ "version": "0.1.0",
+ "provider": {
+  "organization": "RORICA ERP prototype",
+  "url": "https://rorica-aierp.vercel.app"
+ },
+ "capabilities": {
+  "streaming": false,
+  "pushNotifications": false,
+  "stateTransitionHistory": true
+ },
+ "defaultInputModes": [
+  "application/json",
+  "text/plain"
+ ],
+ "defaultOutputModes": [
+  "application/json"
+ ],
+ "securitySchemes": {
+  "bearer": {
+   "type": "http",
+   "scheme": "bearer",
+   "bearerFormat": "JWT"
+  }
+ },
+ "security": [
+  {
+   "bearer": []
+  }
+ ],
+ "skills": [
+  {
+   "id": "allocate-rolls",
+   "name": "Allocate rolls to order lines",
+   "description": "Allocate rolls to order lines",
+   "tags": [
+    "inventory",
+    "allocation"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  },
+  {
+   "id": "route-line",
+   "name": "Route a line: stock / print / dye",
+   "description": "Route a line: stock / print / dye",
+   "tags": [
+    "planning"
+   ],
+   "inputModes": [
+    "application/json"
+   ],
+   "outputModes": [
+    "application/json"
+   ]
+  }
+ ],
+ "signatures": [
+  {
+   "protected": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiI4N0pDYVNhZGs4d3laU2RjIiwiamt1IjoiaHR0cHM6Ly9yb3JpY2EtYWllcnAudmVyY2VsLmFwcC9hMmEvandrcy5qc29uIn0",
+   "signature": "Q62xPi--ED7R5oOKuOPhHXr69MKS_6Wr8lJev_m-faw1fbAENabb64OxZrrILpq5fdnvStkio-iDGZIja9Kx5Q"
+  }
+ ]
+}
