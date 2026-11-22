@@ -1,0 +1,2176 @@
+{
+ "ran_at": "2026-11-22T07:20:08.647Z",
+ "method": "ERP availableFabricLabels + allocateWholeRolls（表1 不接疋路徑）；規則判定",
+ "orders": [
+  {
+   "order_no": "PO-26007",
+   "pi_id": "PI-20261120-101",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26014",
+   "pi_id": "PI-20261120-102",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26021",
+   "pi_id": "PI-20261120-103",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26028",
+   "pi_id": "PI-20261120-104",
+   "lines": 3,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26035",
+   "pi_id": "PI-20261120-105",
+   "lines": 2,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26042",
+   "pi_id": "PI-20261120-106",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26049",
+   "pi_id": "PI-20261120-107",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26056",
+   "pi_id": "PI-20261120-108",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26063",
+   "pi_id": "PI-20261120-109",
+   "lines": 3,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26070",
+   "pi_id": "PI-20261120-110",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26077",
+   "pi_id": "PI-20261120-111",
+   "lines": 3,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26084",
+   "pi_id": "PI-20261120-112",
+   "lines": 3,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26091",
+   "pi_id": "PI-20261120-113",
+   "lines": 3,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26098",
+   "pi_id": "PI-20261120-114",
+   "lines": 2,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26105",
+   "pi_id": "PI-20261120-115",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26112",
+   "pi_id": "PI-20261120-116",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26119",
+   "pi_id": "PI-20261120-117",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26126",
+   "pi_id": "PI-20261120-118",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26133",
+   "pi_id": "PI-20261120-119",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26140",
+   "pi_id": "PI-20261120-120",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26147",
+   "pi_id": "PI-20261120-121",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26154",
+   "pi_id": "PI-20261120-122",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26161",
+   "pi_id": "PI-20261120-123",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26168",
+   "pi_id": "PI-20261120-124",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26175",
+   "pi_id": "PI-20261120-125",
+   "lines": 3,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26182",
+   "pi_id": "PI-20261120-126",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26189",
+   "pi_id": "PI-20261120-127",
+   "lines": 2,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26196",
+   "pi_id": "PI-20261120-128",
+   "lines": 4,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26203",
+   "pi_id": "PI-20261120-129",
+   "lines": 1,
+   "pass": true
+  },
+  {
+   "order_no": "PO-26210",
+   "pi_id": "PI-20261120-130",
+   "lines": 1,
+   "pass": true
+  }
+ ],
+ "lines": [
+  {
+   "order_no": "PO-26007",
+   "pi_id": "PI-20261120-101",
+   "line_no": 1,
+   "erp_product_name": "3732-M2",
+   "color": "霧灰",
+   "qty_yd": 236,
+   "free_stock_yd": 395,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100060-02",
+    "T5100060-06",
+    "T5100060-07",
+    "T5100060-04"
+   ],
+   "erp_allocated_yd": 256.90000000000003,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.42
+  },
+  {
+   "order_no": "PO-26007",
+   "pi_id": "PI-20261120-101",
+   "line_no": 2,
+   "erp_product_name": "3308",
+   "color": "薄荷綠",
+   "qty_yd": 115,
+   "free_stock_yd": 467,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100022-04",
+    "T5100022-02"
+   ],
+   "erp_allocated_yd": 172.8,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.11
+  },
+  {
+   "order_no": "PO-26007",
+   "pi_id": "PI-20261120-101",
+   "line_no": 3,
+   "erp_product_name": "3005",
+   "color": "丁香紫",
+   "qty_yd": 283,
+   "free_stock_yd": 645,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100005-02",
+    "T5100005-05",
+    "T5100005-06"
+   ],
+   "erp_allocated_yd": 336,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.16
+  },
+  {
+   "order_no": "PO-26007",
+   "pi_id": "PI-20261120-101",
+   "line_no": 4,
+   "erp_product_name": "90079",
+   "color": "深卡其",
+   "qty_yd": 421,
+   "free_stock_yd": 694,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100007-06",
+    "T5100007-04",
+    "T5100007-01",
+    "T5100007-07",
+    "T5100007-02"
+   ],
+   "erp_allocated_yd": 482,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.15
+  },
+  {
+   "order_no": "PO-26014",
+   "pi_id": "PI-20261120-102",
+   "line_no": 1,
+   "erp_product_name": "N424",
+   "color": "酒紅",
+   "qty_yd": 344,
+   "free_stock_yd": 643,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100114-02",
+    "T5100114-08",
+    "T5100114-04",
+    "T5100114-06"
+   ],
+   "erp_allocated_yd": 428,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.15
+  },
+  {
+   "order_no": "PO-26021",
+   "pi_id": "PI-20261120-103",
+   "line_no": 1,
+   "erp_product_name": "3812R",
+   "color": "薄荷綠",
+   "qty_yd": 209,
+   "free_stock_yd": 553,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100116-04",
+    "T5100116-01",
+    "T5100116-07"
+   ],
+   "erp_allocated_yd": 241,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.13
+  },
+  {
+   "order_no": "PO-26028",
+   "pi_id": "PI-20261120-104",
+   "line_no": 1,
+   "erp_product_name": "CHIFFON-6 (7550)",
+   "color": "薄荷綠",
+   "qty_yd": 296,
+   "free_stock_yd": 679,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100059-08",
+    "T5100059-01",
+    "T5100059-02"
+   ],
+   "erp_allocated_yd": 327,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.11
+  },
+  {
+   "order_no": "PO-26028",
+   "pi_id": "PI-20261120-104",
+   "line_no": 2,
+   "erp_product_name": "3176-M2",
+   "color": "奶油白",
+   "qty_yd": 238,
+   "free_stock_yd": 621,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100029-04",
+    "T5100029-02",
+    "T5100029-08"
+   ],
+   "erp_allocated_yd": 299,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.21
+  },
+  {
+   "order_no": "PO-26028",
+   "pi_id": "PI-20261120-104",
+   "line_no": 3,
+   "erp_product_name": "WT-7012",
+   "color": "奶油白",
+   "qty_yd": 290,
+   "free_stock_yd": 849.9,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100039-02",
+    "T5100039-03",
+    "T5100039-04"
+   ],
+   "erp_allocated_yd": 300.8,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.27
+  },
+  {
+   "order_no": "PO-26035",
+   "pi_id": "PI-20261120-105",
+   "line_no": 1,
+   "erp_product_name": "90126",
+   "color": "鵝黃",
+   "qty_yd": 963,
+   "free_stock_yd": 791,
+   "expected_outcome": "shortage",
+   "reference_answer": "shortage",
+   "erp_result": "shortage",
+   "erp_rolls": [],
+   "erp_allocated_yd": 0,
+   "checks": {
+    "reports_shortage": true
+   },
+   "pass": true,
+   "ms": 0.11
+  },
+  {
+   "order_no": "PO-26035",
+   "pi_id": "PI-20261120-105",
+   "line_no": 2,
+   "erp_product_name": "3389",
+   "color": "天空藍",
+   "qty_yd": 286,
+   "free_stock_yd": 772,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100072-11",
+    "T5100072-10",
+    "T5100072-06",
+    "T5100072-01"
+   ],
+   "erp_allocated_yd": 336.5,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26042",
+   "pi_id": "PI-20261120-106",
+   "line_no": 1,
+   "erp_product_name": "SI-3966",
+   "color": "丁香紫",
+   "qty_yd": 363,
+   "free_stock_yd": 967.9,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100073-12",
+    "T5100073-11",
+    "T5100073-13",
+    "T5100073-07"
+   ],
+   "erp_allocated_yd": 373.2,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26049",
+   "pi_id": "PI-20261120-107",
+   "line_no": 1,
+   "erp_product_name": "3732-M2",
+   "color": "寶石藍",
+   "qty_yd": 89,
+   "free_stock_yd": 419,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100087-01"
+   ],
+   "erp_allocated_yd": 114,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26056",
+   "pi_id": "PI-20261120-108",
+   "line_no": 1,
+   "erp_product_name": "2080C",
+   "color": "玫瑰粉",
+   "qty_yd": 246,
+   "free_stock_yd": 517,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100082-02",
+    "T5100082-07",
+    "T5100082-08"
+   ],
+   "erp_allocated_yd": 295,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26056",
+   "pi_id": "PI-20261120-108",
+   "line_no": 2,
+   "erp_product_name": "W2020",
+   "color": "奶油白",
+   "qty_yd": 467,
+   "free_stock_yd": 760,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_mixed_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100074-02",
+    "T5100074-06",
+    "T5100075-02",
+    "T5100074-03",
+    "T5100075-03"
+   ],
+   "erp_allocated_yd": 496,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26056",
+   "pi_id": "PI-20261120-108",
+   "line_no": 3,
+   "erp_product_name": "NP-B8",
+   "color": "霧灰",
+   "qty_yd": 265,
+   "free_stock_yd": 709,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100027-06",
+    "T5100027-02",
+    "T5100027-04"
+   ],
+   "erp_allocated_yd": 304,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26056",
+   "pi_id": "PI-20261120-108",
+   "line_no": 4,
+   "erp_product_name": "4172",
+   "color": "奶油白",
+   "qty_yd": 302,
+   "free_stock_yd": 616,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100043-07",
+    "T5100043-03",
+    "T5100043-06",
+    "T5100043-01"
+   ],
+   "erp_allocated_yd": 377,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26063",
+   "pi_id": "PI-20261120-109",
+   "line_no": 1,
+   "erp_product_name": "N442",
+   "color": "酒紅",
+   "qty_yd": 128,
+   "free_stock_yd": 533,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100110-08",
+    "T5100110-01"
+   ],
+   "erp_allocated_yd": 191,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26063",
+   "pi_id": "PI-20261120-109",
+   "line_no": 2,
+   "erp_product_name": "90086",
+   "color": "正黑",
+   "qty_yd": 189,
+   "free_stock_yd": 539.9,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100106-08",
+    "T5100106-04"
+   ],
+   "erp_allocated_yd": 196.6,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26063",
+   "pi_id": "PI-20261120-109",
+   "line_no": 3,
+   "erp_product_name": "3300",
+   "color": "霧灰",
+   "qty_yd": 377,
+   "free_stock_yd": 681,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100023-03",
+    "T5100023-06",
+    "T5100023-01",
+    "T5100023-05",
+    "T5100023-11"
+   ],
+   "erp_allocated_yd": 425,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26070",
+   "pi_id": "PI-20261120-110",
+   "line_no": 1,
+   "erp_product_name": "7765",
+   "color": "薄荷綠",
+   "qty_yd": 1088,
+   "free_stock_yd": 930.1,
+   "expected_outcome": "shortage",
+   "reference_answer": "shortage",
+   "erp_result": "shortage",
+   "erp_rolls": [],
+   "erp_allocated_yd": 0,
+   "checks": {
+    "reports_shortage": true
+   },
+   "pass": true,
+   "ms": 0.07
+  },
+  {
+   "order_no": "PO-26077",
+   "pi_id": "PI-20261120-111",
+   "line_no": 1,
+   "erp_product_name": "3389",
+   "color": "深卡其",
+   "qty_yd": 209,
+   "free_stock_yd": 554,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100124-04",
+    "T5100124-06"
+   ],
+   "erp_allocated_yd": 222,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26077",
+   "pi_id": "PI-20261120-111",
+   "line_no": 2,
+   "erp_product_name": "3819",
+   "color": "霧灰",
+   "qty_yd": 297,
+   "free_stock_yd": 699,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100049-05",
+    "T5100049-06",
+    "T5100049-02"
+   ],
+   "erp_allocated_yd": 317,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.05
+  },
+  {
+   "order_no": "PO-26077",
+   "pi_id": "PI-20261120-111",
+   "line_no": 3,
+   "erp_product_name": "NC7013",
+   "color": "薄荷綠",
+   "qty_yd": 269,
+   "free_stock_yd": 479,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100132-06",
+    "T5100132-04",
+    "T5100132-05",
+    "T5100132-03"
+   ],
+   "erp_allocated_yd": 335,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26084",
+   "pi_id": "PI-20261120-112",
+   "line_no": 1,
+   "erp_product_name": "4034",
+   "color": "象牙白",
+   "qty_yd": 436,
+   "free_stock_yd": 756,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100013-10",
+    "T5100013-05",
+    "T5100013-09",
+    "T5100013-06",
+    "T5100013-04",
+    "T5100013-08"
+   ],
+   "erp_allocated_yd": 498,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.15
+  },
+  {
+   "order_no": "PO-26084",
+   "pi_id": "PI-20261120-112",
+   "line_no": 2,
+   "erp_product_name": "630-1GU",
+   "color": "奶油白",
+   "qty_yd": 183,
+   "free_stock_yd": 755,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100112-04",
+    "T5100112-01"
+   ],
+   "erp_allocated_yd": 204.89999999999998,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26084",
+   "pi_id": "PI-20261120-112",
+   "line_no": 3,
+   "erp_product_name": "3818",
+   "color": "霧灰",
+   "qty_yd": 289,
+   "free_stock_yd": 941,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100077-06",
+    "T5100077-02",
+    "T5100077-03",
+    "T5100077-08"
+   ],
+   "erp_allocated_yd": 377,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.14
+  },
+  {
+   "order_no": "PO-26091",
+   "pi_id": "PI-20261120-113",
+   "line_no": 1,
+   "erp_product_name": "3308",
+   "color": "薄荷綠",
+   "qty_yd": 98,
+   "free_stock_yd": 467,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100022-04",
+    "T5100022-02"
+   ],
+   "erp_allocated_yd": 172.8,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26091",
+   "pi_id": "PI-20261120-113",
+   "line_no": 2,
+   "erp_product_name": "3736",
+   "color": "鵝黃",
+   "qty_yd": 215,
+   "free_stock_yd": 376,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100024-04",
+    "T5100024-03",
+    "T5100024-02"
+   ],
+   "erp_allocated_yd": 271,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26091",
+   "pi_id": "PI-20261120-113",
+   "line_no": 3,
+   "erp_product_name": "3732-M2",
+   "color": "霧灰",
+   "qty_yd": 183,
+   "free_stock_yd": 395,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100060-02",
+    "T5100060-06",
+    "T5100060-07"
+   ],
+   "erp_allocated_yd": 194.70000000000002,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26098",
+   "pi_id": "PI-20261120-114",
+   "line_no": 1,
+   "erp_product_name": "4287",
+   "color": "香檳金",
+   "qty_yd": 241,
+   "free_stock_yd": 834,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100026-10",
+    "T5100026-04",
+    "T5100026-11"
+   ],
+   "erp_allocated_yd": 327,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26098",
+   "pi_id": "PI-20261120-114",
+   "line_no": 2,
+   "erp_product_name": "3363-1",
+   "color": "深卡其",
+   "qty_yd": 100,
+   "free_stock_yd": 436,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100130-01"
+   ],
+   "erp_allocated_yd": 110,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26105",
+   "pi_id": "PI-20261120-115",
+   "line_no": 1,
+   "erp_product_name": "N429",
+   "color": "正黑",
+   "qty_yd": 870,
+   "free_stock_yd": 743,
+   "expected_outcome": "shortage",
+   "reference_answer": "shortage",
+   "erp_result": "shortage",
+   "erp_rolls": [],
+   "erp_allocated_yd": 0,
+   "checks": {
+    "reports_shortage": true
+   },
+   "pass": true,
+   "ms": 0.1
+  },
+  {
+   "order_no": "PO-26112",
+   "pi_id": "PI-20261120-116",
+   "line_no": 1,
+   "erp_product_name": "90124",
+   "color": "銀灰",
+   "qty_yd": 254,
+   "free_stock_yd": 511,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100008-07",
+    "T5100008-01",
+    "T5100008-05"
+   ],
+   "erp_allocated_yd": 290,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.07
+  },
+  {
+   "order_no": "PO-26119",
+   "pi_id": "PI-20261120-117",
+   "line_no": 1,
+   "erp_product_name": "N423",
+   "color": "玫瑰粉",
+   "qty_yd": 401,
+   "free_stock_yd": 696.1,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100105-03",
+    "T5100105-08",
+    "T5100105-06",
+    "T5100105-01"
+   ],
+   "erp_allocated_yd": 394.1,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.51
+  },
+  {
+   "order_no": "PO-26119",
+   "pi_id": "PI-20261120-117",
+   "line_no": 2,
+   "erp_product_name": "3389",
+   "color": "深卡其",
+   "qty_yd": 299,
+   "free_stock_yd": 554,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100124-04",
+    "T5100124-06",
+    "T5100124-07"
+   ],
+   "erp_allocated_yd": 325,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.1
+  },
+  {
+   "order_no": "PO-26119",
+   "pi_id": "PI-20261120-117",
+   "line_no": 3,
+   "erp_product_name": "3819",
+   "color": "奶油白",
+   "qty_yd": 199,
+   "free_stock_yd": 493,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100134-05",
+    "T5100134-07"
+   ],
+   "erp_allocated_yd": 218,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.07
+  },
+  {
+   "order_no": "PO-26119",
+   "pi_id": "PI-20261120-117",
+   "line_no": 4,
+   "erp_product_name": "3389",
+   "color": "天空藍",
+   "qty_yd": 396,
+   "free_stock_yd": 772,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100072-11",
+    "T5100072-10",
+    "T5100072-06",
+    "T5100072-01",
+    "T5100072-02"
+   ],
+   "erp_allocated_yd": 416.1,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.13
+  },
+  {
+   "order_no": "PO-26126",
+   "pi_id": "PI-20261120-118",
+   "line_no": 1,
+   "erp_product_name": "2000-1A",
+   "color": "象牙白",
+   "qty_yd": 452,
+   "free_stock_yd": 737,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100028-12",
+    "T5100028-03",
+    "T5100028-05",
+    "T5100028-13",
+    "T5100028-04",
+    "T5100028-08"
+   ],
+   "erp_allocated_yd": 501,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26126",
+   "pi_id": "PI-20261120-118",
+   "line_no": 2,
+   "erp_product_name": "WT-7007",
+   "color": "深卡其",
+   "qty_yd": 284,
+   "free_stock_yd": 863,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100111-05",
+    "T5100111-12",
+    "T5100111-08"
+   ],
+   "erp_allocated_yd": 269.8,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26126",
+   "pi_id": "PI-20261120-118",
+   "line_no": 3,
+   "erp_product_name": "7764",
+   "color": "寶石藍",
+   "qty_yd": 205,
+   "free_stock_yd": 402,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100034-03",
+    "T5100034-02"
+   ],
+   "erp_allocated_yd": 206,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.03
+  },
+  {
+   "order_no": "PO-26126",
+   "pi_id": "PI-20261120-118",
+   "line_no": 4,
+   "erp_product_name": "3818",
+   "color": "象牙白",
+   "qty_yd": 348,
+   "free_stock_yd": 552,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100035-04",
+    "T5100035-06",
+    "T5100035-03",
+    "T5100035-05"
+   ],
+   "erp_allocated_yd": 382,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.03
+  },
+  {
+   "order_no": "PO-26133",
+   "pi_id": "PI-20261120-119",
+   "line_no": 1,
+   "erp_product_name": "3005",
+   "color": "丁香紫",
+   "qty_yd": 264,
+   "free_stock_yd": 645,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100005-02",
+    "T5100005-05",
+    "T5100005-06"
+   ],
+   "erp_allocated_yd": 336,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.03
+  },
+  {
+   "order_no": "PO-26140",
+   "pi_id": "PI-20261120-120",
+   "line_no": 1,
+   "erp_product_name": "4172",
+   "color": "奶油白",
+   "qty_yd": 801,
+   "free_stock_yd": 616,
+   "expected_outcome": "shortage",
+   "reference_answer": "shortage",
+   "erp_result": "shortage",
+   "erp_rolls": [],
+   "erp_allocated_yd": 0,
+   "checks": {
+    "reports_shortage": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26140",
+   "pi_id": "PI-20261120-120",
+   "line_no": 2,
+   "erp_product_name": "W2020",
+   "color": "奶油白",
+   "qty_yd": 198,
+   "free_stock_yd": 760,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100074-02",
+    "T5100074-06"
+   ],
+   "erp_allocated_yd": 216,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.03
+  },
+  {
+   "order_no": "PO-26140",
+   "pi_id": "PI-20261120-120",
+   "line_no": 3,
+   "erp_product_name": "2080C",
+   "color": "玫瑰粉",
+   "qty_yd": 286,
+   "free_stock_yd": 517,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100082-02",
+    "T5100082-07",
+    "T5100082-08"
+   ],
+   "erp_allocated_yd": 295,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.05
+  },
+  {
+   "order_no": "PO-26140",
+   "pi_id": "PI-20261120-120",
+   "line_no": 4,
+   "erp_product_name": "71025",
+   "color": "天空藍",
+   "qty_yd": 140,
+   "free_stock_yd": 252,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100003-03",
+    "T5100003-02"
+   ],
+   "erp_allocated_yd": 185,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.1
+  },
+  {
+   "order_no": "PO-26147",
+   "pi_id": "PI-20261120-121",
+   "line_no": 1,
+   "erp_product_name": "N429",
+   "color": "正黑",
+   "qty_yd": 414,
+   "free_stock_yd": 743,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100030-07",
+    "T5100030-04",
+    "T5100030-05",
+    "T5100031-01",
+    "T5100030-06"
+   ],
+   "erp_allocated_yd": 479,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.05
+  },
+  {
+   "order_no": "PO-26154",
+   "pi_id": "PI-20261120-122",
+   "line_no": 1,
+   "erp_product_name": "CHIFFON-6 (7550)",
+   "color": "淺粉",
+   "qty_yd": 323,
+   "free_stock_yd": 693,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100125-07",
+    "T5100125-03",
+    "T5100125-04",
+    "T5100125-08"
+   ],
+   "erp_allocated_yd": 409,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26154",
+   "pi_id": "PI-20261120-122",
+   "line_no": 2,
+   "erp_product_name": "N307-120\"",
+   "color": "正黑",
+   "qty_yd": 118,
+   "free_stock_yd": 385,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100097-07",
+    "T5100097-04"
+   ],
+   "erp_allocated_yd": 182,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26154",
+   "pi_id": "PI-20261120-122",
+   "line_no": 3,
+   "erp_product_name": "N434",
+   "color": "玫瑰粉",
+   "qty_yd": 90,
+   "free_stock_yd": 493,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100081-03"
+   ],
+   "erp_allocated_yd": 114,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26154",
+   "pi_id": "PI-20261120-122",
+   "line_no": 4,
+   "erp_product_name": "3720B",
+   "color": "酒紅",
+   "qty_yd": 337,
+   "free_stock_yd": 1006.1,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100113-13",
+    "T5100113-11",
+    "T5100113-08",
+    "T5100113-03"
+   ],
+   "erp_allocated_yd": 382.1,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.05
+  },
+  {
+   "order_no": "PO-26161",
+   "pi_id": "PI-20261120-123",
+   "line_no": 1,
+   "erp_product_name": "3819",
+   "color": "奶油白",
+   "qty_yd": 129,
+   "free_stock_yd": 493,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100134-05",
+    "T5100134-07"
+   ],
+   "erp_allocated_yd": 218,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.05
+  },
+  {
+   "order_no": "PO-26161",
+   "pi_id": "PI-20261120-123",
+   "line_no": 2,
+   "erp_product_name": "WH-2137",
+   "color": "霧灰",
+   "qty_yd": 140,
+   "free_stock_yd": 479,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100014-02",
+    "T5100014-07"
+   ],
+   "erp_allocated_yd": 186,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26161",
+   "pi_id": "PI-20261120-123",
+   "line_no": 3,
+   "erp_product_name": "W3911",
+   "color": "奶油白",
+   "qty_yd": 524,
+   "free_stock_yd": 911,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100010-09",
+    "T5100010-14",
+    "T5100010-08",
+    "T5100010-01",
+    "T5100010-10",
+    "T5100010-05"
+   ],
+   "erp_allocated_yd": 579,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.05
+  },
+  {
+   "order_no": "PO-26161",
+   "pi_id": "PI-20261120-123",
+   "line_no": 4,
+   "erp_product_name": "NC7013",
+   "color": "薄荷綠",
+   "qty_yd": 147,
+   "free_stock_yd": 479,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100132-06",
+    "T5100132-04"
+   ],
+   "erp_allocated_yd": 186,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26168",
+   "pi_id": "PI-20261120-124",
+   "line_no": 1,
+   "erp_product_name": "N426",
+   "color": "奶油白",
+   "qty_yd": 126,
+   "free_stock_yd": 418,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100122-09",
+    "T5100122-05"
+   ],
+   "erp_allocated_yd": 203,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26168",
+   "pi_id": "PI-20261120-124",
+   "line_no": 2,
+   "erp_product_name": "KK28-R",
+   "color": "霧灰",
+   "qty_yd": 154,
+   "free_stock_yd": 460.1,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100085-01",
+    "T5100085-05"
+   ],
+   "erp_allocated_yd": 190.2,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26168",
+   "pi_id": "PI-20261120-124",
+   "line_no": 3,
+   "erp_product_name": "N421",
+   "color": "寶石藍",
+   "qty_yd": 188,
+   "free_stock_yd": 1040,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100078-06",
+    "T5100078-09"
+   ],
+   "erp_allocated_yd": 224,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.1
+  },
+  {
+   "order_no": "PO-26168",
+   "pi_id": "PI-20261120-124",
+   "line_no": 4,
+   "erp_product_name": "7764",
+   "color": "寶石藍",
+   "qty_yd": 156,
+   "free_stock_yd": 402,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100034-03",
+    "T5100034-02"
+   ],
+   "erp_allocated_yd": 206,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26175",
+   "pi_id": "PI-20261120-125",
+   "line_no": 1,
+   "erp_product_name": "90079",
+   "color": "深卡其",
+   "qty_yd": 906,
+   "free_stock_yd": 694,
+   "expected_outcome": "shortage",
+   "reference_answer": "shortage",
+   "erp_result": "shortage",
+   "erp_rolls": [],
+   "erp_allocated_yd": 0,
+   "checks": {
+    "reports_shortage": true
+   },
+   "pass": true,
+   "ms": 0.24
+  },
+  {
+   "order_no": "PO-26175",
+   "pi_id": "PI-20261120-125",
+   "line_no": 2,
+   "erp_product_name": "4181",
+   "color": "香檳金",
+   "qty_yd": 89,
+   "free_stock_yd": 568,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100021-05"
+   ],
+   "erp_allocated_yd": 115,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26175",
+   "pi_id": "PI-20261120-125",
+   "line_no": 3,
+   "erp_product_name": "3736",
+   "color": "鵝黃",
+   "qty_yd": 125,
+   "free_stock_yd": 376,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100024-04",
+    "T5100024-03"
+   ],
+   "erp_allocated_yd": 198,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.09
+  },
+  {
+   "order_no": "PO-26182",
+   "pi_id": "PI-20261120-126",
+   "line_no": 1,
+   "erp_product_name": "3363-1",
+   "color": "深卡其",
+   "qty_yd": 85,
+   "free_stock_yd": 436,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100130-01"
+   ],
+   "erp_allocated_yd": 110,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26182",
+   "pi_id": "PI-20261120-126",
+   "line_no": 2,
+   "erp_product_name": "N424",
+   "color": "酒紅",
+   "qty_yd": 109,
+   "free_stock_yd": 643,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100114-02"
+   ],
+   "erp_allocated_yd": 113,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26182",
+   "pi_id": "PI-20261120-126",
+   "line_no": 3,
+   "erp_product_name": "NC7015",
+   "color": "玫瑰粉",
+   "qty_yd": 601,
+   "free_stock_yd": 989,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100103-03",
+    "T5100103-07",
+    "T5100103-04",
+    "T5100103-06",
+    "T5100103-09",
+    "T5100103-08"
+   ],
+   "erp_allocated_yd": 623,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26182",
+   "pi_id": "PI-20261120-126",
+   "line_no": 4,
+   "erp_product_name": "4172",
+   "color": "奶油白",
+   "qty_yd": 265,
+   "free_stock_yd": 616,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100043-07",
+    "T5100043-03",
+    "T5100043-06"
+   ],
+   "erp_allocated_yd": 300,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26189",
+   "pi_id": "PI-20261120-127",
+   "line_no": 1,
+   "erp_product_name": "NC7011",
+   "color": "香檳金",
+   "qty_yd": 124,
+   "free_stock_yd": 644,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100037-04",
+    "T5100037-08"
+   ],
+   "erp_allocated_yd": 218,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.03
+  },
+  {
+   "order_no": "PO-26189",
+   "pi_id": "PI-20261120-127",
+   "line_no": 2,
+   "erp_product_name": "3366",
+   "color": "正黑",
+   "qty_yd": 75,
+   "free_stock_yd": 461,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100133-04"
+   ],
+   "erp_allocated_yd": 115,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.03
+  },
+  {
+   "order_no": "PO-26196",
+   "pi_id": "PI-20261120-128",
+   "line_no": 1,
+   "erp_product_name": "3176-M2",
+   "color": "奶油白",
+   "qty_yd": 387,
+   "free_stock_yd": 621,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100029-04",
+    "T5100029-02",
+    "T5100029-08",
+    "T5100029-01",
+    "T5100029-09"
+   ],
+   "erp_allocated_yd": 432,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.04
+  },
+  {
+   "order_no": "PO-26196",
+   "pi_id": "PI-20261120-128",
+   "line_no": 2,
+   "erp_product_name": "CHIFFON-6 (7550)",
+   "color": "淺粉",
+   "qty_yd": 360,
+   "free_stock_yd": 693,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100125-07",
+    "T5100125-03",
+    "T5100125-04",
+    "T5100125-08"
+   ],
+   "erp_allocated_yd": 409,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26196",
+   "pi_id": "PI-20261120-128",
+   "line_no": 3,
+   "erp_product_name": "7636",
+   "color": "奶油白",
+   "qty_yd": 144,
+   "free_stock_yd": 252,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_mixed_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100094-07",
+    "T5100094-01",
+    "T5100094-06"
+   ],
+   "erp_allocated_yd": 179,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.06
+  },
+  {
+   "order_no": "PO-26196",
+   "pi_id": "PI-20261120-128",
+   "line_no": 4,
+   "erp_product_name": "7765",
+   "color": "深卡其",
+   "qty_yd": 236,
+   "free_stock_yd": 776,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100115-05",
+    "T5100115-07",
+    "T5100115-01"
+   ],
+   "erp_allocated_yd": 303.59999999999997,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26203",
+   "pi_id": "PI-20261120-129",
+   "line_no": 1,
+   "erp_product_name": "3389",
+   "color": "天空藍",
+   "qty_yd": 348,
+   "free_stock_yd": 772,
+   "expected_outcome": "allocated",
+   "reference_answer": "allocated_single_batch",
+   "erp_result": "allocated",
+   "erp_rolls": [
+    "T5100072-11",
+    "T5100072-10",
+    "T5100072-06",
+    "T5100072-01"
+   ],
+   "erp_allocated_yd": 336.5,
+   "checks": {
+    "has_result": true,
+    "same_product_colour_free": true,
+    "no_duplicate": true,
+    "covers_qty": true,
+    "no_extra_roll": true
+   },
+   "pass": true,
+   "ms": 0.08
+  },
+  {
+   "order_no": "PO-26210",
+   "pi_id": "PI-20261120-130",
+   "line_no": 1,
+   "erp_product_name": "N415",
+   "color": "香檳金",
+   "qty_yd": 816,
+   "free_stock_yd": 603,
+   "expected_outcome": "shortage",
+   "reference_answer": "shortage",
+   "erp_result": "shortage",
+   "erp_rolls": [],
+   "erp_allocated_yd": 0,
+   "checks": {
+    "reports_shortage": true
+   },
+   "pass": true,
+   "ms": 0.08
+  }
+ ],
+ "order_pass": 30,
+ "order_accuracy": 100,
+ "line_pass": 75,
+ "line_accuracy": 100,
+ "shortage_lines": 6,
+ "agrees_with_reference_outcome": 75,
+ "same_rolls_as_reference": 11,
+ "threshold": 90
+}

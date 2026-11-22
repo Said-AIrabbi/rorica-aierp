@@ -1,0 +1,53 @@
+﻿編號,類別,測試,預期,實際（證據）,判定
+C2-2-01,Agent Card,四個代理人的 Agent Card 可由 /.well-known/agent-card.json 取得,HTTP 200，JSON 符合 AgentCard 欄位,"[""order-intake HTTP 200"",""production HTTP 200"",""color-control HTTP 200"",""shipping HTTP 200""]",PASS
+C2-2-02,Agent Card,Agent Card 的 JWS 簽章驗證通過,驗證成功,"[""order-intake: valid"",""production: valid"",""color-control: valid"",""shipping: valid""]",PASS
+C2-2-03,Agent Card,竄改 Agent Card 任一欄位後簽章驗證失敗,驗證失敗,description 改一字後全部驗證失敗,PASS
+C2-2-04,Agent Card,Agent Card 的 kid 能在 jku 指向的 JWKS 找到,找到對應公鑰,kid 87JCaSadk8wyZSdc 於 https://rorica-aierp.vercel.app/a2a/jwks.json,PASS
+C2-2-05,Agent Card,服務發現：依技能找得到負責的代理人,回傳 color-control,match-history-colour → color-control,PASS
+C2-2-06,訊息格式,message/send 回傳 Task 物件,result.kind=task，含 id、contextId、status,"{""id"":""task-ca36937c3b3d"",""state"":""completed""}",PASS
+C2-2-07,訊息格式,缺少 messageId 的請求被拒絕,JSON-RPC -32602 Invalid params,"{""code"":-32602,""message"":""message.messageId is required""}",PASS
+C2-2-08,訊息格式,非 JSON 的請求,JSON-RPC -32700 Parse error,"{""code"":-32700,""message"":""Parse error""}",PASS
+C2-2-09,訊息格式,不存在的方法,JSON-RPC -32601 Method not found,"{""code"":-32601,""message"":""Method not found""}",PASS
+C2-2-10,訊息格式,不支援的內容類型,-32005 ContentTypeNotSupported,"{""code"":-32005,""message"":""content type image/tiff is not supported by allocate-rolls""}",PASS
+C2-2-11,狀態轉換,合法轉換 submitted→working,狀態依序記錄於 history，時間遞增,submitted→working→completed,PASS
+C2-2-12,狀態轉換,合法轉換 working→completed,狀態依序記錄於 history，時間遞增,submitted→working→completed,PASS
+C2-2-13,狀態轉換,合法轉換 working→input-required,狀態依序記錄於 history，時間遞增,submitted→working→input-required,PASS
+C2-2-14,狀態轉換,合法轉換 input-required→working,狀態依序記錄於 history，時間遞增,submitted→working→input-required→working→completed,PASS
+C2-2-15,狀態轉換,合法轉換 working→failed,狀態依序記錄於 history，時間遞增,"{""states"":""submitted→working→failed"",""error_code"":""E_NO_COLOUR_MATCH""}",PASS
+C2-2-16,狀態轉換,合法轉換 submitted→canceled,狀態依序記錄於 history，時間遞增,submitted→canceled,PASS
+C2-2-17,狀態轉換,合法轉換 working→canceled,狀態依序記錄於 history，時間遞增,submitted→working→canceled,PASS
+C2-2-18,狀態轉換,合法轉換 submitted→rejected,狀態依序記錄於 history，時間遞增,submitted→rejected,PASS
+C2-2-19,狀態轉換,終態不可再轉換 completed→working,拒絕並回錯誤，狀態不變,"{""error"":-32004,""state"":""completed → completed""}",PASS
+C2-2-20,狀態轉換,終態不可再轉換 failed→completed,拒絕並回錯誤，狀態不變,"{""error"":-32004,""state"":""failed → failed""}",PASS
+C2-2-21,狀態轉換,終態不可再轉換 canceled→working,拒絕並回錯誤，狀態不變,"{""error"":-32004,""state"":""canceled → canceled""}",PASS
+C2-2-22,狀態轉換,終態不可再轉換 rejected→working,拒絕並回錯誤，狀態不變,"{""error"":-32004,""state"":""rejected → rejected""}",PASS
+C2-2-23,錯誤代碼,查詢不存在的任務,-32001 TaskNotFound,"{""code"":-32001,""message"":""task task-does-not-exist not found""}",PASS
+C2-2-24,錯誤代碼,取消已完成的任務,-32002 TaskNotCancelable,"{""code"":-32002,""message"":""task task-ca36937c3b3d is completed""}",PASS
+C2-2-25,錯誤代碼,要求推播但代理人不支援,-32003 PushNotificationNotSupported,"{""code"":-32003,""message"":""Push notifications are not supported""}",PASS
+C2-2-26,錯誤代碼,呼叫未實作的操作,-32004 UnsupportedOperation,"{""code"":-32004,""message"":""message/stream is not supported by this agent""}",PASS
+C2-2-27,錯誤代碼,對方代理人回應格式錯誤,-32006 InvalidAgentResponse,"{""state"":""failed"",""error_code"":-32006}",PASS
+C2-2-28,錯誤代碼,未帶憑證,HTTP 401,HTTP 401,PASS
+C2-2-29,錯誤代碼,憑證過期,HTTP 401,HTTP 401 invalid token: expired,PASS
+C2-2-30,錯誤代碼,內部錯誤,-32603 Internal error，任務 failed 並記錄錯誤代碼,"{""error"":-32603,""task"":""failed"",""recorded"":-32603}",PASS
+C2-2-31,錯誤代碼,DataPart 不符 Schema,-32602 Invalid params，附 Schema 錯誤位置,"[""$.lines: required""]",PASS
+C2-2-32,錯誤代碼,數量為 0,-32602 Invalid params,"[""$.lines[0].qty_yd: must be > 0""]",PASS
+C2-2-33,冪等性,同一 messageId 重送（情境 1：立即重送）,回原任務，不建第二個任務,"{""label"":""立即重送"",""task_ids"":[""task-38404e2e91c0""],""new_tasks"":1}",PASS
+C2-2-34,冪等性,同一 messageId 重送（情境 2：30 秒後重送）,回原任務，不建第二個任務,"{""label"":""30 秒後重送"",""task_ids"":[""task-e17911f3ca4d""],""new_tasks"":1}",PASS
+C2-2-35,冪等性,同一 messageId 重送（情境 3：任務完成後重送）,回原任務，不建第二個任務,"{""label"":""任務完成後重送"",""task_ids"":[""task-373992900577""],""new_tasks"":1}",PASS
+C2-2-36,冪等性,同一 messageId 重送（情境 4：不同連線重送）,回原任務，不建第二個任務,"{""label"":""不同連線重送"",""task_ids"":[""task-c2ba3162d9a2""],""new_tasks"":1}",PASS
+C2-2-37,冪等性,同一 messageId 重送（情境 5：並行重送 2 次）,回原任務，不建第二個任務,"{""label"":""並行重送 2 次"",""task_ids"":[""task-f08e1f81cae7""],""new_tasks"":1}",PASS
+C2-2-38,冪等性,同一 messageId 重送（情境 6：重送但 body 不同）,拒絕（同 id 不同內容）且不建新任務,"{""error"":""messageId already used with different content"",""new_tasks"":0}",PASS
+C2-2-39,補償機制,任務失敗時釋放預留庫存（出貨失敗）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""出貨失敗"",""state"":""failed"",""error_code"":""E_SHIPMENT_FAILED"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
+C2-2-40,補償機制,任務失敗時釋放預留庫存（色控失敗）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""色控失敗"",""state"":""failed"",""error_code"":""E_NO_COLOUR_MATCH"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
+C2-2-41,補償機制,任務失敗時釋放預留庫存（逾時）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""逾時"",""state"":""failed"",""error_code"":""E_TIMEOUT"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
+C2-2-42,補償機制,任務失敗時釋放預留庫存（人工取消）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""人工取消"",""state"":""canceled"",""error_code"":""E_CANCELED"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
+C2-2-43,補償機制,任務失敗時釋放預留庫存（下游代理人錯誤）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""下游代理人錯誤"",""state"":""failed"",""error_code"":-32603,""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
+C2-2-44,補償機制,任務失敗時釋放預留庫存（部分配貨後失敗）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""部分配貨後失敗"",""state"":""failed"",""error_code"":""E_PARTIAL_ALLOCATION"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
+C2-2-45,Schema,order-intake 合法範例通過驗證,通過,通過,PASS
+C2-2-46,Schema,order-intake 多餘欄位被拒,不通過,"[""$.unexpected: not allowed""]",PASS
+C2-2-47,Schema,colour-request 合法範例通過驗證,通過,通過,PASS
+C2-2-48,Schema,colour-request 多餘欄位被拒,不通過,"[""$.unexpected: not allowed""]",PASS
+C2-2-49,Schema,shipment 合法範例通過驗證,通過,通過,PASS
+C2-2-50,Schema,shipment 多餘欄位被拒,不通過,"[""$.unexpected: not allowed""]",PASS
+C2-2-51,追溯,以 contextId 匯出完整軌跡,含四個代理人的所有訊息與狀態轉換,"{""events"":21,""agents"":[""order-intake"",""production"",""color-control"",""shipping""]}",PASS
+C2-2-52,追溯,失敗任務留有錯誤代碼與狀態轉換,error_code 與 history 皆存在,"{""error_code"":""E_SHIPMENT_FAILED"",""transitions"":""submitted→working→failed""}",PASS

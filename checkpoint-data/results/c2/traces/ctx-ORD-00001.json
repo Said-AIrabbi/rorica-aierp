@@ -1,0 +1,192 @@
+{
+ "contextId": "ctx-ORD-00001",
+ "exported_at": "2026-11-22T07:21:04.424Z",
+ "events": [
+  {
+   "ts": "2026-11-22T07:20:58.496Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "order-intake",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-ccc772ae362d",
+    "messageId": "msg-E2E-001",
+    "from": "test-harness",
+    "skill": "map-order"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.498Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-ccc772ae362d",
+    "skill": "map-order",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.500Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-ccc772ae362d",
+    "skill": "map-order",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.503Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "order-intake",
+   "type": "message-out",
+   "detail": {
+    "to": "production",
+    "skill": "route-line",
+    "messageId": "msg-12ecdfcbec73"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.505Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "production",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-607c07a6d046",
+    "messageId": "msg-12ecdfcbec73",
+    "from": "order-intake",
+    "skill": "route-line"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.507Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-607c07a6d046",
+    "skill": "route-line",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.509Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-607c07a6d046",
+    "skill": "route-line",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.512Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "production",
+   "type": "reservation",
+   "detail": {
+    "line_no": 1,
+    "rolls": [
+     "T5100001-05",
+     "T5100002-03",
+     "T5100002-02"
+    ],
+    "qty_yd": 212
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.515Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "production",
+   "type": "message-out",
+   "detail": {
+    "to": "shipping",
+    "skill": "create-shipment",
+    "messageId": "msg-954acdce869b"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.517Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "shipping",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-034945deb739",
+    "messageId": "msg-954acdce869b",
+    "from": "production",
+    "skill": "create-shipment"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.519Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-034945deb739",
+    "skill": "create-shipment",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.521Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-034945deb739",
+    "skill": "create-shipment",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.522Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "shipping",
+   "type": "shipment",
+   "detail": {
+    "shipment_no": "SHP-PO-ctx-ORD-00001-adf70a",
+    "rolls": [
+     "T5100001-05",
+     "T5100002-03",
+     "T5100002-02"
+    ]
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.525Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-034945deb739",
+    "skill": "create-shipment",
+    "state": "completed"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.528Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-607c07a6d046",
+    "skill": "route-line",
+    "state": "completed"
+   }
+  },
+  {
+   "ts": "2026-11-22T07:20:58.531Z",
+   "contextId": "ctx-ORD-00001",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-ccc772ae362d",
+    "skill": "map-order",
+    "state": "completed"
+   }
+  }
+ ]
+}

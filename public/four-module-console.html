@@ -157,6 +157,10 @@ table.dt tr.new td{background:color-mix(in srgb,var(--st-ok) 14%,transparent)}
 .data-note{font-size:12px;color:var(--ink-2);margin-top:8px}
 .subh{font-size:13px;font-weight:500;margin:14px 0 6px}
 .subh:first-child{margin-top:0}
+.pp{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin:6px 0 4px}
+.pp img{max-width:180px;max-height:180px;border:1px solid var(--line);border-radius:6px}
+.pp .grow{flex:1;min-width:260px}
+.pp-pick{display:inline-flex;align-items:center;gap:8px;font-size:13px}
 .target{display:flex;align-items:center;gap:8px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.lane-draw{stroke-dasharray:none;stroke-dashoffset:0}.agent.speaking{transform:none}}
 /* 嵌在 ERP 頁面裡：標題由 ERP 頁首負責，這裡不重複；不留外框與內距，配色、字型跟著 ERP 主題 */
@@ -177,6 +181,7 @@ html.in-erp table.dt thead th{position:sticky;top:0;background:var(--surface);z-
 .case .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:640px){.case{flex-wrap:wrap}.case .grow{flex-basis:100%;white-space:normal}}
 </style>
+<script src="colour-match.js"></script>
 <script>
 /*
   嵌在 ERP 裡時（同源，外層有 __FOUR_MODULE_BRIDGE__）：
@@ -1201,6 +1206,31 @@ function renderMods(){
   $('mods').innerHTML=Object.entries(MODS).map(([k,m])=>`<button type="button" class="mod ${cur===k?'on':''} ${S.tab===k?'cur':''}" data-k="${k}" style="--mc:var(${m.c})" aria-label="${m.name}，已呼叫 ${cnt[k]} 次，查看模組資料"><span class="mh"><span class="sq" aria-hidden="true"></span>${m.name}<span class="cnt mono">${cnt[k]} 次</span></span><span class="md">${m.d}</span></button>`).join('');
   $('mods').querySelectorAll('.mod').forEach(b=>b.onclick=()=>{S.tab=b.dataset.k;render();$('data-title').scrollIntoView({behavior:REDUCE?'auto':'smooth',block:'start'})});
 }
+/* 噴印圖檔配色：上傳印花圖檔 → 取主色 → 對色彩資料庫（CIEDE2000）；ΔE00 ≤ 1.0 可直接用既有色號，否則請 ColorMind 預測或打色樣。
+   演算法在 colour-match.js，與查核點測試程式共用同一份。結果存在 PP，畫面每次重繪都從這裡讀。 */
+const PP={name:'',src:'',rows:null,busy:false,err:''};
+function ppSection(){
+  const biz=S.role==='biz';
+  const rows=PP.rows?PP.rows.map(r=>`<tr><td><span class="sw" style="background:${r.hex}" aria-hidden="true"></span></td><td class="mono">${r.hex}</td><td class="mono">${(r.share*100).toFixed(1)}%</td><td class="mono">${r.colour_id}</td><td>${r.colour.name||''}</td><td class="mono">${f2(r.dE00)}</td><td>${r.usable?'可直接用此色號':'需 ColorMind 預測或打色樣'}</td></tr>`).join(''):'';
+  return `<div class="subh">噴印圖檔配色</div><div class="sub">上傳數位印花圖檔，系統取出主要顏色，逐一到色彩資料庫（${CDB.samples.length} 筆）找最接近的色號。</div>
+  <div class="pp">${PP.src?`<img src="${PP.src}" alt="上傳的印花圖檔 ${PP.name}">`:''}<div class="grow">
+  <label class="pp-pick"><input type="file" id="pp-file" accept="image/png,image/jpeg,image/webp"> ${PP.busy?'分析中…':PP.name?`目前：${PP.name}`:'選擇圖檔'}</label>
+  ${PP.err?`<div class="sub" role="alert">${PP.err}</div>`:''}
+  ${PP.rows?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>取出的顏色</th><th>面積</th><th>最接近色號</th><th>名稱</th><th>ΔE00</th><th>判定</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">共 ${PP.rows.length} 色；${PP.rows.filter(r=>r.usable).length} 色可直接沿用既有色號${biz?'':'（配方內容只對內部角色顯示）'}。</div>`:''}
+  </div></div>`;
+}
+async function ppAnalyse(file){
+  if(!file)return;
+  PP.busy=true;PP.err='';PP.name=file.name;render();
+  try{
+    const bmp=await createImageBitmap(file);
+    const k=Math.min(1,600/Math.max(bmp.width,bmp.height)),w=Math.max(1,Math.round(bmp.width*k)),h=Math.max(1,Math.round(bmp.height*k));
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(bmp,0,0,w,h);
+    PP.src=cv.toDataURL('image/png');
+    PP.rows=window.ColourMatch.matchPrint(g.getImageData(0,0,w,h).data,w,h,CDB.samples);
+  }catch(e){PP.err='無法讀取這個圖檔：'+(e&&e.message||e);PP.rows=null}
+  PP.busy=false;render();
+}
 function renderData(){
   $('tabs').innerHTML=Object.entries(MODS).map(([k,m])=>`<button type="button" role="tab" aria-selected="${S.tab===k}" data-k="${k}" style="--mc:var(${m.c})">${m.name}</button>`).join('');
   $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.k;render()});
@@ -1222,12 +1252,13 @@ function renderData(){
       else if(M.cm){const c=M.cm;near+=`<div class="subh">ColorMind 預測配方（${c.recipes.length} 組）</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>序號</th><th>色塊</th><th>C</th><th>M</th><th>Y</th><th>K</th><th>R</th><th>G</th><th>B</th></tr></thead><tbody>${c.recipes.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.序號}</td><td><span class="sw" style="background:rgb(${r.R},${r.G},${r.B})" aria-hidden="true"></span></td><td class="mono">${r.C}</td><td class="mono">${r.M}</td><td class="mono">${r.Y}</td><td class="mono">${r.K}</td><td class="mono">${r.R}</td><td class="mono">${r.G}</td><td class="mono">${r.B}</td></tr>`).join('')}</tbody></table></div><div class="data-note">送出「${c.色樣名稱}」L* ${c.L}・a* ${c.a}・b* ${c.b}；${c.live?'ColorMind 測試站回傳。':'以模擬結果帶回，格式與 ColorMind 回傳相同。'}</div>`:`<div class="sub">已取得 ${c.recipes.length} 組預測配方；配方內容只對內部角色顯示。</div>`}`}
       else if(!M.reuse){const rs=M.recs;near+=`<div class="subh">候選配方</div>${biz?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>參考色樣</th><th>染料與濃度（% owf）</th><th>預估 ΔE00</th></tr></thead><tbody>${rs.map(r=>`<tr class="${S.hl.col==='recipes'?'hl':''}"><td class="mono">${r.no}</td><td class="mono">${r.from}</td><td>${r.dyes.map(d=>`${d.dye} ${d.c.toFixed(3)}`).join('、')}</td><td class="mono">${f2(r.pred)}</td></tr>`).join('')}</tbody></table></div>`:`<div class="sub">已備妥 ${rs.length} 組候選配方；配方內容只對內部角色顯示。</div>`}`}}
     const ms=CDB.measurements.length?`<div class="subh">實測紀錄</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>配方</th><th>新增色樣</th><th>實測 L*</th><th>a*</th><th>b*</th><th>ΔE00</th><th>日期</th></tr></thead><tbody>${CDB.measurements.map(m=>`<tr class="new"><td class="mono">${m.recipe}</td><td class="mono">${m.sample}</td><td class="mono">${f1(m.lab[0])}</td><td class="mono">${f1(m.lab[1])}</td><td class="mono">${f1(m.lab[2])}</td><td class="mono">${f2(m.d)}</td><td class="mono">${m.date}</td></tr>`).join('')}</tbody></table></div>`:'';
-    h=`${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆${shownCol.length<CDB.samples.length?`，列出 ${shownCol.length} 筆`:''}）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩庫 ${RECIPE_DB.length} 筆（歷史染色配方去識別化＋模擬色彩資料，來源見各列）；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測，由業務到 ColorMind 確認並帶回`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
+    h=`${ppSection()}${near}${ms}<div class="subh">色樣（${CDB.samples.length} 筆${shownCol.length<CDB.samples.length?`，列出 ${shownCol.length} 筆`:''}）</div><div class="tbl-wrap"><table class="dt"><thead><tr><th>色塊</th><th>色樣編號</th><th>顏色</th><th>${RECIPE_DB?'配方':'胚布'}</th><th>L*</th><th>a*</th><th>b*</th><th>來源</th></tr></thead><tbody>${rows}</tbody></table></div><div class="data-note">色差以 CIEDE2000 計算；色塊為螢幕示意，一律以實體色卡為準（${RECIPE_DB?`色樣取自 ERP 色彩庫 ${RECIPE_DB.length} 筆（歷史染色配方去識別化＋模擬色彩資料，來源見各列）；找不到 ΔE00 1.0 以內的配方時請 ColorMind 預測，由業務到 ColorMind 確認並帶回`:BRIDGE?'色樣取自 ERP 色號；選色系統 API 尚未提供，比對與配方預測為內建簡化算法':'示意資料'}）。</div>`;
   }else{
     const vis=S.events.slice(0,S.shown);
     h=vis.length?`<div class="tbl-wrap"><table class="dt"><thead><tr><th>事件</th><th>發起者</th><th>接收者</th><th>模組</th><th>工具／標籤</th><th>狀態</th></tr></thead><tbody>${vis.map(e=>`<tr class="${e.id===S.sel?'hl':''}"><td class="mono">${e.id}</td><td>${AG[e.from].name}</td><td>${AG[e.to].name}</td><td>${mtag(modOf(e))}</td><td class="mono">${e.tag}</td><td>${STATUS[e.status].t} <span class="sub mono">${e.status}</span></td></tr>`).join('')}</tbody></table></div><div class="data-note">代理人協作模組的事件表，也是協作畫面的資料來源；任務狀態採 A2A v1.0 命名。</div>`:`<div class="empty">尚未有事件。按「播放」後，每一筆代理人之間的呼叫都會寫進這裡。</div>`;
   }
   $('datapane').innerHTML=h;
+  const ppf=$('pp-file');if(ppf)ppf.onchange=e=>ppAnalyse(e.target.files[0]);
 }
 function render(){renderMods();renderBoard();renderLanes();renderThread();renderDetail();renderControls();renderData();}
 
