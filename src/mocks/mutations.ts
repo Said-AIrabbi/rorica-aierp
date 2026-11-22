@@ -5,6 +5,7 @@ import {
   allocateWholeRolls,
   availableFabricLabels,
   checkCustomSplicing,
+  rollYard,
   isReservationHolding,
   isReservationLocking,
   isRollReserved,
@@ -411,7 +412,7 @@ function autoReserveStockForNotice(notice: PackingNotice, keepExpiresAt?: string
         color: item.color,
         requiredQty: item.yard,
         rollCodes: chosen.map((r) => r.rollCode),
-        totalLength: Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2)),
+        totalLength: Number(chosen.reduce((sum, r) => sum + rollYard(r), 0).toFixed(2)),
         standardSize: product?.originalRollStandardYard ?? 0,
         status: '待確認',
         createdAt: dayjs().toISOString(),
@@ -440,7 +441,7 @@ function reserveRollsForItem(
   keepExpiresAt?: string,
   withDownstream = true,
 ): StockReservation {
-  const qty = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
+  const qty = Number(chosen.reduce((sum, r) => sum + rollYard(r), 0).toFixed(2))
   const createdAt = dayjs().toISOString()
   const reservation: StockReservation = {
     id: `${item.id}-RES${stockReservations.filter((r) => r.packingNoticeItemId === item.id).length + 1}`,
@@ -585,7 +586,7 @@ export function applyCustomSplicingCombination(
   // 決策118：表1 還是草稿時只配貨、不建下游，等簽核生效才一起建
   reserveRollsForItem(notice, item, chosen, keepExpiresAt, notice.status !== '草稿')
 
-  const totalLength = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
+  const totalLength = Number(chosen.reduce((sum, r) => sum + rollYard(r), 0).toFixed(2))
   const standardSize =
     pending?.standardSize ?? resolveProduct(item.productId, item.roricaProductName)?.originalRollStandardYard ?? 0
   const decidedAt = dayjs().toISOString()
