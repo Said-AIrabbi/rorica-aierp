@@ -1,0 +1,190 @@
+{
+ "contextId": "ctx-ORD-00006",
+ "exported_at": "2026-11-26T09:00:28.095Z",
+ "events": [
+  {
+   "ts": "2026-11-26T09:00:17.909Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "order-intake",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-fc389cab7c7b",
+    "messageId": "msg-E2E-006",
+    "from": "test-harness",
+    "skill": "map-order"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.911Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-fc389cab7c7b",
+    "skill": "map-order",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.913Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-fc389cab7c7b",
+    "skill": "map-order",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.916Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "order-intake",
+   "type": "message-out",
+   "detail": {
+    "to": "production",
+    "skill": "route-line",
+    "messageId": "msg-69ea6e60a260"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.918Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "production",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-d06f3fbfc61f",
+    "messageId": "msg-69ea6e60a260",
+    "from": "order-intake",
+    "skill": "route-line"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.920Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-d06f3fbfc61f",
+    "skill": "route-line",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.922Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-d06f3fbfc61f",
+    "skill": "route-line",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.925Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "production",
+   "type": "reservation",
+   "detail": {
+    "line_no": 1,
+    "rolls": [
+     "T5100007-06",
+     "T5100007-04"
+    ],
+    "qty_yd": 208
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.928Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "production",
+   "type": "message-out",
+   "detail": {
+    "to": "shipping",
+    "skill": "create-shipment",
+    "messageId": "msg-699bc9444389"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.930Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "shipping",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-dd05d89cd7e2",
+    "messageId": "msg-699bc9444389",
+    "from": "production",
+    "skill": "create-shipment"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.932Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-dd05d89cd7e2",
+    "skill": "create-shipment",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.934Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-dd05d89cd7e2",
+    "skill": "create-shipment",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.935Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "shipping",
+   "type": "shipment",
+   "detail": {
+    "shipment_no": "SHP-PO-ctx-ORD-00006-2d7c78",
+    "rolls": [
+     "T5100007-06",
+     "T5100007-04"
+    ]
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.938Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-dd05d89cd7e2",
+    "skill": "create-shipment",
+    "state": "completed"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.941Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-d06f3fbfc61f",
+    "skill": "route-line",
+    "state": "completed"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.944Z",
+   "contextId": "ctx-ORD-00006",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-fc389cab7c7b",
+    "skill": "map-order",
+    "state": "completed"
+   }
+  }
+ ]
+}

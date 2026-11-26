@@ -1,5 +1,14 @@
 import dayjs, { type Dayjs } from 'dayjs'
 import type { FabricLabel, StockReservation } from '@/types'
+import { meterToYard } from '@/lib/units'
+
+/**
+ * 布卷長度換算成碼。布卷以實測單位記錄（Yard 或 Meter），需求量與預留量一律以碼計，
+ * 比較、加總前都要先換算——否則以公尺入庫的布卷會被少算約 9%，配貨時多配一捲。
+ */
+export function rollYard(roll: Pick<FabricLabel, 'length' | 'unit'>): number {
+  return roll.unit === 'Meter' ? meterToYard(roll.length) : roll.length
+}
 
 /** 庫存預留時效：逾期自動釋放 */
 export const STOCK_RESERVATION_DAYS = 14
@@ -71,7 +80,7 @@ export function availableQuantity(
   labels: FabricLabel[],
   reservations: StockReservation[],
 ): number {
-  return availableFabricLabels(productName, color, labels, reservations).reduce((sum, l) => sum + l.length, 0)
+  return availableFabricLabels(productName, color, labels, reservations).reduce((sum, l) => sum + rollYard(l), 0)
 }
 
 export interface SplicingCombination {
@@ -91,12 +100,12 @@ export function suggestSplicingCombination(
   standardSize: number,
 ): SplicingCombination | null {
   if (!(standardSize > 0)) return null
-  const sorted = [...availableRolls].sort((a, b) => a.length - b.length)
+  const sorted = [...availableRolls].sort((a, b) => rollYard(a) - rollYard(b))
   let best: SplicingCombination | null = null
 
   function combinations(start: number, chosen: FabricLabel[]) {
     if (chosen.length > 0) {
-      const totalLength = Number(chosen.reduce((sum, r) => sum + r.length, 0).toFixed(2))
+      const totalLength = Number(chosen.reduce((sum, r) => sum + rollYard(r), 0).toFixed(2))
       // 需同時滿足：足夠出貨、且剛好落在原疋標準尺寸的整數倍上（無耗損）
       if (totalLength >= requiredQty && isMultipleOf(totalLength, standardSize)) {
         if (!best || totalLength < best.totalLength) best = { rolls: [...chosen], totalLength }
@@ -140,7 +149,7 @@ export function checkCustomSplicing(
 ): SplicingCheck {
   const errors: string[] = []
   const warnings: string[] = []
-  const totalLength = Number(rolls.reduce((sum, r) => sum + r.length, 0).toFixed(2))
+  const totalLength = Number(rolls.reduce((sum, r) => sum + rollYard(r), 0).toFixed(2))
 
   if (rolls.length === 0) errors.push('請至少選擇一捲布')
   if (rolls.length > 0 && totalLength < requiredQty) {
@@ -187,13 +196,13 @@ function isMultipleOf(total: number, unit: number): boolean {
  */
 export function allocateWholeRolls(requiredQty: number, availableRolls: FabricLabel[]): FabricLabel[] | null {
   // 由大到小取用，讓需要裁切的捲數降到最低
-  const sorted = [...availableRolls].sort((a, b) => b.length - a.length)
+  const sorted = [...availableRolls].sort((a, b) => rollYard(b) - rollYard(a))
   const chosen: FabricLabel[] = []
   let total = 0
   for (const roll of sorted) {
     if (total >= requiredQty) break
     chosen.push(roll)
-    total += roll.length
+    total += rollYard(roll)
   }
   return total >= requiredQty ? chosen : null
 }

@@ -1,0 +1,979 @@
+{
+ "total": 20,
+ "passed": 17,
+ "pass_rate": 85,
+ "ran_at": "2026-11-26T08:58:48.788Z",
+ "cases": [
+  {
+   "case_id": "B2-P-01",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-01.png",
+   "pattern": "stripes",
+   "colours_expected": 3,
+   "colours_detected": 3,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-01408",
+     "expected_hex": "#CD8CD7",
+     "detected_hex": "#CD8CD7",
+     "detected_share": 0.375,
+     "matched_colour_id": "SIM-01408",
+     "matched_dE00": 0.043,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-09135",
+     "expected_hex": "#C2946A",
+     "detected_hex": "#C2946A",
+     "detected_share": 0.375,
+     "matched_colour_id": "SIM-09135",
+     "matched_dE00": 0.202,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-04736",
+     "expected_hex": "#6543EC",
+     "detected_hex": "#6543EC",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-04736",
+     "matched_dE00": 0.082,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 502,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-02",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-02.png",
+   "pattern": "checks",
+   "colours_expected": 3,
+   "colours_detected": 3,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-07433",
+     "expected_hex": "#EC1FC5",
+     "detected_hex": "#EB20C5",
+     "detected_share": 0.329,
+     "matched_colour_id": "SIM-07433",
+     "matched_dE00": 0.144,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-04172",
+     "expected_hex": "#B8533D",
+     "detected_hex": "#B8533E",
+     "detected_share": 0.343,
+     "matched_colour_id": "SIM-04172",
+     "matched_dE00": 0.19,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00711",
+     "expected_hex": "#4F5DBC",
+     "detected_hex": "#505DBC",
+     "detected_share": 0.328,
+     "matched_colour_id": "SIM-00711",
+     "matched_dE00": 0.243,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 388,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-03",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-03.png",
+   "pattern": "dots",
+   "colours_expected": 4,
+   "colours_detected": 5,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-03044",
+     "expected_hex": "#5A1F75",
+     "detected_hex": "#5A1F75",
+     "detected_share": 0.851,
+     "matched_colour_id": "SIM-03044",
+     "matched_dE00": 0.04,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-08094",
+     "expected_hex": "#9A876A",
+     "detected_hex": "#998A6A",
+     "detected_share": 0.028,
+     "matched_colour_id": "SIM-05634",
+     "matched_dE00": 2.419,
+     "ok": false
+    },
+    {
+     "expected_colour_id": "SIM-04223",
+     "expected_hex": "#ECA127",
+     "detected_hex": "#EBA028",
+     "detected_share": 0.037,
+     "matched_colour_id": "SIM-04223",
+     "matched_dE00": 0.212,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-02140",
+     "expected_hex": "#3B9BC0",
+     "detected_hex": "#3C9ABF",
+     "detected_share": 0.037,
+     "matched_colour_id": "SIM-02140",
+     "matched_dE00": 0.294,
+     "ok": true
+    }
+   ],
+   "extra": [
+    {
+     "hex": "#9A846B",
+     "share": 0.046,
+     "colour_id": "SIM-08094"
+    }
+   ],
+   "ms": 688,
+   "pass": false
+  },
+  {
+   "case_id": "B2-P-04",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-04.png",
+   "pattern": "waves",
+   "colours_expected": 5,
+   "colours_detected": 5,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-08590",
+     "expected_hex": "#241CB2",
+     "detected_hex": "#241CB2",
+     "detected_share": 0.284,
+     "matched_colour_id": "SIM-08590",
+     "matched_dE00": 0.06,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00739",
+     "expected_hex": "#2C842A",
+     "detected_hex": "#2C842A",
+     "detected_share": 0.225,
+     "matched_colour_id": "SIM-00739",
+     "matched_dE00": 0.115,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-05635",
+     "expected_hex": "#AA0A78",
+     "detected_hex": "#AA0A78",
+     "detected_share": 0.156,
+     "matched_colour_id": "SIM-05635",
+     "matched_dE00": 0.085,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-03180",
+     "expected_hex": "#055814",
+     "detected_hex": "#055814",
+     "detected_share": 0.156,
+     "matched_colour_id": "SIM-03180",
+     "matched_dE00": 0.045,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-09467",
+     "expected_hex": "#C97F79",
+     "detected_hex": "#C97F79",
+     "detected_share": 0.179,
+     "matched_colour_id": "SIM-09467",
+     "matched_dE00": 0.154,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 422,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-05",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-05.png",
+   "pattern": "blocks",
+   "colours_expected": 4,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-01499",
+     "expected_hex": "#E2A11B",
+     "detected_hex": "#E2A11B",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-01499",
+     "matched_dE00": 0.048,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00285",
+     "expected_hex": "#6C851B",
+     "detected_hex": "#6C851B",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-00285",
+     "matched_dE00": 0.032,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-03611",
+     "expected_hex": "#2814BF",
+     "detected_hex": "#2814BF",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-03611",
+     "matched_dE00": 0.011,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-08466",
+     "expected_hex": "#D70B3C",
+     "detected_hex": "#D70B3C",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-08466",
+     "matched_dE00": 0.057,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 371,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-06",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-06.png",
+   "pattern": "stripes",
+   "colours_expected": 3,
+   "colours_detected": 3,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-01878",
+     "expected_hex": "#1CE4CF",
+     "detected_hex": "#1CE4CF",
+     "detected_share": 0.376,
+     "matched_colour_id": "SIM-01878",
+     "matched_dE00": 0.147,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-02792",
+     "expected_hex": "#5898FB",
+     "detected_hex": "#5898FB",
+     "detected_share": 0.375,
+     "matched_colour_id": "SIM-02792",
+     "matched_dE00": 0.147,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-07245",
+     "expected_hex": "#21D3B7",
+     "detected_hex": "#21D3B7",
+     "detected_share": 0.249,
+     "matched_colour_id": "SIM-07245",
+     "matched_dE00": 0.128,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 320,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-07",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-07.png",
+   "pattern": "checks",
+   "colours_expected": 4,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "HIS-0272",
+     "expected_hex": "#00717E",
+     "detected_hex": "#02717E",
+     "detected_share": 0.25,
+     "matched_colour_id": "HIS-0272",
+     "matched_dE00": 0.976,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-09312",
+     "expected_hex": "#983194",
+     "detected_hex": "#983294",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-09312",
+     "matched_dE00": 0.151,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "HIS-0399",
+     "expected_hex": "#FE5F99",
+     "detected_hex": "#FD5F99",
+     "detected_share": 0.25,
+     "matched_colour_id": "HIS-0399",
+     "matched_dE00": 0.312,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00556",
+     "expected_hex": "#18E572",
+     "detected_hex": "#18E572",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-00556",
+     "matched_dE00": 0.158,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 369,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-08",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-08.png",
+   "pattern": "dots",
+   "colours_expected": 3,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-02877",
+     "expected_hex": "#82B842",
+     "detected_hex": "#82B842",
+     "detected_share": 0.851,
+     "matched_colour_id": "SIM-02877",
+     "matched_dE00": 0.028,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-05201",
+     "expected_hex": "#4D566D",
+     "detected_hex": "#4E546D",
+     "detected_share": 0.042,
+     "matched_colour_id": "SIM-03324",
+     "matched_dE00": 1.414,
+     "ok": false
+    },
+    {
+     "expected_colour_id": "SIM-05748",
+     "expected_hex": "#160F38",
+     "detected_hex": "#171038",
+     "detected_share": 0.074,
+     "matched_colour_id": "SIM-05748",
+     "matched_dE00": 0.198,
+     "ok": true
+    }
+   ],
+   "extra": [
+    {
+     "hex": "#4E5A6B",
+     "share": 0.032,
+     "colour_id": "HIS-0222"
+    }
+   ],
+   "ms": 279,
+   "pass": false
+  },
+  {
+   "case_id": "B2-P-09",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-09.png",
+   "pattern": "waves",
+   "colours_expected": 4,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-03374",
+     "expected_hex": "#87FC5A",
+     "detected_hex": "#87FB5A",
+     "detected_share": 0.286,
+     "matched_colour_id": "SIM-03374",
+     "matched_dE00": 0.151,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-04151",
+     "expected_hex": "#8D0204",
+     "detected_hex": "#8D0305",
+     "detected_share": 0.31,
+     "matched_colour_id": "SIM-04151",
+     "matched_dE00": 0.081,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-09122",
+     "expected_hex": "#1B70D4",
+     "detected_hex": "#1B70D4",
+     "detected_share": 0.225,
+     "matched_colour_id": "SIM-09122",
+     "matched_dE00": 0.034,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-01942",
+     "expected_hex": "#1682EC",
+     "detected_hex": "#1682EC",
+     "detected_share": 0.179,
+     "matched_colour_id": "SIM-01942",
+     "matched_dE00": 0.08,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 367,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-10",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-10.png",
+   "pattern": "blocks",
+   "colours_expected": 3,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-02796",
+     "expected_hex": "#0FCAA6",
+     "detected_hex": "#0FCAA6",
+     "detected_share": 0.336,
+     "matched_colour_id": "SIM-02796",
+     "matched_dE00": 0.035,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06233",
+     "expected_hex": "#83B1B8",
+     "detected_hex": "#83B0B9",
+     "detected_share": 0.225,
+     "matched_colour_id": "SIM-06233",
+     "matched_dE00": 1.181,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06512",
+     "expected_hex": "#2B7D43",
+     "detected_hex": "#2B7D43",
+     "detected_share": 0.328,
+     "matched_colour_id": "SIM-06512",
+     "matched_dE00": 0.039,
+     "ok": true
+    }
+   ],
+   "extra": [
+    {
+     "hex": "#83B4B5",
+     "share": 0.111,
+     "colour_id": "SIM-07082"
+    }
+   ],
+   "ms": 291,
+   "pass": false
+  },
+  {
+   "case_id": "B2-P-11",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-11.png",
+   "pattern": "stripes",
+   "colours_expected": 5,
+   "colours_detected": 5,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-04196",
+     "expected_hex": "#9408F2",
+     "detected_hex": "#9408F2",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-04196",
+     "matched_dE00": 0.045,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "HIS-0093",
+     "expected_hex": "#70C6D9",
+     "detected_hex": "#70C6D9",
+     "detected_share": 0.25,
+     "matched_colour_id": "HIS-0093",
+     "matched_dE00": 0.093,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-07050",
+     "expected_hex": "#133C6C",
+     "detected_hex": "#133C6C",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-07050",
+     "matched_dE00": 0.103,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-05613",
+     "expected_hex": "#3AA73C",
+     "detected_hex": "#3AA73C",
+     "detected_share": 0.125,
+     "matched_colour_id": "SIM-05613",
+     "matched_dE00": 0.156,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-05096",
+     "expected_hex": "#56798E",
+     "detected_hex": "#56798E",
+     "detected_share": 0.125,
+     "matched_colour_id": "SIM-05096",
+     "matched_dE00": 0.06,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 329,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-12",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-12.png",
+   "pattern": "checks",
+   "colours_expected": 3,
+   "colours_detected": 3,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-02758",
+     "expected_hex": "#FA6600",
+     "detected_hex": "#F96602",
+     "detected_share": 0.332,
+     "matched_colour_id": "SIM-02758",
+     "matched_dE00": 0.154,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-05137",
+     "expected_hex": "#55F6D8",
+     "detected_hex": "#55F5D7",
+     "detected_share": 0.343,
+     "matched_colour_id": "SIM-05137",
+     "matched_dE00": 0.115,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00202",
+     "expected_hex": "#F1500B",
+     "detected_hex": "#F1500B",
+     "detected_share": 0.325,
+     "matched_colour_id": "SIM-00202",
+     "matched_dE00": 0.093,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 243,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-13",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-13.png",
+   "pattern": "dots",
+   "colours_expected": 5,
+   "colours_detected": 5,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-06282",
+     "expected_hex": "#8944DE",
+     "detected_hex": "#8944DE",
+     "detected_share": 0.851,
+     "matched_colour_id": "SIM-06282",
+     "matched_dE00": 0.02,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06104",
+     "expected_hex": "#916EF2",
+     "detected_hex": "#916DF1",
+     "detected_share": 0.037,
+     "matched_colour_id": "SIM-06104",
+     "matched_dE00": 0.273,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-07672",
+     "expected_hex": "#DCA31A",
+     "detected_hex": "#DBA21B",
+     "detected_share": 0.037,
+     "matched_colour_id": "SIM-07672",
+     "matched_dE00": 0.396,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-04845",
+     "expected_hex": "#68CA14",
+     "detected_hex": "#69CA15",
+     "detected_share": 0.037,
+     "matched_colour_id": "SIM-04845",
+     "matched_dE00": 0.152,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00616",
+     "expected_hex": "#D13919",
+     "detected_hex": "#D0391A",
+     "detected_share": 0.037,
+     "matched_colour_id": "SIM-00616",
+     "matched_dE00": 0.2,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 307,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-14",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-14.png",
+   "pattern": "waves",
+   "colours_expected": 4,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-00472",
+     "expected_hex": "#2E9F01",
+     "detected_hex": "#2E9F02",
+     "detected_share": 0.286,
+     "matched_colour_id": "SIM-00472",
+     "matched_dE00": 0.07,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-02064",
+     "expected_hex": "#DC0C5B",
+     "detected_hex": "#DC0C5B",
+     "detected_share": 0.31,
+     "matched_colour_id": "SIM-02064",
+     "matched_dE00": 0.05,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-03306",
+     "expected_hex": "#0924C9",
+     "detected_hex": "#0924C9",
+     "detected_share": 0.225,
+     "matched_colour_id": "SIM-03306",
+     "matched_dE00": 0.04,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-05164",
+     "expected_hex": "#12FCA9",
+     "detected_hex": "#12FBA9",
+     "detected_share": 0.179,
+     "matched_colour_id": "SIM-05164",
+     "matched_dE00": 0.183,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 437,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-15",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-15.png",
+   "pattern": "blocks",
+   "colours_expected": 4,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-07355",
+     "expected_hex": "#CF3CF2",
+     "detected_hex": "#CF3CF2",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-07355",
+     "matched_dE00": 0.05,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06808",
+     "expected_hex": "#8A5D01",
+     "detected_hex": "#8A5D02",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-06808",
+     "matched_dE00": 0.1,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00073",
+     "expected_hex": "#30E920",
+     "detected_hex": "#30E920",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-00073",
+     "matched_dE00": 0.068,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-02198",
+     "expected_hex": "#0B04F1",
+     "detected_hex": "#0B04F1",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-02198",
+     "matched_dE00": 0.028,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 608,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-16",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-16.png",
+   "pattern": "stripes",
+   "colours_expected": 3,
+   "colours_detected": 3,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-05314",
+     "expected_hex": "#2328C4",
+     "detected_hex": "#2328C4",
+     "detected_share": 0.375,
+     "matched_colour_id": "SIM-05314",
+     "matched_dE00": 0.034,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00574",
+     "expected_hex": "#581052",
+     "detected_hex": "#581052",
+     "detected_share": 0.375,
+     "matched_colour_id": "SIM-00574",
+     "matched_dE00": 0.056,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-01482",
+     "expected_hex": "#A8CA46",
+     "detected_hex": "#A8CA46",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-01482",
+     "matched_dE00": 0.094,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 396,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-17",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-17.png",
+   "pattern": "checks",
+   "colours_expected": 5,
+   "colours_detected": 5,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-01228",
+     "expected_hex": "#843A19",
+     "detected_hex": "#833B19",
+     "detected_share": 0.188,
+     "matched_colour_id": "SIM-01228",
+     "matched_dE00": 0.292,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00801",
+     "expected_hex": "#49621A",
+     "detected_hex": "#4A621A",
+     "detected_share": 0.203,
+     "matched_colour_id": "SIM-00801",
+     "matched_dE00": 0.216,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-04529",
+     "expected_hex": "#95639D",
+     "detected_hex": "#95639C",
+     "detected_share": 0.219,
+     "matched_colour_id": "SIM-04529",
+     "matched_dE00": 0.183,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06280",
+     "expected_hex": "#AE8353",
+     "detected_hex": "#AD8354",
+     "detected_share": 0.203,
+     "matched_colour_id": "SIM-06280",
+     "matched_dE00": 0.247,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-01970",
+     "expected_hex": "#70D6BD",
+     "detected_hex": "#71D6BC",
+     "detected_share": 0.187,
+     "matched_colour_id": "SIM-01970",
+     "matched_dE00": 0.146,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 576,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-18",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-18.png",
+   "pattern": "dots",
+   "colours_expected": 3,
+   "colours_detected": 3,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-06141",
+     "expected_hex": "#F9A9F0",
+     "detected_hex": "#F9A9F0",
+     "detected_share": 0.851,
+     "matched_colour_id": "SIM-06141",
+     "matched_dE00": 0.038,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06802",
+     "expected_hex": "#20F67D",
+     "detected_hex": "#21F57E",
+     "detected_share": 0.074,
+     "matched_colour_id": "SIM-06802",
+     "matched_dE00": 0.26,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-07889",
+     "expected_hex": "#35AC91",
+     "detected_hex": "#36AC92",
+     "detected_share": 0.074,
+     "matched_colour_id": "SIM-07889",
+     "matched_dE00": 0.219,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 408,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-19",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-19.png",
+   "pattern": "waves",
+   "colours_expected": 4,
+   "colours_detected": 4,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-01573",
+     "expected_hex": "#F670DD",
+     "detected_hex": "#F670DD",
+     "detected_share": 0.286,
+     "matched_colour_id": "SIM-01573",
+     "matched_dE00": 0.082,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-03106",
+     "expected_hex": "#D3A806",
+     "detected_hex": "#D3A806",
+     "detected_share": 0.31,
+     "matched_colour_id": "SIM-03106",
+     "matched_dE00": 0.224,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-04504",
+     "expected_hex": "#F059A7",
+     "detected_hex": "#F059A7",
+     "detected_share": 0.225,
+     "matched_colour_id": "SIM-04504",
+     "matched_dE00": 0.068,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-00004",
+     "expected_hex": "#2270FD",
+     "detected_hex": "#2270FC",
+     "detected_share": 0.179,
+     "matched_colour_id": "SIM-00004",
+     "matched_dE00": 0.126,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 361,
+   "pass": true
+  },
+  {
+   "case_id": "B2-P-20",
+   "variant": "holdout noise±12",
+   "image": "b2/print-images/print-20.png",
+   "pattern": "blocks",
+   "colours_expected": 5,
+   "colours_detected": 5,
+   "lines": [
+    {
+     "expected_colour_id": "SIM-05055",
+     "expected_hex": "#BA8FFA",
+     "detected_hex": "#BA8FFA",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-05055",
+     "matched_dE00": 0.096,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-02132",
+     "expected_hex": "#FA49DB",
+     "detected_hex": "#FA49DB",
+     "detected_share": 0.25,
+     "matched_colour_id": "SIM-02132",
+     "matched_dE00": 0.064,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-09202",
+     "expected_hex": "#11758B",
+     "detected_hex": "#11758B",
+     "detected_share": 0.166,
+     "matched_colour_id": "SIM-09202",
+     "matched_dE00": 0.033,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-06073",
+     "expected_hex": "#B6741A",
+     "detected_hex": "#B6741A",
+     "detected_share": 0.166,
+     "matched_colour_id": "SIM-06073",
+     "matched_dE00": 0.032,
+     "ok": true
+    },
+    {
+     "expected_colour_id": "SIM-08449",
+     "expected_hex": "#567E2C",
+     "detected_hex": "#567E2C",
+     "detected_share": 0.168,
+     "matched_colour_id": "SIM-08449",
+     "matched_dE00": 0.108,
+     "ok": true
+    }
+   ],
+   "extra": [],
+   "ms": 384,
+   "pass": true
+  }
+ ]
+}

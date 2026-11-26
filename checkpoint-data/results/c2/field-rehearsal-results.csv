@@ -1,0 +1,46 @@
+﻿情境,路線,最終狀態,經過階段,檢查,判定
+C2-1-S-01,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-02,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-03,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-04,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-05,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-06,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-07,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-08,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-09,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-10,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-11,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-12,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-13,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-14,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-S-15,in_stock,completed,接單→生管→出貨,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,PASS
+C2-1-P-01,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-02,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-03,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-04,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-05,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-06,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-07,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-08,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-09,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-10,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-11,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-12,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-13,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-14,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-P-15,print,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok palette:ok,PASS
+C2-1-D-01,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-02,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-03,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-04,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-05,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-06,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-07,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-08,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-09,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-10,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-11,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-12,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-13,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-14,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS
+C2-1-D-15,dye,completed,接單→生管→色控→出貨,completed:ok route:ok shipped:ok colour:ok recipe:ok,PASS

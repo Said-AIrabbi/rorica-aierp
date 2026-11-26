@@ -1,0 +1,398 @@
+{
+ "total": 30,
+ "passed": 30,
+ "pass_rate": 100,
+ "ran_at": "2026-11-26T08:58:48.788Z",
+ "cases": [
+  {
+   "case_id": "B2-H-01",
+   "target_lab": [
+    50.027,
+    11.5,
+    12.454
+   ],
+   "expected_colour_id": "HIS-0262",
+   "returned_colour_id": "HIS-0262",
+   "returned_dE00": 0.788,
+   "ms": 113,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-02",
+   "target_lab": [
+    33.473,
+    37.878,
+    5.554
+   ],
+   "expected_colour_id": "HIS-0460",
+   "returned_colour_id": "HIS-0460",
+   "returned_dE00": 0.474,
+   "ms": 34,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-03",
+   "target_lab": [
+    46.124,
+    55.013,
+    32.561
+   ],
+   "expected_colour_id": "HIS-0230",
+   "returned_colour_id": "HIS-0230",
+   "returned_dE00": 0.154,
+   "ms": 34,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-04",
+   "target_lab": [
+    55.92,
+    -28.247,
+    -16.471
+   ],
+   "expected_colour_id": "HIS-0129",
+   "returned_colour_id": "HIS-0129",
+   "returned_dE00": 0.51,
+   "ms": 69,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-05",
+   "target_lab": [
+    33.944,
+    22.41,
+    -37.282
+   ],
+   "expected_colour_id": "HIS-0239",
+   "returned_colour_id": "HIS-0239",
+   "returned_dE00": 0.5,
+   "ms": 18,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-06",
+   "target_lab": [
+    85.426,
+    -4.026,
+    81.452
+   ],
+   "expected_colour_id": "HIS-0481",
+   "returned_colour_id": "HIS-0481",
+   "returned_dE00": 0.437,
+   "ms": 21,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-07",
+   "target_lab": [
+    63.203,
+    65.537,
+    1.366
+   ],
+   "expected_colour_id": "HIS-0399",
+   "returned_colour_id": "HIS-0399",
+   "returned_dE00": 0.202,
+   "ms": 14,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-08",
+   "target_lab": [
+    70.29,
+    33.973,
+    -6.259
+   ],
+   "expected_colour_id": "HIS-0417",
+   "returned_colour_id": "HIS-0417",
+   "returned_dE00": 0.275,
+   "ms": 15,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-09",
+   "target_lab": [
+    36.214,
+    18.968,
+    -39.242
+   ],
+   "expected_colour_id": "HIS-0241",
+   "returned_colour_id": "HIS-0241",
+   "returned_dE00": 0.279,
+   "ms": 30,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-10",
+   "target_lab": [
+    60.391,
+    58.148,
+    37.985
+   ],
+   "expected_colour_id": "HIS-0135",
+   "returned_colour_id": "HIS-0135",
+   "returned_dE00": 0.312,
+   "ms": 25,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-11",
+   "target_lab": [
+    19.406,
+    2.268,
+    -15.086
+   ],
+   "expected_colour_id": "HIS-0183",
+   "returned_colour_id": "HIS-0183",
+   "returned_dE00": 0.441,
+   "ms": 38,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-12",
+   "target_lab": [
+    43.85,
+    -28.193,
+    -4.259
+   ],
+   "expected_colour_id": "HIS-0383",
+   "returned_colour_id": "HIS-0383",
+   "returned_dE00": 0.386,
+   "ms": 30,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-13",
+   "target_lab": [
+    41.52,
+    -0.395,
+    -6.017
+   ],
+   "expected_colour_id": "HIS-0265",
+   "returned_colour_id": "HIS-0265",
+   "returned_dE00": 0.603,
+   "ms": 37,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-14",
+   "target_lab": [
+    58.302,
+    45.593,
+    56.543
+   ],
+   "expected_colour_id": "HIS-0288",
+   "returned_colour_id": "HIS-0288",
+   "returned_dE00": 0.18,
+   "ms": 28,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-15",
+   "target_lab": [
+    49.54,
+    35.447,
+    -14.577
+   ],
+   "expected_colour_id": "HIS-0168",
+   "returned_colour_id": "HIS-0168",
+   "returned_dE00": 0.279,
+   "ms": 16,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-16",
+   "target_lab": [
+    28.595,
+    10.064,
+    -39.859
+   ],
+   "expected_colour_id": "HIS-0210",
+   "returned_colour_id": "HIS-0210",
+   "returned_dE00": 0.4,
+   "ms": 22,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-17",
+   "target_lab": [
+    59.892,
+    46.298,
+    34.638
+   ],
+   "expected_colour_id": "HIS-0138",
+   "returned_colour_id": "HIS-0138",
+   "returned_dE00": 0.376,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-18",
+   "target_lab": [
+    33.933,
+    38.423,
+    4.042
+   ],
+   "expected_colour_id": "HIS-0086",
+   "returned_colour_id": "HIS-0086",
+   "returned_dE00": 0.459,
+   "ms": 17,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-19",
+   "target_lab": [
+    56.317,
+    55.694,
+    19.205
+   ],
+   "expected_colour_id": "HIS-0449",
+   "returned_colour_id": "HIS-0449",
+   "returned_dE00": 0.473,
+   "ms": 40,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-20",
+   "target_lab": [
+    41.016,
+    -1.309,
+    -14.628
+   ],
+   "expected_colour_id": "HIS-0222",
+   "returned_colour_id": "HIS-0222",
+   "returned_dE00": 0.506,
+   "ms": 21,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-21",
+   "target_lab": [
+    60.054,
+    46.891,
+    34.176
+   ],
+   "expected_colour_id": "HIS-0138",
+   "returned_colour_id": "HIS-0138",
+   "returned_dE00": 0.62,
+   "ms": 18,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-22",
+   "target_lab": [
+    19.437,
+    0.341,
+    -8.054
+   ],
+   "expected_colour_id": "HIS-0090",
+   "returned_colour_id": "HIS-0090",
+   "returned_dE00": 0.323,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-23",
+   "target_lab": [
+    34.367,
+    20.181,
+    -31.958
+   ],
+   "expected_colour_id": "HIS-0240",
+   "returned_colour_id": "HIS-0240",
+   "returned_dE00": 0.481,
+   "ms": 28,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-24",
+   "target_lab": [
+    89.983,
+    -9.648,
+    37.353
+   ],
+   "expected_colour_id": "HIS-0476",
+   "returned_colour_id": "HIS-0476",
+   "returned_dE00": 0.414,
+   "ms": 24,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-25",
+   "target_lab": [
+    32.043,
+    6.937,
+    -41.749
+   ],
+   "expected_colour_id": "HIS-0444",
+   "returned_colour_id": "HIS-0444",
+   "returned_dE00": 0.199,
+   "ms": 41,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-26",
+   "target_lab": [
+    53.903,
+    -20.249,
+    -36.193
+   ],
+   "expected_colour_id": "HIS-0348",
+   "returned_colour_id": "HIS-0348",
+   "returned_dE00": 0.321,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-27",
+   "target_lab": [
+    79.017,
+    -9.66,
+    8.478
+   ],
+   "expected_colour_id": "HIS-0009",
+   "returned_colour_id": "HIS-0009",
+   "returned_dE00": 0.466,
+   "ms": 31,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-28",
+   "target_lab": [
+    64.849,
+    52.508,
+    63.867
+   ],
+   "expected_colour_id": "HIS-0203",
+   "returned_colour_id": "HIS-0203",
+   "returned_dE00": 0.202,
+   "ms": 16,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-29",
+   "target_lab": [
+    36.236,
+    49.645,
+    25.755
+   ],
+   "expected_colour_id": "HIS-0023",
+   "returned_colour_id": "HIS-0023",
+   "returned_dE00": 0.341,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-30",
+   "target_lab": [
+    68.87,
+    50.561,
+    63.376
+   ],
+   "expected_colour_id": "HIS-0475",
+   "returned_colour_id": "HIS-0475",
+   "returned_dE00": 0.373,
+   "ms": 37,
+   "pass": true
+  }
+ ]
+}

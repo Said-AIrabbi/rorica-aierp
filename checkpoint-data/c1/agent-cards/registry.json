@@ -1,25 +1,42 @@
 {
- "note": "服務發現：各代理人的 Agent Card 位置（/.well-known/agent-card.json）",
+ "note": "服務發現：各代理人的 Agent Card 位置（/.well-known/agent-card.json）與技能；名片簽章以 jwks_url 的公鑰驗證",
+ "jwks_url": "https://rorica-aierp.vercel.app/a2a/jwks.json",
  "agents": [
   {
    "key": "order-intake",
    "name": "接單代理人",
-   "card_url": "https://rorica-aierp.vercel.app/a2a/order-intake/.well-known/agent-card.json"
+   "card_url": "https://rorica-aierp.vercel.app/a2a/order-intake/.well-known/agent-card.json",
+   "skills": [
+    "map-order",
+    "check-stock"
+   ]
   },
   {
    "key": "production",
    "name": "生管代理人",
-   "card_url": "https://rorica-aierp.vercel.app/a2a/production/.well-known/agent-card.json"
+   "card_url": "https://rorica-aierp.vercel.app/a2a/production/.well-known/agent-card.json",
+   "skills": [
+    "allocate-rolls",
+    "route-line"
+   ]
   },
   {
    "key": "color-control",
    "name": "色控代理人",
-   "card_url": "https://rorica-aierp.vercel.app/a2a/color-control/.well-known/agent-card.json"
+   "card_url": "https://rorica-aierp.vercel.app/a2a/color-control/.well-known/agent-card.json",
+   "skills": [
+    "match-history-colour",
+    "match-print-palette"
+   ]
   },
   {
    "key": "shipping",
    "name": "出貨代理人",
-   "card_url": "https://rorica-aierp.vercel.app/a2a/shipping/.well-known/agent-card.json"
+   "card_url": "https://rorica-aierp.vercel.app/a2a/shipping/.well-known/agent-card.json",
+   "skills": [
+    "create-shipment",
+    "release-reservation"
+   ]
   }
  ]
 }

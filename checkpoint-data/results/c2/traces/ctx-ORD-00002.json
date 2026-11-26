@@ -1,0 +1,188 @@
+{
+ "contextId": "ctx-ORD-00002",
+ "exported_at": "2026-11-26T09:00:28.091Z",
+ "events": [
+  {
+   "ts": "2026-11-26T09:00:17.761Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "order-intake",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-f7ac7c9d9fbf",
+    "messageId": "msg-E2E-002",
+    "from": "test-harness",
+    "skill": "map-order"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.763Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-f7ac7c9d9fbf",
+    "skill": "map-order",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.765Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-f7ac7c9d9fbf",
+    "skill": "map-order",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.768Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "order-intake",
+   "type": "message-out",
+   "detail": {
+    "to": "production",
+    "skill": "route-line",
+    "messageId": "msg-9330a11e971f"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.770Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "production",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-3063b5e8ae8b",
+    "messageId": "msg-9330a11e971f",
+    "from": "order-intake",
+    "skill": "route-line"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.772Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-3063b5e8ae8b",
+    "skill": "route-line",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.774Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-3063b5e8ae8b",
+    "skill": "route-line",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.777Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "production",
+   "type": "reservation",
+   "detail": {
+    "line_no": 1,
+    "rolls": [
+     "T5100003-03"
+    ],
+    "qty_yd": 76
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.780Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "production",
+   "type": "message-out",
+   "detail": {
+    "to": "shipping",
+    "skill": "create-shipment",
+    "messageId": "msg-b50214a8e1f0"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.782Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "shipping",
+   "type": "message-in",
+   "detail": {
+    "taskId": "task-24bbfbdfda91",
+    "messageId": "msg-b50214a8e1f0",
+    "from": "production",
+    "skill": "create-shipment"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.784Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-24bbfbdfda91",
+    "skill": "create-shipment",
+    "state": "submitted"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.786Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-24bbfbdfda91",
+    "skill": "create-shipment",
+    "state": "working"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.787Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "shipping",
+   "type": "shipment",
+   "detail": {
+    "shipment_no": "SHP-PO-ctx-ORD-00002-0d5ed5",
+    "rolls": [
+     "T5100003-03"
+    ]
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.790Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "shipping",
+   "type": "state",
+   "detail": {
+    "taskId": "task-24bbfbdfda91",
+    "skill": "create-shipment",
+    "state": "completed"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.793Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "production",
+   "type": "state",
+   "detail": {
+    "taskId": "task-3063b5e8ae8b",
+    "skill": "route-line",
+    "state": "completed"
+   }
+  },
+  {
+   "ts": "2026-11-26T09:00:17.796Z",
+   "contextId": "ctx-ORD-00002",
+   "agent": "order-intake",
+   "type": "state",
+   "detail": {
+    "taskId": "task-f7ac7c9d9fbf",
+    "skill": "map-order",
+    "state": "completed"
+   }
+  }
+ ]
+}

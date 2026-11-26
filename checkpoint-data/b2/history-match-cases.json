@@ -1,6 +1,6 @@
 {
  "note": "模擬資料（2026 成果查核點用，非真實交易）；目標色由歷史配方色加小幅擾動產生",
- "count": 20,
+ "count": 30,
  "cases": [
   {
    "case_id": "B2-H-01",
@@ -220,6 +220,116 @@
    ],
    "expected_colour_id": "HIS-0222",
    "expected_dE00": 0.506,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-21",
+   "target_lab": [
+    60.054,
+    46.891,
+    34.176
+   ],
+   "expected_colour_id": "HIS-0138",
+   "expected_dE00": 0.62,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-22",
+   "target_lab": [
+    19.437,
+    0.341,
+    -8.054
+   ],
+   "expected_colour_id": "HIS-0090",
+   "expected_dE00": 0.323,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-23",
+   "target_lab": [
+    34.367,
+    20.181,
+    -31.958
+   ],
+   "expected_colour_id": "HIS-0240",
+   "expected_dE00": 0.481,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-24",
+   "target_lab": [
+    89.983,
+    -9.648,
+    37.353
+   ],
+   "expected_colour_id": "HIS-0476",
+   "expected_dE00": 0.414,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-25",
+   "target_lab": [
+    32.043,
+    6.937,
+    -41.749
+   ],
+   "expected_colour_id": "HIS-0444",
+   "expected_dE00": 0.199,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-26",
+   "target_lab": [
+    53.903,
+    -20.249,
+    -36.193
+   ],
+   "expected_colour_id": "HIS-0348",
+   "expected_dE00": 0.321,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-27",
+   "target_lab": [
+    79.017,
+    -9.66,
+    8.478
+   ],
+   "expected_colour_id": "HIS-0009",
+   "expected_dE00": 0.466,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-28",
+   "target_lab": [
+    64.849,
+    52.508,
+    63.867
+   ],
+   "expected_colour_id": "HIS-0203",
+   "expected_dE00": 0.202,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-29",
+   "target_lab": [
+    36.236,
+    49.645,
+    25.755
+   ],
+   "expected_colour_id": "HIS-0023",
+   "expected_dE00": 0.341,
+   "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
+  },
+  {
+   "case_id": "B2-H-30",
+   "target_lab": [
+    68.87,
+    50.561,
+    63.376
+   ],
+   "expected_colour_id": "HIS-0475",
+   "expected_dE00": 0.373,
    "pass_rule": "系統回傳的最接近色號＝expected_colour_id"
   }
  ]

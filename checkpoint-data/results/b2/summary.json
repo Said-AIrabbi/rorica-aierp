@@ -1,0 +1,25 @@
+{
+ "ran_at": "2026-11-26T08:58:48.788Z",
+ "colour_db": 10500,
+ "history": {
+  "total": 30,
+  "passed": 30,
+  "pass_rate": 100
+ },
+ "print": {
+  "total": 20,
+  "passed": 20,
+  "pass_rate": 100
+ },
+ "print_noise": {
+  "total": 20,
+  "passed": 20,
+  "pass_rate": 100
+ },
+ "print_holdout": {
+  "total": 20,
+  "passed": 17,
+  "pass_rate": 85
+ },
+ "threshold": 90
+}
