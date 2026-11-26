@@ -128,6 +128,10 @@ pre.payload{margin:0;font-family:var(--font-mono);font-size:12px;background:var(
 .ping{animation:ping 1s ease-out infinite}@keyframes ping{50%{transform:scale(1.5);opacity:.5}}
 .spin{animation:spin 1.2s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 .done-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r);border:1px solid color-mix(in srgb,var(--st-ok) 45%,var(--line));background:color-mix(in srgb,var(--st-ok) 9%,var(--surface))}
+.cm-order{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:8px;padding:10px 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface)}
+.cm-order.ok{border-color:color-mix(in srgb,var(--st-ok) 45%,var(--line))}
+.cm-order.fail{border-color:color-mix(in srgb,var(--st-fail) 45%,var(--line))}
+.cm-order .grow{flex:1;min-width:200px}
 .done-mark{width:26px;height:26px;border-radius:50%;background:var(--st-ok);position:relative;flex:none}
 .done-mark::after{content:"";position:absolute;left:9px;top:5px;width:7px;height:12px;border:solid var(--surface);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 #progress{transition:none}
@@ -692,7 +696,7 @@ const SCENARIOS=[
     AG.designer.name=(i.customer&&(i.customer.company||i.customer.name))||'客戶';
     const lab=[col.lab&&col.lab.L,col.lab&&col.lab.a,col.lab&&col.lab.b].map(v=>Number(v)||0);
     const base=erpFor(i.article_no,BASES).sku,near=findNearest(lab,base),reuse=near.d<=1.0,no=col.recipe_no||1;
-    this.desc=`${cust} 在選布平台 ${i.article_no}（${i.name}）的布料頁用 ColorMind 選了顏色「${col.name}」。選布代理人對應 ERP 品號，對色代理人到色彩資料庫比對；業務核准後，選布平台替客戶建立一張已核准的打色樣申請。`;
+    this.desc=`${cust} 在選布平台 ${i.article_no}（${i.name}）的布料頁用 ColorMind 選了顏色「${col.name}」。選布代理人對應 ERP 品號，對色代理人到色彩資料庫比對；業務核准後，選布平台替客戶建立一張已核准的打色樣申請，並把顏色回傳 ColorMind 當訂單（單號 C-${c.id}），ColorMind 通知打色。`;
     const qty=50;
     const pre=[ev('designer','color','請求','SUBMITTED',`在 ${i.article_no} ${i.name} 的布料頁用 ColorMind 選色：「${col.name}」Lab ${lab.map(f1).join('/')}${col.rgb?`，RGB ${col.rgb.join(',')}`:''}（ColorMind #${no}，共 ${col.recipes||1} 組）`,{tag:'ColorMind 選色',mod:'plat',src:'選布平台',payload:{article_no:i.article_no,colour:col},dt:600})];
     pre.push(ev('color','finder','請求','WORKING',`${i.article_no} 對應的 ERP 胚布是哪一款？`,{tag:'map_erp_item',payload:{article_no:i.article_no}}));
@@ -1129,7 +1133,8 @@ function renderThread(){
     const handoffs=vis.filter(e=>e.type==='請求'&&e.from!==e.to).length;
     const agents=new Set(vis.flatMap(e=>[e.from,e.to]).filter(a=>BOARD.includes(a)&&a!=='sales')).size;
     const human=vis.filter(e=>e.status==='INPUT_REQUIRED').length;
-    html+=`<div class="done-banner ${S.fresh&&!REDUCE?'enter':''}"><span class="done-mark" aria-hidden="true"></span><div><strong>案件完成</strong><div class="sub">共 ${vis.length} 步・${handoffs} 次交辦・${agents} 個代理人參與・${human} 次人工確認</div></div></div>`;}
+    html+=`<div class="done-banner ${S.fresh&&!REDUCE?'enter':''}"><span class="done-mark" aria-hidden="true"></span><div><strong>案件完成</strong><div class="sub">共 ${vis.length} 步・${handoffs} 次交辦・${agents} 個代理人參與・${human} 次人工確認</div></div></div>`;
+    html+=cmOrderBox();}
   if(!vis.length&&!S.typing)html=`<div class="empty">尚未開始。按「播放」看代理人如何一步步交接這件事。</div>`;
   const th=$('thread');th.innerHTML=html;th.scrollTop=th.scrollHeight;
   th.querySelectorAll('.msg').forEach(m=>{m.addEventListener('click',ev2=>{if(ev2.target.closest('.approve'))return;S.sel=m.dataset.id;render()});m.addEventListener('keydown',k=>{if(k.target!==m)return;if(k.key==='Enter'){S.sel=m.dataset.id;render()}})});
@@ -1144,6 +1149,35 @@ function renderThread(){
     if(go)go.onclick=()=>{const v=$('rej-reason').value.trim();const err=$('rej-err');if(!v){err.hidden=false;return}decide('reject',v)};
     const ri=$('rej-reason');if(ri)ri.addEventListener('input',()=>{$('rej-err').hidden=true});
   }
+  const cmr=$('cm-resend');if(cmr)cmr.onclick=resendColorMind;
+}
+/* 自訂顏色：業務核准後，選布平台把顏色回傳 ColorMind 當訂單（單號 C-<案件編號>），ColorMind 通知打色。
+   結果在案件上（outcome.colormind）；失敗不影響核准，可以重送（同一個單號，ColorMind 更新同一張單）。 */
+const CM_ORDER_ERR={not_configured:'選布平台還沒設定 ColorMind 接單金鑰',missing_colour:'案件沒有顏色資料',colormind_key:'ColorMind 不接受接單金鑰',colormind_forbidden:'ColorMind 還沒開通這個單位接單',colormind_rejected:'ColorMind 退回這張單',colormind_unreachable:'連不上 ColorMind',colormind_bad_answer:'ColorMind 的回應格式不對'};
+let CM_RESEND=null; // {id, error?}
+function caseColorMind(){if(!isCase()||S.case.kind!=='custom_colour')return undefined;const c=CASES.find(x=>x.id===S.case.id);return c&&c.outcome?{decision:c.outcome.decision,cm:c.outcome.colormind}:null}
+function cmOrderBox(){
+  const o=caseColorMind();if(o===undefined)return '';
+  // 剛在這個畫面按下核准、選布平台還沒回覆
+  const mine=S.decisions.length&&S.decisions[S.decisions.length-1].kind;
+  if(!o||!o.decision)return mine==='approve'||mine==='modify'?`<div class="cm-order" data-cm-order="pending"><span class="grow sub">正在把顏色回傳 ColorMind…</span></div>`:'';
+  const cm=o.cm,id=S.case.id,busy=CM_RESEND&&CM_RESEND.id===id&&!CM_RESEND.error;
+  if(o.decision==='decline'||!cm)return ''; // 婉拒不送；沒有結果＝這個租戶沒開送單
+  const when=cm.at?fmtWhen(cm.at):'',btn=`<button class="btn ${cm.ok?'':'primary'}" type="button" id="cm-resend" ${busy?'disabled':''}>${busy?'重送中…':cm.ok?'再送一次':'重送'}</button>`;
+  const err=CM_RESEND&&CM_RESEND.id===id&&CM_RESEND.error?`<div class="sub" style="color:var(--st-fail)">${esc(CM_RESEND.error)}</div>`:'';
+  if(cm.ok)return `<div class="cm-order ok" data-cm-order="ok"><div class="grow"><strong>顏色已回傳 ColorMind</strong><div class="sub">訂單 <span class="mono">${esc(cm.order_no)}</span>・${cm.created?'新建':'已更新同一張單'}・${cm.notified?'已通知打色':'這次沒有再發通知'}${when?`・${esc(when)}`:''}${cm.attempts>1?`・共送 ${cm.attempts} 次`:''}</div>${err}</div>${btn}</div>`;
+  return `<div class="cm-order fail" data-cm-order="fail"><div class="grow"><strong>顏色還沒回傳 ColorMind</strong><div class="sub">${esc(CM_ORDER_ERR[cm.error]||cm.error)}${cm.detail?`：${esc(cm.detail)}`:''}・訂單 <span class="mono">${esc(cm.order_no)}</span>${when?`・${esc(when)}`:''}。打色樣申請已建立，不受影響；可以重送。</div>${err}</div>${btn}</div>`;
+}
+async function resendColorMind(){
+  if(!HUB||!isCase())return;
+  const id=S.case.id;CM_RESEND={id};renderThread();
+  try{
+    const r=await fetch(`${HUB.url}/api/agent-hub/cases/${id}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+HUB.token},body:JSON.stringify({action:'colormind_resend'})});
+    const b=await r.json().catch(()=>null);
+    if(b&&b.case){const k=CASES.findIndex(x=>x.id===id);if(k>=0)CASES[k]=b.case}
+    CM_RESEND=r.ok?null:{id,error:`重送失敗（${b&&b.error==='not_approved_colour'?'這件案件沒有核准':r.status}）`};
+  }catch(e){CM_RESEND={id,error:'重送失敗（連線中斷），請稍後再試'}}
+  renderThread();
 }
 function approveBox(){
   const cmStep=S.events[S.shown-1]?.stage==='colormind';
@@ -1406,9 +1440,10 @@ async function loadCases(){
     const r=await fetch(HUB.url+'/api/agent-hub/cases',{headers:{Authorization:'Bearer '+HUB.token}});
     if(r.status===401){SYNC.expired=true;syncBadge();return}
     const b=await r.json();
-    if(Array.isArray(b.cases)){CASES=b.cases;CASES_ERR='';
+    if(Array.isArray(b.cases)){const cmBefore=JSON.stringify(caseColorMind());CASES=b.cases;CASES_ERR='';
       if(isCase()){const c=CASES.find(x=>x.id===S.case.id);if(c)S.case.status=c.status}
-      renderInbox();if(isCase())renderParams()}
+      renderInbox();if(isCase())renderParams();
+      if(isDone()&&JSON.stringify(caseColorMind())!==cmBefore)renderThread()}
   }catch(e){CASES_ERR='暫時讀不到選布平台的案件，稍後會自動重試';renderInbox()}
 }
 /* 案件狀態：start（有人打開）→ wait（等業務確認）→ decide（業務核准，選布平台寫回）；寫回只送一次，第二次會被擋下 */
@@ -1422,6 +1457,7 @@ async function caseAction(action,extra){
     if(b&&b.case){const k=CASES.findIndex(x=>x.id===id);if(k>=0)CASES[k]=b.case;if(isCase()&&S.case.id===id)S.case.status=b.case.status}
   }catch(e){if(action==='decide')CASES_ERR=`案件 C-${id} 寫回選布平台失敗（連線中斷），請稍後重試`}
   renderInbox();if(isCase())renderParams();
+  if(action==='decide'&&isDone()&&caseColorMind()!==undefined)renderThread(); // 自訂顏色：ColorMind 的結果
 }
 function openCase(c){
   const k=caseScen(c.kind);if(k<0)return;
