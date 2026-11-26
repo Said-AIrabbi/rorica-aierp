@@ -1,8 +1,8 @@
 {
- "total": 20,
- "passed": 20,
+ "total": 30,
+ "passed": 30,
  "pass_rate": 100,
- "ran_at": "2026-11-22T06:52:24.600Z",
+ "ran_at": "2026-11-26T08:58:48.788Z",
  "cases": [
   {
    "case_id": "B2-H-01",
@@ -14,7 +14,7 @@
    "expected_colour_id": "HIS-0262",
    "returned_colour_id": "HIS-0262",
    "returned_dE00": 0.788,
-   "ms": 23,
+   "ms": 113,
    "pass": true
   },
   {
@@ -27,7 +27,7 @@
    "expected_colour_id": "HIS-0460",
    "returned_colour_id": "HIS-0460",
    "returned_dE00": 0.474,
-   "ms": 7,
+   "ms": 34,
    "pass": true
   },
   {
@@ -40,7 +40,7 @@
    "expected_colour_id": "HIS-0230",
    "returned_colour_id": "HIS-0230",
    "returned_dE00": 0.154,
-   "ms": 8,
+   "ms": 34,
    "pass": true
   },
   {
@@ -53,7 +53,7 @@
    "expected_colour_id": "HIS-0129",
    "returned_colour_id": "HIS-0129",
    "returned_dE00": 0.51,
-   "ms": 18,
+   "ms": 69,
    "pass": true
   },
   {
@@ -66,7 +66,7 @@
    "expected_colour_id": "HIS-0239",
    "returned_colour_id": "HIS-0239",
    "returned_dE00": 0.5,
-   "ms": 6,
+   "ms": 18,
    "pass": true
   },
   {
@@ -79,7 +79,7 @@
    "expected_colour_id": "HIS-0481",
    "returned_colour_id": "HIS-0481",
    "returned_dE00": 0.437,
-   "ms": 7,
+   "ms": 21,
    "pass": true
   },
   {
@@ -92,7 +92,7 @@
    "expected_colour_id": "HIS-0399",
    "returned_colour_id": "HIS-0399",
    "returned_dE00": 0.202,
-   "ms": 6,
+   "ms": 14,
    "pass": true
   },
   {
@@ -105,7 +105,7 @@
    "expected_colour_id": "HIS-0417",
    "returned_colour_id": "HIS-0417",
    "returned_dE00": 0.275,
-   "ms": 6,
+   "ms": 15,
    "pass": true
   },
   {
@@ -118,7 +118,7 @@
    "expected_colour_id": "HIS-0241",
    "returned_colour_id": "HIS-0241",
    "returned_dE00": 0.279,
-   "ms": 7,
+   "ms": 30,
    "pass": true
   },
   {
@@ -131,7 +131,7 @@
    "expected_colour_id": "HIS-0135",
    "returned_colour_id": "HIS-0135",
    "returned_dE00": 0.312,
-   "ms": 6,
+   "ms": 25,
    "pass": true
   },
   {
@@ -144,7 +144,7 @@
    "expected_colour_id": "HIS-0183",
    "returned_colour_id": "HIS-0183",
    "returned_dE00": 0.441,
-   "ms": 7,
+   "ms": 38,
    "pass": true
   },
   {
@@ -157,7 +157,7 @@
    "expected_colour_id": "HIS-0383",
    "returned_colour_id": "HIS-0383",
    "returned_dE00": 0.386,
-   "ms": 6,
+   "ms": 30,
    "pass": true
   },
   {
@@ -170,7 +170,7 @@
    "expected_colour_id": "HIS-0265",
    "returned_colour_id": "HIS-0265",
    "returned_dE00": 0.603,
-   "ms": 6,
+   "ms": 37,
    "pass": true
   },
   {
@@ -183,7 +183,7 @@
    "expected_colour_id": "HIS-0288",
    "returned_colour_id": "HIS-0288",
    "returned_dE00": 0.18,
-   "ms": 7,
+   "ms": 28,
    "pass": true
   },
   {
@@ -196,7 +196,7 @@
    "expected_colour_id": "HIS-0168",
    "returned_colour_id": "HIS-0168",
    "returned_dE00": 0.279,
-   "ms": 6,
+   "ms": 16,
    "pass": true
   },
   {
@@ -209,7 +209,7 @@
    "expected_colour_id": "HIS-0210",
    "returned_colour_id": "HIS-0210",
    "returned_dE00": 0.4,
-   "ms": 7,
+   "ms": 22,
    "pass": true
   },
   {
@@ -222,7 +222,7 @@
    "expected_colour_id": "HIS-0138",
    "returned_colour_id": "HIS-0138",
    "returned_dE00": 0.376,
-   "ms": 6,
+   "ms": 19,
    "pass": true
   },
   {
@@ -235,7 +235,7 @@
    "expected_colour_id": "HIS-0086",
    "returned_colour_id": "HIS-0086",
    "returned_dE00": 0.459,
-   "ms": 6,
+   "ms": 17,
    "pass": true
   },
   {
@@ -248,7 +248,7 @@
    "expected_colour_id": "HIS-0449",
    "returned_colour_id": "HIS-0449",
    "returned_dE00": 0.473,
-   "ms": 7,
+   "ms": 40,
    "pass": true
   },
   {
@@ -261,7 +261,137 @@
    "expected_colour_id": "HIS-0222",
    "returned_colour_id": "HIS-0222",
    "returned_dE00": 0.506,
-   "ms": 6,
+   "ms": 21,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-21",
+   "target_lab": [
+    60.054,
+    46.891,
+    34.176
+   ],
+   "expected_colour_id": "HIS-0138",
+   "returned_colour_id": "HIS-0138",
+   "returned_dE00": 0.62,
+   "ms": 18,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-22",
+   "target_lab": [
+    19.437,
+    0.341,
+    -8.054
+   ],
+   "expected_colour_id": "HIS-0090",
+   "returned_colour_id": "HIS-0090",
+   "returned_dE00": 0.323,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-23",
+   "target_lab": [
+    34.367,
+    20.181,
+    -31.958
+   ],
+   "expected_colour_id": "HIS-0240",
+   "returned_colour_id": "HIS-0240",
+   "returned_dE00": 0.481,
+   "ms": 28,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-24",
+   "target_lab": [
+    89.983,
+    -9.648,
+    37.353
+   ],
+   "expected_colour_id": "HIS-0476",
+   "returned_colour_id": "HIS-0476",
+   "returned_dE00": 0.414,
+   "ms": 24,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-25",
+   "target_lab": [
+    32.043,
+    6.937,
+    -41.749
+   ],
+   "expected_colour_id": "HIS-0444",
+   "returned_colour_id": "HIS-0444",
+   "returned_dE00": 0.199,
+   "ms": 41,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-26",
+   "target_lab": [
+    53.903,
+    -20.249,
+    -36.193
+   ],
+   "expected_colour_id": "HIS-0348",
+   "returned_colour_id": "HIS-0348",
+   "returned_dE00": 0.321,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-27",
+   "target_lab": [
+    79.017,
+    -9.66,
+    8.478
+   ],
+   "expected_colour_id": "HIS-0009",
+   "returned_colour_id": "HIS-0009",
+   "returned_dE00": 0.466,
+   "ms": 31,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-28",
+   "target_lab": [
+    64.849,
+    52.508,
+    63.867
+   ],
+   "expected_colour_id": "HIS-0203",
+   "returned_colour_id": "HIS-0203",
+   "returned_dE00": 0.202,
+   "ms": 16,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-29",
+   "target_lab": [
+    36.236,
+    49.645,
+    25.755
+   ],
+   "expected_colour_id": "HIS-0023",
+   "returned_colour_id": "HIS-0023",
+   "returned_dE00": 0.341,
+   "ms": 19,
+   "pass": true
+  },
+  {
+   "case_id": "B2-H-30",
+   "target_lab": [
+    68.87,
+    50.561,
+    63.376
+   ],
+   "expected_colour_id": "HIS-0475",
+   "returned_colour_id": "HIS-0475",
+   "returned_dE00": 0.373,
+   "ms": 37,
    "pass": true
   }
  ]

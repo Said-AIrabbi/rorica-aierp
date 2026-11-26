@@ -4,7 +4,7 @@ C2-2-02,Agent Card,Agent Card 的 JWS 簽章驗證通過,驗證成功,"[""order-
 C2-2-03,Agent Card,竄改 Agent Card 任一欄位後簽章驗證失敗,驗證失敗,description 改一字後全部驗證失敗,PASS
 C2-2-04,Agent Card,Agent Card 的 kid 能在 jku 指向的 JWKS 找到,找到對應公鑰,kid 87JCaSadk8wyZSdc 於 https://rorica-aierp.vercel.app/a2a/jwks.json,PASS
 C2-2-05,Agent Card,服務發現：依技能找得到負責的代理人,回傳 color-control,match-history-colour → color-control,PASS
-C2-2-06,訊息格式,message/send 回傳 Task 物件,result.kind=task，含 id、contextId、status,"{""id"":""task-ca36937c3b3d"",""state"":""completed""}",PASS
+C2-2-06,訊息格式,message/send 回傳 Task 物件,result.kind=task，含 id、contextId、status,"{""id"":""task-4d2d336c28ac"",""state"":""completed""}",PASS
 C2-2-07,訊息格式,缺少 messageId 的請求被拒絕,JSON-RPC -32602 Invalid params,"{""code"":-32602,""message"":""message.messageId is required""}",PASS
 C2-2-08,訊息格式,非 JSON 的請求,JSON-RPC -32700 Parse error,"{""code"":-32700,""message"":""Parse error""}",PASS
 C2-2-09,訊息格式,不存在的方法,JSON-RPC -32601 Method not found,"{""code"":-32601,""message"":""Method not found""}",PASS
@@ -22,7 +22,7 @@ C2-2-20,狀態轉換,終態不可再轉換 failed→completed,拒絕並回錯誤
 C2-2-21,狀態轉換,終態不可再轉換 canceled→working,拒絕並回錯誤，狀態不變,"{""error"":-32004,""state"":""canceled → canceled""}",PASS
 C2-2-22,狀態轉換,終態不可再轉換 rejected→working,拒絕並回錯誤，狀態不變,"{""error"":-32004,""state"":""rejected → rejected""}",PASS
 C2-2-23,錯誤代碼,查詢不存在的任務,-32001 TaskNotFound,"{""code"":-32001,""message"":""task task-does-not-exist not found""}",PASS
-C2-2-24,錯誤代碼,取消已完成的任務,-32002 TaskNotCancelable,"{""code"":-32002,""message"":""task task-ca36937c3b3d is completed""}",PASS
+C2-2-24,錯誤代碼,取消已完成的任務,-32002 TaskNotCancelable,"{""code"":-32002,""message"":""task task-4d2d336c28ac is completed""}",PASS
 C2-2-25,錯誤代碼,要求推播但代理人不支援,-32003 PushNotificationNotSupported,"{""code"":-32003,""message"":""Push notifications are not supported""}",PASS
 C2-2-26,錯誤代碼,呼叫未實作的操作,-32004 UnsupportedOperation,"{""code"":-32004,""message"":""message/stream is not supported by this agent""}",PASS
 C2-2-27,錯誤代碼,對方代理人回應格式錯誤,-32006 InvalidAgentResponse,"{""state"":""failed"",""error_code"":-32006}",PASS
@@ -31,11 +31,11 @@ C2-2-29,錯誤代碼,憑證過期,HTTP 401,HTTP 401 invalid token: expired,PASS
 C2-2-30,錯誤代碼,內部錯誤,-32603 Internal error，任務 failed 並記錄錯誤代碼,"{""error"":-32603,""task"":""failed"",""recorded"":-32603}",PASS
 C2-2-31,錯誤代碼,DataPart 不符 Schema,-32602 Invalid params，附 Schema 錯誤位置,"[""$.lines: required""]",PASS
 C2-2-32,錯誤代碼,數量為 0,-32602 Invalid params,"[""$.lines[0].qty_yd: must be > 0""]",PASS
-C2-2-33,冪等性,同一 messageId 重送（情境 1：立即重送）,回原任務，不建第二個任務,"{""label"":""立即重送"",""task_ids"":[""task-38404e2e91c0""],""new_tasks"":1}",PASS
-C2-2-34,冪等性,同一 messageId 重送（情境 2：30 秒後重送）,回原任務，不建第二個任務,"{""label"":""30 秒後重送"",""task_ids"":[""task-e17911f3ca4d""],""new_tasks"":1}",PASS
-C2-2-35,冪等性,同一 messageId 重送（情境 3：任務完成後重送）,回原任務，不建第二個任務,"{""label"":""任務完成後重送"",""task_ids"":[""task-373992900577""],""new_tasks"":1}",PASS
-C2-2-36,冪等性,同一 messageId 重送（情境 4：不同連線重送）,回原任務，不建第二個任務,"{""label"":""不同連線重送"",""task_ids"":[""task-c2ba3162d9a2""],""new_tasks"":1}",PASS
-C2-2-37,冪等性,同一 messageId 重送（情境 5：並行重送 2 次）,回原任務，不建第二個任務,"{""label"":""並行重送 2 次"",""task_ids"":[""task-f08e1f81cae7""],""new_tasks"":1}",PASS
+C2-2-33,冪等性,同一 messageId 重送（情境 1：立即重送）,回原任務，不建第二個任務,"{""label"":""立即重送"",""task_ids"":[""task-aa42ae51bb85""],""new_tasks"":1}",PASS
+C2-2-34,冪等性,同一 messageId 重送（情境 2：30 秒後重送）,回原任務，不建第二個任務,"{""label"":""30 秒後重送"",""task_ids"":[""task-586938501795""],""new_tasks"":1}",PASS
+C2-2-35,冪等性,同一 messageId 重送（情境 3：任務完成後重送）,回原任務，不建第二個任務,"{""label"":""任務完成後重送"",""task_ids"":[""task-ecba3852cc1e""],""new_tasks"":1}",PASS
+C2-2-36,冪等性,同一 messageId 重送（情境 4：不同連線重送）,回原任務，不建第二個任務,"{""label"":""不同連線重送"",""task_ids"":[""task-94530bc2359c""],""new_tasks"":1}",PASS
+C2-2-37,冪等性,同一 messageId 重送（情境 5：並行重送 2 次）,回原任務，不建第二個任務,"{""label"":""並行重送 2 次"",""task_ids"":[""task-f56d6767094d""],""new_tasks"":1}",PASS
 C2-2-38,冪等性,同一 messageId 重送（情境 6：重送但 body 不同）,拒絕（同 id 不同內容）且不建新任務,"{""error"":""messageId already used with different content"",""new_tasks"":0}",PASS
 C2-2-39,補償機制,任務失敗時釋放預留庫存（出貨失敗）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""出貨失敗"",""state"":""failed"",""error_code"":""E_SHIPMENT_FAILED"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS
 C2-2-40,補償機制,任務失敗時釋放預留庫存（色控失敗）,預留布卷全部釋放，release-reservation 紀錄完整,"{""label"":""色控失敗"",""state"":""failed"",""error_code"":""E_NO_COLOUR_MATCH"",""reserved"":[""T5100001-05""],""released"":[""T5100001-05""],""still_reserved"":0,""release_by"":[""shipping""]}",PASS

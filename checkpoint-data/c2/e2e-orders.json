@@ -1,6 +1,6 @@
 {
  "note": "模擬資料（2026 成果查核點用，非真實交易）；contextId 即訂單追溯索引",
- "count": 100,
+ "count": 120,
  "orders": [
   {
    "order_no": "E2E-001",
@@ -2892,6 +2892,618 @@
      "route": "dye",
      "colour_id": "HIS-0222",
      "recipe_id": "RCP-0222"
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-101",
+   "contextId": "ctx-ORD-00101",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "3258",
+    "color": "香檳金",
+    "qty_yd": 212,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100002-01",
+       "T5100002-02",
+       "T5100002-03"
+      ],
+      "allocated_yd": 269
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-102",
+   "contextId": "ctx-ORD-00102",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "71025",
+    "color": "天空藍",
+    "qty_yd": 76,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100003-02"
+      ],
+      "allocated_yd": 89
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-103",
+   "contextId": "ctx-ORD-00103",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "N321",
+    "color": "深卡其",
+    "qty_yd": 221,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100004-01",
+       "T5100004-02",
+       "T5100004-03",
+       "T5100004-04"
+      ],
+      "allocated_yd": 269
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-104",
+   "contextId": "ctx-ORD-00104",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "3005",
+    "color": "丁香紫",
+    "qty_yd": 194,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100005-01",
+       "T5100005-02",
+       "T5100005-03",
+       "T5100005-04"
+      ],
+      "allocated_yd": 289
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-105",
+   "contextId": "ctx-ORD-00105",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "8813",
+    "color": "珍珠白",
+    "qty_yd": 215,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100006-01",
+       "T5100006-02",
+       "T5100006-03",
+       "T5100006-04",
+       "T5100006-05",
+       "T5100006-06"
+      ],
+      "allocated_yd": 324
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-106",
+   "contextId": "ctx-ORD-00106",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "90079",
+    "color": "深卡其",
+    "qty_yd": 208,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100007-01",
+       "T5100007-02",
+       "T5100007-03"
+      ],
+      "allocated_yd": 241
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-107",
+   "contextId": "ctx-ORD-00107",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "90124",
+    "color": "銀灰",
+    "qty_yd": 153,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100008-01",
+       "T5100008-02",
+       "T5100008-03"
+      ],
+      "allocated_yd": 205
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-108",
+   "contextId": "ctx-ORD-00108",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "NC7011",
+    "color": "銀灰",
+    "qty_yd": 142,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100009-01",
+       "T5100009-02"
+      ],
+      "allocated_yd": 202
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-109",
+   "contextId": "ctx-ORD-00109",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "W3911",
+    "color": "奶油白",
+    "qty_yd": 273,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100010-01",
+       "T5100010-02",
+       "T5100010-03",
+       "T5100010-04",
+       "T5100010-05"
+      ],
+      "allocated_yd": 273
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-110",
+   "contextId": "ctx-ORD-00110",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "3811R",
+    "color": "薄荷綠",
+    "qty_yd": 101,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100011-01",
+       "T5100011-02",
+       "T5100011-04"
+      ],
+      "allocated_yd": 136
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-111",
+   "contextId": "ctx-ORD-00111",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "3812R",
+    "color": "天空藍",
+    "qty_yd": 233,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100012-01",
+       "T5100012-02",
+       "T5100012-03",
+       "T5100012-04"
+      ],
+      "allocated_yd": 244
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-112",
+   "contextId": "ctx-ORD-00112",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "4034",
+    "color": "象牙白",
+    "qty_yd": 227,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100013-01",
+       "T5100013-02",
+       "T5100013-03",
+       "T5100013-04",
+       "T5100013-05"
+      ],
+      "allocated_yd": 291
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-113",
+   "contextId": "ctx-ORD-00113",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "WH-2137",
+    "color": "霧灰",
+    "qty_yd": 144,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100014-01",
+       "T5100014-02",
+       "T5100014-03"
+      ],
+      "allocated_yd": 172
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-114",
+   "contextId": "ctx-ORD-00114",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "7754",
+    "color": "香檳金",
+    "qty_yd": 267,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100016-01",
+       "T5100016-02",
+       "T5100016-03",
+       "T5100016-04",
+       "T5100016-05"
+      ],
+      "allocated_yd": 316
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-115",
+   "contextId": "ctx-ORD-00115",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "630-1GU-R",
+    "color": "珍珠白",
+    "qty_yd": 182,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100017-01",
+       "T5100017-02",
+       "T5100017-03"
+      ],
+      "allocated_yd": 211
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-116",
+   "contextId": "ctx-ORD-00116",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "3258",
+    "color": "香檳金",
+    "qty_yd": 212,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100002-01",
+       "T5100002-02",
+       "T5100002-03"
+      ],
+      "allocated_yd": 269
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-117",
+   "contextId": "ctx-ORD-00117",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "71025",
+    "color": "天空藍",
+    "qty_yd": 76,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100003-02"
+      ],
+      "allocated_yd": 89
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-118",
+   "contextId": "ctx-ORD-00118",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "N321",
+    "color": "深卡其",
+    "qty_yd": 221,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100004-01",
+       "T5100004-02",
+       "T5100004-03",
+       "T5100004-04"
+      ],
+      "allocated_yd": 269
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-119",
+   "contextId": "ctx-ORD-00119",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "3005",
+    "color": "丁香紫",
+    "qty_yd": 194,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100005-01",
+       "T5100005-02",
+       "T5100005-03",
+       "T5100005-04"
+      ],
+      "allocated_yd": 289
+     }
+    }
+   },
+   "expected_stages": [
+    "接單",
+    "生管",
+    "色控",
+    "出貨"
+   ],
+   "expected_final": "shipped"
+  },
+  {
+   "order_no": "E2E-120",
+   "contextId": "ctx-ORD-00120",
+   "route": "in_stock",
+   "input": {
+    "route": "in_stock",
+    "erp_product_name": "8813",
+    "color": "珍珠白",
+    "qty_yd": 215,
+    "expected": {
+     "route": "in_stock",
+     "allocation": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100006-01",
+       "T5100006-02",
+       "T5100006-03",
+       "T5100006-04",
+       "T5100006-05",
+       "T5100006-06"
+      ],
+      "allocated_yd": 324
+     }
     }
    },
    "expected_stages": [

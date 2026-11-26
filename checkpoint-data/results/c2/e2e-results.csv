@@ -1,101 +1,121 @@
 ﻿訂單,contextId,路線,最終狀態,經過階段,事件數,檢查,錯誤代碼,毫秒,判定
-E2E-001,ctx-ORD-00001,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,22,PASS
-E2E-002,ctx-ORD-00002,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
-E2E-003,ctx-ORD-00003,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-004,ctx-ORD-00004,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,18,PASS
-E2E-005,ctx-ORD-00005,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
-E2E-006,ctx-ORD-00006,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-007,ctx-ORD-00007,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,303,PASS
-E2E-008,ctx-ORD-00008,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,224,PASS
-E2E-009,ctx-ORD-00009,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,27,PASS
-E2E-010,ctx-ORD-00010,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,23,PASS
-E2E-011,ctx-ORD-00011,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
-E2E-012,ctx-ORD-00012,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS
-E2E-013,ctx-ORD-00013,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,7,PASS
-E2E-014,ctx-ORD-00014,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
-E2E-015,ctx-ORD-00015,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
-E2E-016,ctx-ORD-00016,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,9,PASS
-E2E-017,ctx-ORD-00017,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,296,PASS
-E2E-018,ctx-ORD-00018,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,537,PASS
-E2E-019,ctx-ORD-00019,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,41,PASS
-E2E-020,ctx-ORD-00020,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,52,PASS
-E2E-021,ctx-ORD-00021,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,26,PASS
-E2E-022,ctx-ORD-00022,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
-E2E-023,ctx-ORD-00023,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,22,PASS
-E2E-024,ctx-ORD-00024,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,28,PASS
-E2E-025,ctx-ORD-00025,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,22,PASS
-E2E-026,ctx-ORD-00026,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
-E2E-027,ctx-ORD-00027,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,308,PASS
-E2E-028,ctx-ORD-00028,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,248,PASS
-E2E-029,ctx-ORD-00029,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,20,PASS
-E2E-030,ctx-ORD-00030,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,29,PASS
-E2E-031,ctx-ORD-00031,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
-E2E-032,ctx-ORD-00032,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
-E2E-033,ctx-ORD-00033,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,18,PASS
-E2E-034,ctx-ORD-00034,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,8,PASS
-E2E-035,ctx-ORD-00035,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
-E2E-036,ctx-ORD-00036,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,7,PASS
-E2E-037,ctx-ORD-00037,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,240,PASS
-E2E-038,ctx-ORD-00038,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,250,PASS
-E2E-039,ctx-ORD-00039,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,31,PASS
-E2E-040,ctx-ORD-00040,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,17,PASS
-E2E-041,ctx-ORD-00041,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,8,PASS
-E2E-042,ctx-ORD-00042,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,6,PASS
-E2E-043,ctx-ORD-00043,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,9,PASS
-E2E-044,ctx-ORD-00044,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,7,PASS
-E2E-045,ctx-ORD-00045,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,6,PASS
-E2E-046,ctx-ORD-00046,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
-E2E-047,ctx-ORD-00047,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,199,PASS
-E2E-048,ctx-ORD-00048,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,155,PASS
-E2E-049,ctx-ORD-00049,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,21,PASS
-E2E-050,ctx-ORD-00050,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,16,PASS
-E2E-051,ctx-ORD-00051,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,7,PASS
-E2E-052,ctx-ORD-00052,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,7,PASS
-E2E-053,ctx-ORD-00053,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,8,PASS
-E2E-054,ctx-ORD-00054,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
-E2E-055,ctx-ORD-00055,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
-E2E-056,ctx-ORD-00056,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
-E2E-057,ctx-ORD-00057,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,212,PASS
-E2E-058,ctx-ORD-00058,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,151,PASS
-E2E-059,ctx-ORD-00059,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,27,PASS
-E2E-060,ctx-ORD-00060,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,24,PASS
-E2E-061,ctx-ORD-00061,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
-E2E-062,ctx-ORD-00062,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS
-E2E-063,ctx-ORD-00063,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-064,ctx-ORD-00064,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
-E2E-065,ctx-ORD-00065,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
-E2E-066,ctx-ORD-00066,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
-E2E-067,ctx-ORD-00067,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,167,PASS
-E2E-068,ctx-ORD-00068,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,146,PASS
-E2E-069,ctx-ORD-00069,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,26,PASS
-E2E-070,ctx-ORD-00070,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,21,PASS
-E2E-071,ctx-ORD-00071,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,9,PASS
-E2E-072,ctx-ORD-00072,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,9,PASS
-E2E-073,ctx-ORD-00073,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
-E2E-074,ctx-ORD-00074,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-075,ctx-ORD-00075,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
+E2E-001,ctx-ORD-00001,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,19,PASS
+E2E-002,ctx-ORD-00002,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-003,ctx-ORD-00003,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS
+E2E-004,ctx-ORD-00004,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-005,ctx-ORD-00005,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-006,ctx-ORD-00006,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,21,PASS
+E2E-007,ctx-ORD-00007,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,574,PASS
+E2E-008,ctx-ORD-00008,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,534,PASS
+E2E-009,ctx-ORD-00009,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,70,PASS
+E2E-010,ctx-ORD-00010,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,70,PASS
+E2E-011,ctx-ORD-00011,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,109,PASS
+E2E-012,ctx-ORD-00012,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,25,PASS
+E2E-013,ctx-ORD-00013,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,45,PASS
+E2E-014,ctx-ORD-00014,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,26,PASS
+E2E-015,ctx-ORD-00015,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,28,PASS
+E2E-016,ctx-ORD-00016,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,43,PASS
+E2E-017,ctx-ORD-00017,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,642,PASS
+E2E-018,ctx-ORD-00018,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,779,PASS
+E2E-019,ctx-ORD-00019,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,68,PASS
+E2E-020,ctx-ORD-00020,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,39,PASS
+E2E-021,ctx-ORD-00021,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
+E2E-022,ctx-ORD-00022,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-023,ctx-ORD-00023,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,21,PASS
+E2E-024,ctx-ORD-00024,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,19,PASS
+E2E-025,ctx-ORD-00025,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
+E2E-026,ctx-ORD-00026,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,19,PASS
+E2E-027,ctx-ORD-00027,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,472,PASS
+E2E-028,ctx-ORD-00028,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,324,PASS
+E2E-029,ctx-ORD-00029,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,36,PASS
+E2E-030,ctx-ORD-00030,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,33,PASS
+E2E-031,ctx-ORD-00031,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
+E2E-032,ctx-ORD-00032,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,25,PASS
+E2E-033,ctx-ORD-00033,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,22,PASS
+E2E-034,ctx-ORD-00034,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
+E2E-035,ctx-ORD-00035,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,21,PASS
+E2E-036,ctx-ORD-00036,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-037,ctx-ORD-00037,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,384,PASS
+E2E-038,ctx-ORD-00038,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,597,PASS
+E2E-039,ctx-ORD-00039,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,23,PASS
+E2E-040,ctx-ORD-00040,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,26,PASS
+E2E-041,ctx-ORD-00041,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-042,ctx-ORD-00042,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
+E2E-043,ctx-ORD-00043,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-044,ctx-ORD-00044,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-045,ctx-ORD-00045,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-046,ctx-ORD-00046,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
+E2E-047,ctx-ORD-00047,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,281,PASS
+E2E-048,ctx-ORD-00048,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,291,PASS
+E2E-049,ctx-ORD-00049,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,26,PASS
+E2E-050,ctx-ORD-00050,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,24,PASS
+E2E-051,ctx-ORD-00051,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
+E2E-052,ctx-ORD-00052,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-053,ctx-ORD-00053,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-054,ctx-ORD-00054,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-055,ctx-ORD-00055,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,22,PASS
+E2E-056,ctx-ORD-00056,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,32,PASS
+E2E-057,ctx-ORD-00057,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,394,PASS
+E2E-058,ctx-ORD-00058,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,255,PASS
+E2E-059,ctx-ORD-00059,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,54,PASS
+E2E-060,ctx-ORD-00060,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,43,PASS
+E2E-061,ctx-ORD-00061,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
+E2E-062,ctx-ORD-00062,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-063,ctx-ORD-00063,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-064,ctx-ORD-00064,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,20,PASS
+E2E-065,ctx-ORD-00065,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-066,ctx-ORD-00066,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-067,ctx-ORD-00067,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,297,PASS
+E2E-068,ctx-ORD-00068,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,244,PASS
+E2E-069,ctx-ORD-00069,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,22,PASS
+E2E-070,ctx-ORD-00070,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,27,PASS
+E2E-071,ctx-ORD-00071,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-072,ctx-ORD-00072,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-073,ctx-ORD-00073,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,8,PASS
+E2E-074,ctx-ORD-00074,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-075,ctx-ORD-00075,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
 E2E-076,ctx-ORD-00076,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
-E2E-077,ctx-ORD-00077,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,212,PASS
-E2E-078,ctx-ORD-00078,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,161,PASS
-E2E-079,ctx-ORD-00079,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,17,PASS
-E2E-080,ctx-ORD-00080,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,18,PASS
+E2E-077,ctx-ORD-00077,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,309,PASS
+E2E-078,ctx-ORD-00078,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,281,PASS
+E2E-079,ctx-ORD-00079,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,39,PASS
+E2E-080,ctx-ORD-00080,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,32,PASS
 E2E-081,ctx-ORD-00081,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
-E2E-082,ctx-ORD-00082,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,8,PASS
+E2E-082,ctx-ORD-00082,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
 E2E-083,ctx-ORD-00083,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-084,ctx-ORD-00084,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-085,ctx-ORD-00085,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
-E2E-086,ctx-ORD-00086,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
-E2E-087,ctx-ORD-00087,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,221,PASS
-E2E-088,ctx-ORD-00088,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,183,PASS
-E2E-089,ctx-ORD-00089,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,26,PASS
-E2E-090,ctx-ORD-00090,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,22,PASS
-E2E-091,ctx-ORD-00091,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
-E2E-092,ctx-ORD-00092,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
-E2E-093,ctx-ORD-00093,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
-E2E-094,ctx-ORD-00094,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
-E2E-095,ctx-ORD-00095,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,7,PASS
-E2E-096,ctx-ORD-00096,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
-E2E-097,ctx-ORD-00097,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,181,PASS
-E2E-098,ctx-ORD-00098,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,133,PASS
-E2E-099,ctx-ORD-00099,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,15,PASS
-E2E-100,ctx-ORD-00100,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,15,PASS
+E2E-084,ctx-ORD-00084,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-085,ctx-ORD-00085,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,18,PASS
+E2E-086,ctx-ORD-00086,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,18,PASS
+E2E-087,ctx-ORD-00087,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,324,PASS
+E2E-088,ctx-ORD-00088,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,249,PASS
+E2E-089,ctx-ORD-00089,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,29,PASS
+E2E-090,ctx-ORD-00090,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,36,PASS
+E2E-091,ctx-ORD-00091,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS
+E2E-092,ctx-ORD-00092,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,9,PASS
+E2E-093,ctx-ORD-00093,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,10,PASS
+E2E-094,ctx-ORD-00094,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,11,PASS
+E2E-095,ctx-ORD-00095,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,9,PASS
+E2E-096,ctx-ORD-00096,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS
+E2E-097,ctx-ORD-00097,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,207,PASS
+E2E-098,ctx-ORD-00098,print,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok palette:ok,,332,PASS
+E2E-099,ctx-ORD-00099,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,36,PASS
+E2E-100,ctx-ORD-00100,dye,completed,接單→生管→色控→出貨,20,completed:ok route:ok shipped:ok colour:ok recipe:ok,,49,PASS
+E2E-101,ctx-ORD-00101,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,23,PASS
+E2E-102,ctx-ORD-00102,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,109,PASS
+E2E-103,ctx-ORD-00103,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,85,PASS
+E2E-104,ctx-ORD-00104,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,33,PASS
+E2E-105,ctx-ORD-00105,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,27,PASS
+E2E-106,ctx-ORD-00106,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,24,PASS
+E2E-107,ctx-ORD-00107,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,17,PASS
+E2E-108,ctx-ORD-00108,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-109,ctx-ORD-00109,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,16,PASS
+E2E-110,ctx-ORD-00110,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-111,ctx-ORD-00111,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-112,ctx-ORD-00112,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,15,PASS
+E2E-113,ctx-ORD-00113,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-114,ctx-ORD-00114,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-115,ctx-ORD-00115,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-116,ctx-ORD-00116,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,13,PASS
+E2E-117,ctx-ORD-00117,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-118,ctx-ORD-00118,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS
+E2E-119,ctx-ORD-00119,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,14,PASS
+E2E-120,ctx-ORD-00120,in_stock,completed,接單→生管→出貨,16,completed:ok route:ok shipped:ok rolls_match_item:ok covers_qty:ok,,12,PASS

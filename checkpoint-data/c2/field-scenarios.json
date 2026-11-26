@@ -1,6 +1,6 @@
 {
  "note": "模擬資料（2026 成果查核點用，非真實交易）；場域驗證前的演練輸入，正式驗證須在合作廠商現場進行",
- "count": 30,
+ "count": 45,
  "cases": [
   {
    "case_id": "C2-1-S-01",
@@ -197,6 +197,106 @@
    }
   },
   {
+   "case_id": "C2-1-S-11",
+   "route": "in_stock",
+   "erp_product_name": "3812R",
+   "color": "天空藍",
+   "qty_yd": 233,
+   "expected": {
+    "route": "in_stock",
+    "allocation": {
+     "result": "allocated_single_batch",
+     "rolls": [
+      "T5100012-01",
+      "T5100012-02",
+      "T5100012-03",
+      "T5100012-04"
+     ],
+     "allocated_yd": 244
+    }
+   }
+  },
+  {
+   "case_id": "C2-1-S-12",
+   "route": "in_stock",
+   "erp_product_name": "4034",
+   "color": "象牙白",
+   "qty_yd": 227,
+   "expected": {
+    "route": "in_stock",
+    "allocation": {
+     "result": "allocated_single_batch",
+     "rolls": [
+      "T5100013-01",
+      "T5100013-02",
+      "T5100013-03",
+      "T5100013-04",
+      "T5100013-05"
+     ],
+     "allocated_yd": 291
+    }
+   }
+  },
+  {
+   "case_id": "C2-1-S-13",
+   "route": "in_stock",
+   "erp_product_name": "WH-2137",
+   "color": "霧灰",
+   "qty_yd": 144,
+   "expected": {
+    "route": "in_stock",
+    "allocation": {
+     "result": "allocated_single_batch",
+     "rolls": [
+      "T5100014-01",
+      "T5100014-02",
+      "T5100014-03"
+     ],
+     "allocated_yd": 172
+    }
+   }
+  },
+  {
+   "case_id": "C2-1-S-14",
+   "route": "in_stock",
+   "erp_product_name": "7754",
+   "color": "香檳金",
+   "qty_yd": 267,
+   "expected": {
+    "route": "in_stock",
+    "allocation": {
+     "result": "allocated_single_batch",
+     "rolls": [
+      "T5100016-01",
+      "T5100016-02",
+      "T5100016-03",
+      "T5100016-04",
+      "T5100016-05"
+     ],
+     "allocated_yd": 316
+    }
+   }
+  },
+  {
+   "case_id": "C2-1-S-15",
+   "route": "in_stock",
+   "erp_product_name": "630-1GU-R",
+   "color": "珍珠白",
+   "qty_yd": 182,
+   "expected": {
+    "route": "in_stock",
+    "allocation": {
+     "result": "allocated_single_batch",
+     "rolls": [
+      "T5100017-01",
+      "T5100017-02",
+      "T5100017-03"
+     ],
+     "allocated_yd": 211
+    }
+   }
+  },
+  {
    "case_id": "C2-1-P-01",
    "route": "print",
    "base_fabric": "PET 白胚（噴印用）",
@@ -349,6 +449,87 @@
      "SIM-02796",
      "SIM-06233",
      "SIM-06512"
+    ]
+   }
+  },
+  {
+   "case_id": "C2-1-P-11",
+   "route": "print",
+   "base_fabric": "PET 白胚（噴印用）",
+   "image": "b2/print-images/print-11.png",
+   "qty_yd": 274,
+   "expected": {
+    "route": "print",
+    "palette": [
+     "SIM-04196",
+     "HIS-0093",
+     "SIM-07050",
+     "SIM-05613",
+     "SIM-05096"
+    ]
+   }
+  },
+  {
+   "case_id": "C2-1-P-12",
+   "route": "print",
+   "base_fabric": "PET 白胚（噴印用）",
+   "image": "b2/print-images/print-12.png",
+   "qty_yd": 148,
+   "expected": {
+    "route": "print",
+    "palette": [
+     "SIM-02758",
+     "SIM-05137",
+     "SIM-00202"
+    ]
+   }
+  },
+  {
+   "case_id": "C2-1-P-13",
+   "route": "print",
+   "base_fabric": "PET 白胚（噴印用）",
+   "image": "b2/print-images/print-13.png",
+   "qty_yd": 224,
+   "expected": {
+    "route": "print",
+    "palette": [
+     "SIM-06282",
+     "SIM-06104",
+     "SIM-07672",
+     "SIM-04845",
+     "SIM-00616"
+    ]
+   }
+  },
+  {
+   "case_id": "C2-1-P-14",
+   "route": "print",
+   "base_fabric": "PET 白胚（噴印用）",
+   "image": "b2/print-images/print-14.png",
+   "qty_yd": 72,
+   "expected": {
+    "route": "print",
+    "palette": [
+     "SIM-00472",
+     "SIM-02064",
+     "SIM-03306",
+     "SIM-05164"
+    ]
+   }
+  },
+  {
+   "case_id": "C2-1-P-15",
+   "route": "print",
+   "base_fabric": "PET 白胚（噴印用）",
+   "image": "b2/print-images/print-15.png",
+   "qty_yd": 165,
+   "expected": {
+    "route": "print",
+    "palette": [
+     "SIM-07355",
+     "SIM-06808",
+     "SIM-00073",
+     "SIM-02198"
     ]
    }
   },
@@ -510,6 +691,86 @@
     "route": "dye",
     "colour_id": "HIS-0222",
     "recipe_id": "RCP-0222"
+   }
+  },
+  {
+   "case_id": "C2-1-D-11",
+   "route": "dye",
+   "base_fabric": "PET 胚布",
+   "target_lab": [
+    60.054,
+    46.891,
+    34.176
+   ],
+   "qty_yd": 335,
+   "expected": {
+    "route": "dye",
+    "colour_id": "HIS-0138",
+    "recipe_id": "RCP-0138"
+   }
+  },
+  {
+   "case_id": "C2-1-D-12",
+   "route": "dye",
+   "base_fabric": "PET 胚布",
+   "target_lab": [
+    19.437,
+    0.341,
+    -8.054
+   ],
+   "qty_yd": 912,
+   "expected": {
+    "route": "dye",
+    "colour_id": "HIS-0090",
+    "recipe_id": "RCP-0090"
+   }
+  },
+  {
+   "case_id": "C2-1-D-13",
+   "route": "dye",
+   "base_fabric": "PET 胚布",
+   "target_lab": [
+    34.367,
+    20.181,
+    -31.958
+   ],
+   "qty_yd": 530,
+   "expected": {
+    "route": "dye",
+    "colour_id": "HIS-0240",
+    "recipe_id": "RCP-0240"
+   }
+  },
+  {
+   "case_id": "C2-1-D-14",
+   "route": "dye",
+   "base_fabric": "PET 胚布",
+   "target_lab": [
+    89.983,
+    -9.648,
+    37.353
+   ],
+   "qty_yd": 977,
+   "expected": {
+    "route": "dye",
+    "colour_id": "HIS-0476",
+    "recipe_id": "RCP-0476"
+   }
+  },
+  {
+   "case_id": "C2-1-D-15",
+   "route": "dye",
+   "base_fabric": "PET 胚布",
+   "target_lab": [
+    32.043,
+    6.937,
+    -41.749
+   ],
+   "qty_yd": 795,
+   "expected": {
+    "route": "dye",
+    "colour_id": "HIS-0444",
+    "recipe_id": "RCP-0444"
    }
   }
  ]

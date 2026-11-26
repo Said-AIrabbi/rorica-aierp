@@ -1,22 +1,22 @@
 {
- "ran_at": "2026-11-22T07:20:21.998Z",
+ "ran_at": "2026-11-26T08:59:41.367Z",
  "kind": "預演（本機模擬資料，非合作廠商現場驗證）",
- "total": 30,
- "passed": 30,
+ "total": 45,
+ "passed": 45,
  "by_route": {
   "in_stock": {
-   "total": 10,
-   "passed": 10,
+   "total": 15,
+   "passed": 15,
    "rate": 100
   },
   "print": {
-   "total": 10,
-   "passed": 10,
+   "total": 15,
+   "passed": 15,
    "rate": 100
   },
   "dye": {
-   "total": 10,
-   "passed": 10,
+   "total": 15,
+   "passed": 15,
    "rate": 100
   }
  },
@@ -38,7 +38,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 12
+   "ms": 13
   },
   {
    "id": "C2-1-S-02",
@@ -57,7 +57,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 13
+   "ms": 11
   },
   {
    "id": "C2-1-S-03",
@@ -76,7 +76,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 13
+   "ms": 15
   },
   {
    "id": "C2-1-S-04",
@@ -95,7 +95,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 9
+   "ms": 14
   },
   {
    "id": "C2-1-S-05",
@@ -114,7 +114,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 10
+   "ms": 17
   },
   {
    "id": "C2-1-S-06",
@@ -133,7 +133,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 7
+   "ms": 24
   },
   {
    "id": "C2-1-S-07",
@@ -152,7 +152,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 10
+   "ms": 12
   },
   {
    "id": "C2-1-S-08",
@@ -171,7 +171,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 6
+   "ms": 22
   },
   {
    "id": "C2-1-S-09",
@@ -190,7 +190,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 8
+   "ms": 16
   },
   {
    "id": "C2-1-S-10",
@@ -209,7 +209,102 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 7
+   "ms": 16
+  },
+  {
+   "id": "C2-1-S-11",
+   "contextId": "ctx-REH-C2-1-S-11",
+   "route": "in_stock",
+   "final_state": "completed",
+   "stages": "接單→生管→出貨",
+   "events": 16,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "rolls_match_item": true,
+    "covers_qty": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 12
+  },
+  {
+   "id": "C2-1-S-12",
+   "contextId": "ctx-REH-C2-1-S-12",
+   "route": "in_stock",
+   "final_state": "completed",
+   "stages": "接單→生管→出貨",
+   "events": 16,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "rolls_match_item": true,
+    "covers_qty": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 10
+  },
+  {
+   "id": "C2-1-S-13",
+   "contextId": "ctx-REH-C2-1-S-13",
+   "route": "in_stock",
+   "final_state": "completed",
+   "stages": "接單→生管→出貨",
+   "events": 16,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "rolls_match_item": true,
+    "covers_qty": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 14
+  },
+  {
+   "id": "C2-1-S-14",
+   "contextId": "ctx-REH-C2-1-S-14",
+   "route": "in_stock",
+   "final_state": "completed",
+   "stages": "接單→生管→出貨",
+   "events": 16,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "rolls_match_item": true,
+    "covers_qty": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 209
+  },
+  {
+   "id": "C2-1-S-15",
+   "contextId": "ctx-REH-C2-1-S-15",
+   "route": "in_stock",
+   "final_state": "completed",
+   "stages": "接單→生管→出貨",
+   "events": 16,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "rolls_match_item": true,
+    "covers_qty": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 37
   },
   {
    "id": "C2-1-P-01",
@@ -227,7 +322,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 146
+   "ms": 372
   },
   {
    "id": "C2-1-P-02",
@@ -245,7 +340,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 124
+   "ms": 236
   },
   {
    "id": "C2-1-P-03",
@@ -263,7 +358,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 164
+   "ms": 365
   },
   {
    "id": "C2-1-P-04",
@@ -281,7 +376,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 145
+   "ms": 486
   },
   {
    "id": "C2-1-P-05",
@@ -299,7 +394,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 126
+   "ms": 239
   },
   {
    "id": "C2-1-P-06",
@@ -317,7 +412,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 433
+   "ms": 355
   },
   {
    "id": "C2-1-P-07",
@@ -335,7 +430,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 228
+   "ms": 361
   },
   {
    "id": "C2-1-P-08",
@@ -353,7 +448,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 140
+   "ms": 402
   },
   {
    "id": "C2-1-P-09",
@@ -371,7 +466,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 163
+   "ms": 378
   },
   {
    "id": "C2-1-P-10",
@@ -389,7 +484,97 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 153
+   "ms": 187
+  },
+  {
+   "id": "C2-1-P-11",
+   "contextId": "ctx-REH-C2-1-P-11",
+   "route": "print",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "palette": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 302
+  },
+  {
+   "id": "C2-1-P-12",
+   "contextId": "ctx-REH-C2-1-P-12",
+   "route": "print",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "palette": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 182
+  },
+  {
+   "id": "C2-1-P-13",
+   "contextId": "ctx-REH-C2-1-P-13",
+   "route": "print",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "palette": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 374
+  },
+  {
+   "id": "C2-1-P-14",
+   "contextId": "ctx-REH-C2-1-P-14",
+   "route": "print",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "palette": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 229
+  },
+  {
+   "id": "C2-1-P-15",
+   "contextId": "ctx-REH-C2-1-P-15",
+   "route": "print",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "palette": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 260
   },
   {
    "id": "C2-1-D-01",
@@ -408,7 +593,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 19
+   "ms": 23
   },
   {
    "id": "C2-1-D-02",
@@ -427,7 +612,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 21
+   "ms": 24
   },
   {
    "id": "C2-1-D-03",
@@ -446,7 +631,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 25
+   "ms": 36
   },
   {
    "id": "C2-1-D-04",
@@ -465,7 +650,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 54
+   "ms": 26
   },
   {
    "id": "C2-1-D-05",
@@ -484,7 +669,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 42
+   "ms": 29
   },
   {
    "id": "C2-1-D-06",
@@ -503,7 +688,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 28
+   "ms": 27
   },
   {
    "id": "C2-1-D-07",
@@ -522,7 +707,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 31
+   "ms": 20
   },
   {
    "id": "C2-1-D-08",
@@ -541,7 +726,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 32
+   "ms": 18
   },
   {
    "id": "C2-1-D-09",
@@ -560,7 +745,7 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 29
+   "ms": 19
   },
   {
    "id": "C2-1-D-10",
@@ -579,7 +764,102 @@
    "pass": true,
    "error_code": null,
    "failed_tasks_with_code": true,
-   "ms": 21
+   "ms": 24
+  },
+  {
+   "id": "C2-1-D-11",
+   "contextId": "ctx-REH-C2-1-D-11",
+   "route": "dye",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "colour": true,
+    "recipe": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 28
+  },
+  {
+   "id": "C2-1-D-12",
+   "contextId": "ctx-REH-C2-1-D-12",
+   "route": "dye",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "colour": true,
+    "recipe": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 24
+  },
+  {
+   "id": "C2-1-D-13",
+   "contextId": "ctx-REH-C2-1-D-13",
+   "route": "dye",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "colour": true,
+    "recipe": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 30
+  },
+  {
+   "id": "C2-1-D-14",
+   "contextId": "ctx-REH-C2-1-D-14",
+   "route": "dye",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "colour": true,
+    "recipe": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 34
+  },
+  {
+   "id": "C2-1-D-15",
+   "contextId": "ctx-REH-C2-1-D-15",
+   "route": "dye",
+   "final_state": "completed",
+   "stages": "接單→生管→色控→出貨",
+   "events": 20,
+   "checks": {
+    "completed": true,
+    "route": true,
+    "shipped": true,
+    "colour": true,
+    "recipe": true
+   },
+   "pass": true,
+   "error_code": null,
+   "failed_tasks_with_code": true,
+   "ms": 31
   }
  ]
 }

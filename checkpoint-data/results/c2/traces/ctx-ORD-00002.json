@@ -1,88 +1,88 @@
 {
  "contextId": "ctx-ORD-00002",
- "exported_at": "2026-11-22T07:21:04.425Z",
+ "exported_at": "2026-11-26T09:00:28.091Z",
  "events": [
   {
-   "ts": "2026-11-22T07:20:58.533Z",
+   "ts": "2026-11-26T09:00:17.761Z",
    "contextId": "ctx-ORD-00002",
    "agent": "order-intake",
    "type": "message-in",
    "detail": {
-    "taskId": "task-3d5b80a4df3d",
+    "taskId": "task-f7ac7c9d9fbf",
     "messageId": "msg-E2E-002",
     "from": "test-harness",
     "skill": "map-order"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.535Z",
+   "ts": "2026-11-26T09:00:17.763Z",
    "contextId": "ctx-ORD-00002",
    "agent": "order-intake",
    "type": "state",
    "detail": {
-    "taskId": "task-3d5b80a4df3d",
+    "taskId": "task-f7ac7c9d9fbf",
     "skill": "map-order",
     "state": "submitted"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.537Z",
+   "ts": "2026-11-26T09:00:17.765Z",
    "contextId": "ctx-ORD-00002",
    "agent": "order-intake",
    "type": "state",
    "detail": {
-    "taskId": "task-3d5b80a4df3d",
+    "taskId": "task-f7ac7c9d9fbf",
     "skill": "map-order",
     "state": "working"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.540Z",
+   "ts": "2026-11-26T09:00:17.768Z",
    "contextId": "ctx-ORD-00002",
    "agent": "order-intake",
    "type": "message-out",
    "detail": {
     "to": "production",
     "skill": "route-line",
-    "messageId": "msg-eb9baf7d164f"
+    "messageId": "msg-9330a11e971f"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.542Z",
+   "ts": "2026-11-26T09:00:17.770Z",
    "contextId": "ctx-ORD-00002",
    "agent": "production",
    "type": "message-in",
    "detail": {
-    "taskId": "task-b7f56b0f211d",
-    "messageId": "msg-eb9baf7d164f",
+    "taskId": "task-3063b5e8ae8b",
+    "messageId": "msg-9330a11e971f",
     "from": "order-intake",
     "skill": "route-line"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.544Z",
+   "ts": "2026-11-26T09:00:17.772Z",
    "contextId": "ctx-ORD-00002",
    "agent": "production",
    "type": "state",
    "detail": {
-    "taskId": "task-b7f56b0f211d",
+    "taskId": "task-3063b5e8ae8b",
     "skill": "route-line",
     "state": "submitted"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.546Z",
+   "ts": "2026-11-26T09:00:17.774Z",
    "contextId": "ctx-ORD-00002",
    "agent": "production",
    "type": "state",
    "detail": {
-    "taskId": "task-b7f56b0f211d",
+    "taskId": "task-3063b5e8ae8b",
     "skill": "route-line",
     "state": "working"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.549Z",
+   "ts": "2026-11-26T09:00:17.777Z",
    "contextId": "ctx-ORD-00002",
    "agent": "production",
    "type": "reservation",
@@ -95,52 +95,52 @@
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.552Z",
+   "ts": "2026-11-26T09:00:17.780Z",
    "contextId": "ctx-ORD-00002",
    "agent": "production",
    "type": "message-out",
    "detail": {
     "to": "shipping",
     "skill": "create-shipment",
-    "messageId": "msg-7a18ec2426ce"
+    "messageId": "msg-b50214a8e1f0"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.554Z",
+   "ts": "2026-11-26T09:00:17.782Z",
    "contextId": "ctx-ORD-00002",
    "agent": "shipping",
    "type": "message-in",
    "detail": {
-    "taskId": "task-1df59c96ae81",
-    "messageId": "msg-7a18ec2426ce",
+    "taskId": "task-24bbfbdfda91",
+    "messageId": "msg-b50214a8e1f0",
     "from": "production",
     "skill": "create-shipment"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.556Z",
+   "ts": "2026-11-26T09:00:17.784Z",
    "contextId": "ctx-ORD-00002",
    "agent": "shipping",
    "type": "state",
    "detail": {
-    "taskId": "task-1df59c96ae81",
+    "taskId": "task-24bbfbdfda91",
     "skill": "create-shipment",
     "state": "submitted"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.558Z",
+   "ts": "2026-11-26T09:00:17.786Z",
    "contextId": "ctx-ORD-00002",
    "agent": "shipping",
    "type": "state",
    "detail": {
-    "taskId": "task-1df59c96ae81",
+    "taskId": "task-24bbfbdfda91",
     "skill": "create-shipment",
     "state": "working"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.559Z",
+   "ts": "2026-11-26T09:00:17.787Z",
    "contextId": "ctx-ORD-00002",
    "agent": "shipping",
    "type": "shipment",
@@ -152,34 +152,34 @@
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.562Z",
+   "ts": "2026-11-26T09:00:17.790Z",
    "contextId": "ctx-ORD-00002",
    "agent": "shipping",
    "type": "state",
    "detail": {
-    "taskId": "task-1df59c96ae81",
+    "taskId": "task-24bbfbdfda91",
     "skill": "create-shipment",
     "state": "completed"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.565Z",
+   "ts": "2026-11-26T09:00:17.793Z",
    "contextId": "ctx-ORD-00002",
    "agent": "production",
    "type": "state",
    "detail": {
-    "taskId": "task-b7f56b0f211d",
+    "taskId": "task-3063b5e8ae8b",
     "skill": "route-line",
     "state": "completed"
    }
   },
   {
-   "ts": "2026-11-22T07:20:58.568Z",
+   "ts": "2026-11-26T09:00:17.796Z",
    "contextId": "ctx-ORD-00002",
    "agent": "order-intake",
    "type": "state",
    "detail": {
-    "taskId": "task-3d5b80a4df3d",
+    "taskId": "task-f7ac7c9d9fbf",
     "skill": "map-order",
     "state": "completed"
    }

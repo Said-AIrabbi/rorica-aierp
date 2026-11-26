@@ -1,6 +1,6 @@
 {
  "note": "模擬資料（2026 成果查核點用，非真實交易）",
- "count": 30,
+ "count": 45,
  "orders": [
   {
    "order_no": "PO-26007",
@@ -1258,6 +1258,411 @@
      "qty": 816,
      "uom": "YDS",
      "unit_price": 3.181,
+     "packing": "ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26217",
+   "order_date": "2026-09-19",
+   "buyer": {
+    "company": "Ivory Line",
+    "contact": "Buyer 31",
+    "email": "buyer31@example.com"
+   },
+   "ship_from": "KEELUNG, TW",
+   "ship_to": "DHAKA, BANGLADESH",
+   "incoterm": "EXW",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "RMB",
+   "requested_delivery": "2026-10-20",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "RVTP",
+     "description": "59/61\" 280G/Y 米卡多／山東綢",
+     "colour": "LIGHT YELLOW",
+     "qty": 219,
+     "uom": "MTR",
+     "unit_price": 2.614,
+     "packing": "TUBE ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26224",
+   "order_date": "2026-11-07",
+   "buyer": {
+    "company": "Bella Rosa",
+    "contact": "Buyer 32",
+    "email": "buyer32@example.com"
+   },
+   "ship_from": "KEELUNG, TW",
+   "ship_to": "PHNOM PENH, CAMBODIA",
+   "incoterm": "EXW",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "EUR",
+   "requested_delivery": "2027-02-09",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "BHQH",
+     "description": "60/62\" 283G/Y 垂彈緞布／奎特",
+     "colour": "香檳金",
+     "qty": 312,
+     "uom": "YDS",
+     "unit_price": 6.127,
+     "packing": "FOLD"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26231",
+   "order_date": "2026-10-25",
+   "buyer": {
+    "company": "雅緻服飾",
+    "contact": "Buyer 33",
+    "email": "buyer33@example.com"
+   },
+   "ship_from": "KEELUNG, TW",
+   "ship_to": "HO CHI MINH, VIETNAM",
+   "incoterm": "EXW",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "USD",
+   "requested_delivery": "2026-12-21",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "LY3H",
+     "description": "59/61\" 100G/Y 歐根紗",
+     "colour": "寶石藍",
+     "qty": 447,
+     "uom": "YDS",
+     "unit_price": 3.486,
+     "packing": "TUBE ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26238",
+   "order_date": "2026-09-22",
+   "buyer": {
+    "company": "Chantilly",
+    "contact": "Buyer 34",
+    "email": "buyer34@example.com"
+   },
+   "ship_from": "KAOHSIUNG, TW",
+   "ship_to": "NEW YORK, USA",
+   "incoterm": "CFR",
+   "payment_terms": "L/C AT SIGHT",
+   "currency": "EUR",
+   "requested_delivery": "2026-11-16",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "28GV",
+     "description": "58/60\" 147G/Y 印花／壓摺",
+     "colour": "IVORY",
+     "qty": 136,
+     "uom": "YDS",
+     "unit_price": 4.94,
+     "packing": "FOLD"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26245",
+   "order_date": "2026-10-02",
+   "buyer": {
+    "company": "Luna Bridal",
+    "contact": "Buyer 35",
+    "email": "buyer35@example.com"
+   },
+   "ship_from": "KAOHSIUNG, TW",
+   "ship_to": "PHNOM PENH, CAMBODIA",
+   "incoterm": "CIF",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "USD",
+   "requested_delivery": "2026-11-30",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "VAVD",
+     "description": "58/60\" 105G/Y 雪紡",
+     "colour": "酒紅",
+     "qty": 937,
+     "uom": "YDS",
+     "unit_price": 3.5,
+     "packing": "FIXED 50M ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26252",
+   "order_date": "2026-11-12",
+   "buyer": {
+    "company": "維多莉亞",
+    "contact": "Buyer 36",
+    "email": "buyer36@example.com"
+   },
+   "ship_from": "TAICHUNG, TW",
+   "ship_to": "HAMBURG, GERMANY",
+   "incoterm": "EXW",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "USD",
+   "requested_delivery": "2027-01-14",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "56A6",
+     "description": "57/59\" 190G/Y 環保系列產品／膚麗娟",
+     "colour": "薄荷綠",
+     "qty": 132,
+     "uom": "YDS",
+     "unit_price": 6.91,
+     "packing": "FIXED 50M ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26259",
+   "order_date": "2026-10-16",
+   "buyer": {
+    "company": "Ivory Line",
+    "contact": "Buyer 37",
+    "email": "buyer37@example.com"
+   },
+   "ship_from": "TAICHUNG, TW",
+   "ship_to": "NEW YORK, USA",
+   "incoterm": "CIF",
+   "payment_terms": "L/C AT SIGHT",
+   "currency": "RMB",
+   "requested_delivery": "2026-11-25",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "VLMW",
+     "description": "58/60\" 258G/Y 米卡多／山東綢",
+     "colour": "JET BLACK",
+     "qty": 169,
+     "uom": "YDS",
+     "unit_price": 6.531,
+     "packing": "ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26266",
+   "order_date": "2026-10-30",
+   "buyer": {
+    "company": "Bella Rosa",
+    "contact": "Buyer 38",
+    "email": "buyer38@example.com"
+   },
+   "ship_from": "TAICHUNG, TW",
+   "ship_to": "PHNOM PENH, CAMBODIA",
+   "incoterm": "EXW",
+   "payment_terms": "T/T IN ADVANCE",
+   "currency": "USD",
+   "requested_delivery": "2027-02-02",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "QABI",
+     "description": "56/58\" 93G/Y 環保系列產品／膚麗娟",
+     "colour": "LILAC",
+     "qty": 302,
+     "uom": "MTR",
+     "unit_price": 2.683,
+     "packing": "ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26273",
+   "order_date": "2026-09-17",
+   "buyer": {
+    "company": "雅緻服飾",
+    "contact": "Buyer 39",
+    "email": "buyer39@example.com"
+   },
+   "ship_from": "KEELUNG, TW",
+   "ship_to": "LOS ANGELES, USA",
+   "incoterm": "CIF",
+   "payment_terms": "T/T IN ADVANCE",
+   "currency": "USD",
+   "requested_delivery": "2026-11-04",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "2XIY",
+     "description": "58/60\" 150G/Y 緞布",
+     "colour": "香檳金",
+     "qty": 187,
+     "uom": "YDS",
+     "unit_price": 5.194,
+     "packing": "FIXED 50M ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26280",
+   "order_date": "2026-09-26",
+   "buyer": {
+    "company": "Chantilly",
+    "contact": "Buyer 40",
+    "email": "buyer40@example.com"
+   },
+   "ship_from": "KAOHSIUNG, TW",
+   "ship_to": "NEW YORK, USA",
+   "incoterm": "CFR",
+   "payment_terms": "L/C AT SIGHT",
+   "currency": "RMB",
+   "requested_delivery": "2026-12-25",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "XDNS",
+     "description": "114\" 132G/Y 皇加300CM產品",
+     "colour": "CREAM",
+     "qty": 897,
+     "uom": "MTR",
+     "unit_price": 6.873,
+     "packing": "TUBE ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26287",
+   "order_date": "2026-10-24",
+   "buyer": {
+    "company": "Luna Bridal",
+    "contact": "Buyer 41",
+    "email": "buyer41@example.com"
+   },
+   "ship_from": "KAOHSIUNG, TW",
+   "ship_to": "LOS ANGELES, USA",
+   "incoterm": "FOB",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "USD",
+   "requested_delivery": "2026-12-06",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "K8E0",
+     "description": "皇加300CM產品",
+     "colour": "霧灰",
+     "qty": 283,
+     "uom": "YDS",
+     "unit_price": 7.596,
+     "packing": "FIXED 50M ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26294",
+   "order_date": "2026-10-25",
+   "buyer": {
+    "company": "維多莉亞",
+    "contact": "Buyer 42",
+    "email": "buyer42@example.com"
+   },
+   "ship_from": "KAOHSIUNG, TW",
+   "ship_to": "PHNOM PENH, CAMBODIA",
+   "incoterm": "CIF",
+   "payment_terms": "T/T IN ADVANCE",
+   "currency": "EUR",
+   "requested_delivery": "2026-12-07",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "P7T6",
+     "description": "114\" 159G/Y 皇加300CM產品",
+     "colour": "香檳金",
+     "qty": 126,
+     "uom": "YDS",
+     "unit_price": 5.214,
+     "packing": "FOLD"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26301",
+   "order_date": "2026-09-12",
+   "buyer": {
+    "company": "Ivory Line",
+    "contact": "Buyer 43",
+    "email": "buyer43@example.com"
+   },
+   "ship_from": "KEELUNG, TW",
+   "ship_to": "HO CHI MINH, VIETNAM",
+   "incoterm": "EXW",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "EUR",
+   "requested_delivery": "2026-12-12",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "SDS2",
+     "description": "60/62\" 271G/Y 垂彈緞布／奎特",
+     "colour": "香檳金",
+     "qty": 253,
+     "uom": "MTR",
+     "unit_price": 3.757,
+     "packing": "FIXED 50M ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26308",
+   "order_date": "2026-10-03",
+   "buyer": {
+    "company": "Bella Rosa",
+    "contact": "Buyer 44",
+    "email": "buyer44@example.com"
+   },
+   "ship_from": "TAICHUNG, TW",
+   "ship_to": "HAMBURG, GERMANY",
+   "incoterm": "EXW",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "USD",
+   "requested_delivery": "2026-12-31",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "RE9B",
+     "description": "58/60\" 214G/Y 緞布",
+     "colour": "霧灰",
+     "qty": 369,
+     "uom": "YDS",
+     "unit_price": 2.996,
+     "packing": "TUBE ROLL"
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26315",
+   "order_date": "2026-09-09",
+   "buyer": {
+    "company": "雅緻服飾",
+    "contact": "Buyer 45",
+    "email": "buyer45@example.com"
+   },
+   "ship_from": "TAICHUNG, TW",
+   "ship_to": "LOS ANGELES, USA",
+   "incoterm": "FOB",
+   "payment_terms": "T/T 30 DAYS",
+   "currency": "USD",
+   "requested_delivery": "2026-10-08",
+   "lines": [
+    {
+     "line_no": 1,
+     "buyer_item_code": "CZFE",
+     "description": "56/58\" 法國蕾絲",
+     "colour": "JET BLACK",
+     "qty": 830,
+     "uom": "YDS",
+     "unit_price": 7.419,
      "packing": "ROLL"
     }
    ]

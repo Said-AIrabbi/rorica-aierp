@@ -26,6 +26,9 @@ const seed = m.buildSessionSnapshot() as any
 // ---------------- 小工具 ----------------
 let state = 20261120
 const rnd = () => { state |= 0; state = (state + 0x6d2b79f5) | 0; let t = Math.imul(state ^ (state >>> 15), 1 | state); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+/** 2026-11-26 擴充（訂單 45、色彩 10,500、歷史色 30、任務 125、情境 3×15、端到端 120）：新增的部分用另一組亂數，
+ *  原本的資料（報告已引用的範例）逐筆不變。 */
+const withExtra = <T,>(salt: number, fn: () => T): T => { const saved = state; state = 20261126 + salt * 1000; try { return fn() } finally { state = saved } }
 const int = (a: number, b: number) => a + Math.floor(rnd() * (b - a + 1))
 const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rnd() * xs.length)]
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
@@ -109,6 +112,13 @@ while (colours.length < 10_000) {
   const lab = rgb2lab(rgb)
   colours.push({ id: `SIM-${pad(++s, 5)}`, ...named(lab), lab, rgb, hex: hex(rgb), base: pick(BASES_SIM), src: '模擬色彩資料', dyes: [] })
 }
+withExtra(1, () => {
+  while (colours.length < 10_500) {
+    const rgb: [number, number, number] = [int(0, 255), int(0, 255), int(0, 255)]
+    const lab = rgb2lab(rgb)
+    colours.push({ id: `SIM-${pad(++s, 5)}`, ...named(lab), lab, rgb, hex: hex(rgb), base: pick(BASES_SIM), src: '模擬色彩資料', dyes: [] })
+  }
+})
 const recipes = colours.filter((c) => c.dyes.length).map((c, i) => ({
   recipe_id: `RCP-${pad(i + 1, 4)}`,
   colour_id: c.id,
@@ -181,9 +191,11 @@ const DESTS = ['HO CHI MINH, VIETNAM', 'LOS ANGELES, USA', 'NEW YORK, USA', 'HAM
 const leadDays = (ord: string, req: string) => { const d = (Date.parse(req) - Date.parse(ord)) / 86400000; return [30, 45, 60, 90].reduce((b, x) => (Math.abs(x - d) < Math.abs(b - d) ? x : b), 60) }
 const orders: any[] = [], pis: any[] = [], annotations: (string | number)[][] = [], matching: any[] = []
 const piTpl = seed.proformaInvoices[0]
-for (let o = 1; o <= 30; o++) {
+for (let o = 1; o <= 30; o++) makeOrder(o)
+withExtra(2, () => { for (let o = 31; o <= 45; o++) makeOrder(o, 1) }) // 新增 15 筆，每筆 1 行：45 筆、90 行
+function makeOrder(o: number, maxLines?: number) {
   const cid = custIds[(o - 1) % custIds.length]
-  const pairs = shuffle(pairsByCustomer[cid]).slice(0, int(1, Math.min(4, pairsByCustomer[cid].length)))
+  const pairs = shuffle(pairsByCustomer[cid]).slice(0, maxLines ?? int(1, Math.min(4, pairsByCustomer[cid].length)))
   const orderDate = addDays('2026-09-01', int(0, 75)), reqDate = addDays(orderDate, pick([30, 45, 60, 90]) + int(-5, 5))
   const uom = rnd() < 0.25 ? 'MTR' : 'YDS', currency = pick(['USD', 'USD', 'EUR', 'RMB'] as const)
   const shortOrder = o % 5 === 0 // 每 5 筆有一筆刻意超過現貨，測試「庫存不足」的判斷
@@ -222,7 +234,9 @@ for (let o = 1; o <= 30; o++) {
     L('qty + uom', `${l.qty} ${l.uom}`, 'PI.items[].yard / meter', `${items[k].yard} / ${items[k].meter}`, l.uom === 'MTR' ? '公尺換算碼（÷0.9144）' : '碼數原樣，公尺＝碼×0.9144')
     L('unit_price', l.unit_price, 'PI.items[].unitPrice', l.unit_price, '原樣帶入')
     L('packing', l.packing, 'PI.items[].packingMethod', items[k].packingMethod, '包裝方式對照表（PACKING_METHODS）')
+    L('line_no', l.line_no, 'PI.items[].id', items[k].id, '明細編號＝PI 單號-L＋行號')
   })
+  A('order_date', orderDate, 'PI.quoteValidUntil', addDays(orderDate, 14), '報價有效期＝下單日＋14 天')
   // A2 媒合標準答案
   matching.push({ order_no: po, pi_id: piId, lines: items.map((it) => ({ line_no: Number(it.id.split('-L')[1]), erp_product_name: it.roricaProductName, color: it.color, qty_yd: it.yard, expected: allocate(it.roricaProductName, it.color, it.yard) })) })
 }
@@ -251,12 +265,14 @@ out('.generated/erp-snapshot.json', snapshot)
 // ================= B2 歷史色配對 20 題、噴印圖檔 20 張 =================
 const withRecipe = colours.filter((c) => c.dyes.length)
 const nearest = (lab: Lab, pool = colours) => pool.reduce((best, c) => { const d = dE00(lab, c.lab); return d < best.d ? { c, d } : best }, { c: pool[0], d: Infinity })
-const historyCases = Array.from({ length: 20 }, (_, i) => {
+const historyCase = (i: number) => {
   const base = pick(withRecipe)
   const target: Lab = [r3(base.lab[0] + (rnd() - 0.5) * 1.2), r3(base.lab[1] + (rnd() - 0.5) * 1.2), r3(base.lab[2] + (rnd() - 0.5) * 1.2)]
   const n = nearest(target, withRecipe)
   return { case_id: `B2-H-${pad(i + 1, 2)}`, target_lab: target, expected_colour_id: n.c.id, expected_dE00: r3(n.d), pass_rule: '系統回傳的最接近色號＝expected_colour_id' }
-})
+}
+const historyCases = Array.from({ length: 20 }, (_, i) => historyCase(i))
+withExtra(3, () => { for (let i = 20; i < 30; i++) historyCases.push(historyCase(i)) })
 out('b2/history-match-cases.json', { note: `${MARK}；目標色由歷史配方色加小幅擾動產生`, count: historyCases.length, cases: historyCases })
 function png(w: number, h: number, px: (x: number, y: number) => number[]): Buffer {
   const raw = Buffer.alloc((w * 3 + 1) * h)
@@ -269,7 +285,7 @@ function png(w: number, h: number, px: (x: number, y: number) => number[]): Buff
 }
 const PATTERNS = ['stripes', 'checks', 'dots', 'waves', 'blocks'] as const
 const printCases = Array.from({ length: 20 }, (_, i) => {
-  const palette = Array.from({ length: int(3, 5) }, () => pick(colours).rgb)
+  const palette = Array.from({ length: int(3, 5) }, () => pick(colours.slice(0, 10_000)).rgb) // 原本 10,000 色時挑的顏色；標準答案仍對全部色彩庫計算
   const pat = PATTERNS[i % PATTERNS.length], W = 256
   const px = (x: number, y: number) => {
     const k = pat === 'stripes' ? Math.floor(x / 32) : pat === 'checks' ? Math.floor(x / 32) + Math.floor(y / 32) : pat === 'dots' ? (Math.hypot((x % 64) - 32, (y % 64) - 32) < 14 ? 1 + (Math.floor(x / 64) % (palette.length - 1)) : 0) : pat === 'waves' ? Math.floor((y + 20 * Math.sin(x / 18)) / 40) : Math.floor(x / 64) * 3 + Math.floor(y / 86)
@@ -315,7 +331,9 @@ const cards = AGENTS.map((a) => {
 })
 out('public/a2a/jwks.json', { keys: [{ ...pubJwk, kid, use: 'sig', alg: 'ES256' }] })
 out('c1/agent-cards/jwks.json', { keys: [{ ...pubJwk, kid, use: 'sig', alg: 'ES256' }] })
-out('c1/agent-cards/registry.json', { note: '服務發現：各代理人的 Agent Card 位置（/.well-known/agent-card.json）', agents: AGENTS.map((a) => ({ key: a.key, name: a.zh, card_url: `${SITE}/a2a/${a.key}/.well-known/agent-card.json` })) })
+const registry = { note: '服務發現：各代理人的 Agent Card 位置（/.well-known/agent-card.json）與技能；名片簽章以 jwks_url 的公鑰驗證', jwks_url: `${SITE}/a2a/jwks.json`, agents: AGENTS.map((a) => ({ key: a.key, name: a.zh, card_url: `${SITE}/a2a/${a.key}/.well-known/agent-card.json`, skills: a.skills.map(([id]) => id) })) }
+out('c1/agent-cards/registry.json', registry)
+out('public/a2a/registry.json', registry) // 線上服務發現：${SITE}/a2a/registry.json
 const S = (id: string, title: string, props: any, required: string[]) => ({ $schema: 'https://json-schema.org/draft/2020-12/schema', $id: `${SITE}/a2a/schemas/${id}.schema.json`, title, type: 'object', additionalProperties: false, required, properties: props })
 const line = { type: 'object', additionalProperties: false, required: ['line_no', 'erp_product_name', 'color', 'qty_yd'], properties: { line_no: { type: 'integer', minimum: 1 }, erp_product_name: { type: 'string' }, product_id: { type: 'string' }, color: { type: 'string' }, qty_yd: { type: 'number', exclusiveMinimum: 0 }, target_lab: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 } } }
 const schemas = [
@@ -330,25 +348,36 @@ const inStockPairs = stockPairs.filter(({ p, color }) => stockOf(p.productName, 
 const withLab = (c: Colour) => c.lab
 const ctxOf = (n: number) => `ctx-ORD-${pad(n, 5)}`
 const msgId = () => [8, 4, 4, 4, 12].map((n) => Array.from({ length: n }, () => '0123456789abcdef'[int(0, 15)]).join('')).join('-')
-// C2-1：三類情境各 10
-const field = [
+// C2-1：三類情境各 15（原本各 10；新增的各 5 筆排在各類之後）
+const fieldS = (i: number) => { const { p, color } = inStockPairs[i % inStockPairs.length]; const avail = stockOf(p.productName, color).reduce((a: number, l: any) => a + yd(l), 0); return { case_id: `C2-1-S-${pad(i + 1, 2)}`, route: 'in_stock', erp_product_name: p.productName, color, qty_yd: Math.round(avail * 0.3), expected: { route: 'in_stock', allocation: allocate(p.productName, color, Math.round(avail * 0.3)) } } }
+const fieldP = (i: number) => { const pc = printCases[i]; return { case_id: `C2-1-P-${pad(i + 1, 2)}`, route: 'print', base_fabric: 'PET 白胚（噴印用）', image: pc.image, qty_yd: int(60, 400), expected: { route: 'print', palette: pc.palette.map((x) => x.expected_colour_id) } } }
+const fieldD = (i: number) => { const hc = historyCases[i + 10]; return { case_id: `C2-1-D-${pad(i + 1, 2)}`, route: 'dye', base_fabric: 'PET 胚布', target_lab: hc.target_lab, qty_yd: int(200, 1200), expected: { route: 'dye', colour_id: hc.expected_colour_id, recipe_id: recipes.find((r) => r.colour_id === hc.expected_colour_id)?.recipe_id ?? null } } }
+const field0 = [
   ...Array.from({ length: 10 }, (_, i) => { const { p, color } = inStockPairs[i % inStockPairs.length]; const avail = stockOf(p.productName, color).reduce((a: number, l: any) => a + yd(l), 0); return { case_id: `C2-1-S-${pad(i + 1, 2)}`, route: 'in_stock', erp_product_name: p.productName, color, qty_yd: Math.round(avail * 0.3), expected: { route: 'in_stock', allocation: allocate(p.productName, color, Math.round(avail * 0.3)) } } }),
   ...Array.from({ length: 10 }, (_, i) => { const pc = printCases[i]; return { case_id: `C2-1-P-${pad(i + 1, 2)}`, route: 'print', base_fabric: 'PET 白胚（噴印用）', image: pc.image, qty_yd: int(60, 400), expected: { route: 'print', palette: pc.palette.map((x) => x.expected_colour_id) } } }),
   ...Array.from({ length: 10 }, (_, i) => { const hc = historyCases[i + 10]; return { case_id: `C2-1-D-${pad(i + 1, 2)}`, route: 'dye', base_fabric: 'PET 胚布', target_lab: hc.target_lab, qty_yd: int(200, 1200), expected: { route: 'dye', colour_id: hc.expected_colour_id, recipe_id: recipes.find((r) => r.colour_id === hc.expected_colour_id)?.recipe_id ?? null } } }),
 ]
+const [fS, fP, fD] = withExtra(4, () => [
+  [...field0.slice(0, 10), ...Array.from({ length: 5 }, (_, k) => fieldS(10 + k))],
+  [...field0.slice(10, 20), ...Array.from({ length: 5 }, (_, k) => fieldP(10 + k))],
+  [...field0.slice(20, 30), ...Array.from({ length: 5 }, (_, k) => fieldD(10 + k))],
+])
+const field = [...fS, ...fP, ...fD]
 out('c2/field-scenarios.json', { note: `${MARK}；場域驗證前的演練輸入，正式驗證須在合作廠商現場進行`, count: field.length, cases: field })
 // C1-1：100 筆兩模型交辦任務
 const SKILL_FLOW = [['order-intake', 'production', 'allocate-rolls'], ['production', 'color-control', 'match-history-colour'], ['production', 'color-control', 'match-print-palette'], ['production', 'shipping', 'create-shipment'], ['order-intake', 'production', 'route-line']] as const
-const tasks = Array.from({ length: 100 }, (_, i) => {
+const task = (i: number) => {
   const [from, to, skill] = SKILL_FLOW[i % SKILL_FLOW.length]
-  const input = skill === 'match-history-colour' ? { kind: 'colour-request', mode: 'history', line_no: 1, target_lab: historyCases[i % 20].target_lab } : skill === 'match-print-palette' ? { kind: 'colour-request', mode: 'print', line_no: 1, image_ref: printCases[i % 20].image } : { kind: 'order-intake', order_no: orders[i % 30].order_no, lines: matching[i % 30].lines.map((l: any) => ({ line_no: l.line_no, erp_product_name: l.erp_product_name, color: l.color, qty_yd: l.qty_yd })) }
+  const input = skill === 'match-history-colour' ? { kind: 'colour-request', mode: 'history', line_no: 1, target_lab: historyCases[i < 100 ? i % 20 : 20 + (i % 10)].target_lab } : skill === 'match-print-palette' ? { kind: 'colour-request', mode: 'print', line_no: 1, image_ref: printCases[i % 20].image } : { kind: 'order-intake', order_no: orders[i < 100 ? i % 30 : 30 + (i % 15)].order_no, lines: matching[i < 100 ? i % 30 : 30 + (i % 15)].lines.map((l: any) => ({ line_no: l.line_no, erp_product_name: l.erp_product_name, color: l.color, qty_yd: l.qty_yd })) }
   return { task_no: i + 1, messageId: msgId(), contextId: ctxOf(1000 + i), from: { agent: from, model: i % 2 ? 'model-b' : 'model-a' }, to: { agent: to, model: i % 2 ? 'model-a' : 'model-b' }, skill, input: { ...input, context_id: ctxOf(1000 + i) }, expected_terminal_state: 'completed' }
-})
+}
+const tasks = Array.from({ length: 100 }, (_, i) => task(i))
+withExtra(5, () => { for (let i = 100; i < 125; i++) tasks.push(task(i)) }) // 125 筆：每種技能 25
 out('c1/a2a-tasks.json', { note: `${MARK}；model-a／model-b 代表兩個不同的 AI 模型（實際採用哪兩個待確認）`, count: tasks.length, tasks })
-// C2-3：100 筆端到端（接單 → 生管 → 色控 → 出貨）
-const e2e = Array.from({ length: 100 }, (_, i) => {
-  const route = i % 10 < 6 ? 'in_stock' : i % 10 < 8 ? 'print' : 'dye'
-  const base = route === 'in_stock' ? field[i % 10] : route === 'print' ? field[10 + (i % 10)] : field[20 + (i % 10)]
+// C2-3：120 筆端到端（原 100 筆＋有現貨 20 筆；有現貨不經色控）
+const e2e = Array.from({ length: 120 }, (_, i) => {
+  const route = i >= 100 ? 'in_stock' : i % 10 < 6 ? 'in_stock' : i % 10 < 8 ? 'print' : 'dye'
+  const base = i >= 100 ? fS[(i - 100) % 15] : route === 'in_stock' ? fS[i % 10] : route === 'print' ? fP[i % 10] : fD[i % 10]
   return { order_no: `E2E-${pad(i + 1, 3)}`, contextId: ctxOf(i + 1), route, input: { ...base, case_id: undefined }, expected_stages: ['接單', '生管', '色控', '出貨'], expected_final: 'shipped' }
 })
 out('c2/e2e-orders.json', { note: `${MARK}；contextId 即訂單追溯索引`, count: e2e.length, orders: e2e })
@@ -389,7 +418,7 @@ out('c2/conformance-tests.json', { note: '介面一致性測試項目（測試�
 out('README.md', `# 成果查核點：模擬資料
 
 產生方式：\`npx tsx --tsconfig tsconfig.app.json tools/checkpoint/generate.mts\`（固定亂數種子，重跑結果相同）。
-產生日期：${TODAY}
+產生日期：${TODAY}（2026-11-26 擴充：訂單 45、色彩 10,500、歷史色 30、任務 125、情境 3×15、端到端 120；原有資料逐筆不變）
 
 **這裡全部是輸入資料，不是測試結果。** 各項的測試紀錄與通過率，要由系統實際執行這些輸入後產生。
 除 B1 標示「去識別化」的部分外，皆為${MARK}。
@@ -397,7 +426,7 @@ out('README.md', `# 成果查核點：模擬資料
 | 查核點 | 檔案 | 數量 |
 |---|---|---|
 | A1 訂單欄位對應 | a1/customer-orders.json（外部訂單格式）、a1/field-mapping.md（規格）、a1/field-annotations.csv（逐欄標註）| ${orders.length} 筆訂單、${annotations.length} 筆標註 |
-| A1 → ERP | 30 筆訂單已轉成 ERP 的 PI（狀態「草稿」，編號 PI-20261120-101～130）| ${pis.length} 張 |
+| A1 → ERP | ${pis.length} 筆訂單已轉成 ERP 的 PI（狀態「草稿」，編號 PI-20261120-101～${100 + pis.length}）| ${pis.length} 張 |
 | A2 庫存 | a2/inventory.csv；已載入 ERP 工作區 | ${allLabels.length} 捲（新增 ${labels.length}、入庫單 ${receipts.length} 張）|
 | A2 媒合 | a2/matching-orders.json（含參考配貨規則算出的標準答案）| ${matching.length} 筆訂單、${matching.reduce((a, x) => a + x.lines.length, 0)} 行 |
 | B1 色彩 | b1/colours.json / .csv；ERP 讀 public/color-library/colors.json | ${colours.length} 筆（去識別化真實 ${realDb.records.length}、模擬 ${colours.length - realDb.records.length}）|
@@ -407,7 +436,7 @@ out('README.md', `# 成果查核點：模擬資料
 | C1-1 兩模型交辦 | c1/a2a-tasks.json | ${tasks.length} 筆 |
 | C1-2 Agent Card | c1/agent-cards/*.json（JWS ES256 簽章）、jwks.json、registry.json；線上 ${SITE}/a2a/<agent>/.well-known/agent-card.json | 4 份 |
 | C1-2 DataPart Schema | c1/schemas/*.schema.json | 3 份 |
-| C2-1 場域情境 | c2/field-scenarios.json | 3 類 × 10 |
+| C2-1 場域情境 | c2/field-scenarios.json | 3 類 × ${fS.length} |
 | C2-2 一致性測試 | c2/conformance-tests.json | ${conf.length} 項 |
 | C2-3 端到端 | c2/e2e-orders.json（contextId 為追溯索引）| ${e2e.length} 筆 |
 
@@ -442,5 +471,7 @@ ${MARK}。客戶訂單格式見 customer-orders.json；逐欄標註見 field-ann
 | lines[].qty＋uom | items[].yard、meter | YDS 原樣；MTR ÷ 0.9144 換碼；公尺＝碼 × 0.9144 |
 | lines[].unit_price | items[].unitPrice | 原樣帶入 |
 | lines[].packing | items[].packingMethod | ROLL→捲支、FIXED 50M ROLL→定碼ROLL可接疋、FOLD→板捲、TUBE ROLL→原疋捲 |
+| lines[].line_no | items[].id | 明細編號＝PI 單號-L＋行號 |
+| order_date | quoteValidUntil | 報價有效期＝下單日＋14 天 |
 `)
 console.log(JSON.stringify({ colours: colours.length, recipes: recipes.length, newRolls: labels.length, totalRolls: allLabels.length, inStock: allLabels.filter(free).length, receipts: receipts.length, orders: orders.length, pis: pis.length, annotations: annotations.length, matchingLines: matching.reduce((a, x) => a + x.lines.length, 0), shortage: matching.flatMap((x) => x.lines).filter((l: any) => l.expected.result === 'shortage').length, printCases: printCases.length, tasks: tasks.length, conf: conf.length, e2e: e2e.length, snapshotKB: Math.round(JSON.stringify(snapshot).length / 1024) }, null, 1))

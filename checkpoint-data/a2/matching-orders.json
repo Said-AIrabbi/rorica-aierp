@@ -1,7 +1,7 @@
 {
  "note": "模擬資料（2026 成果查核點用，非真實交易）；expected 為依參考配貨規則（a2/README）算出的標準答案",
- "count": 30,
- "lines": 75,
+ "count": 45,
+ "lines": 90,
  "orders": [
   {
    "order_no": "PO-26007",
@@ -1349,6 +1349,323 @@
       "result": "shortage",
       "available_yd": 603,
       "shortfall_yd": 213
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26217",
+   "pi_id": "PI-20261120-131",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "3736",
+     "color": "鵝黃",
+     "qty_yd": 240,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100024-01",
+       "T5100024-02",
+       "T5100024-03",
+       "T5100024-04"
+      ],
+      "allocated_yd": 305
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26224",
+   "pi_id": "PI-20261120-132",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "4287",
+     "color": "香檳金",
+     "qty_yd": 312,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100026-01",
+       "T5100026-02",
+       "T5100026-03",
+       "T5100026-04"
+      ],
+      "allocated_yd": 324
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26231",
+   "pi_id": "PI-20261120-133",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "3809",
+     "color": "寶石藍",
+     "qty_yd": 447,
+     "expected": {
+      "result": "allocated_mixed_batch",
+      "rolls": [
+       "T5100050-01",
+       "T5100050-03",
+       "T5100050-04",
+       "T5100050-05",
+       "T5100050-06",
+       "T5100050-07",
+       "T5100050-08"
+      ],
+      "allocated_yd": 500
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26238",
+   "pi_id": "PI-20261120-134",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "3176-M2",
+     "color": "象牙白",
+     "qty_yd": 136,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100067-01",
+       "T5100067-02",
+       "T5100067-04"
+      ],
+      "allocated_yd": 150
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26245",
+   "pi_id": "PI-20261120-135",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "7688",
+     "color": "酒紅",
+     "qty_yd": 937,
+     "expected": {
+      "result": "shortage",
+      "available_yd": 704,
+      "shortfall_yd": 233
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26252",
+   "pi_id": "PI-20261120-136",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "3811R",
+     "color": "薄荷綠",
+     "qty_yd": 132,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100011-01",
+       "T5100011-02",
+       "T5100011-04"
+      ],
+      "allocated_yd": 136
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26259",
+   "pi_id": "PI-20261120-137",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "3005",
+     "color": "正黑",
+     "qty_yd": 169,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100104-01",
+       "T5100104-02",
+       "T5100104-03"
+      ],
+      "allocated_yd": 231
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26266",
+   "pi_id": "PI-20261120-138",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "QA39",
+     "color": "丁香紫",
+     "qty_yd": 330,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100109-01",
+       "T5100109-02",
+       "T5100109-03",
+       "T5100109-04"
+      ],
+      "allocated_yd": 340
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26273",
+   "pi_id": "PI-20261120-139",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "7754",
+     "color": "香檳金",
+     "qty_yd": 187,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100016-01",
+       "T5100016-02",
+       "T5100016-03",
+       "T5100016-04"
+      ],
+      "allocated_yd": 205
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26280",
+   "pi_id": "PI-20261120-140",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "WT-7012",
+     "color": "奶油白",
+     "qty_yd": 981,
+     "expected": {
+      "result": "shortage",
+      "available_yd": 849.9,
+      "shortfall_yd": 131.1
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26287",
+   "pi_id": "PI-20261120-141",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "WH-2137",
+     "color": "霧灰",
+     "qty_yd": 283,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100014-01",
+       "T5100014-02",
+       "T5100014-03",
+       "T5100014-04",
+       "T5100014-05",
+       "T5100014-06"
+      ],
+      "allocated_yd": 322
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26294",
+   "pi_id": "PI-20261120-142",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "WT-7007",
+     "color": "香檳金",
+     "qty_yd": 126,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100057-01",
+       "T5100057-03"
+      ],
+      "allocated_yd": 214
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26301",
+   "pi_id": "PI-20261120-143",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "4181",
+     "color": "香檳金",
+     "qty_yd": 277,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100021-01",
+       "T5100021-02",
+       "T5100021-03",
+       "T5100021-04"
+      ],
+      "allocated_yd": 339
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26308",
+   "pi_id": "PI-20261120-144",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "4172",
+     "color": "霧灰",
+     "qty_yd": 369,
+     "expected": {
+      "result": "allocated_single_batch",
+      "rolls": [
+       "T5100090-02",
+       "T5100090-03",
+       "T5100090-04",
+       "T5100090-05",
+       "T5100090-06",
+       "T5100090-07"
+      ],
+      "allocated_yd": 424
+     }
+    }
+   ]
+  },
+  {
+   "order_no": "PO-26315",
+   "pi_id": "PI-20261120-145",
+   "lines": [
+    {
+     "line_no": 1,
+     "erp_product_name": "90086",
+     "color": "正黑",
+     "qty_yd": 830,
+     "expected": {
+      "result": "shortage",
+      "available_yd": 540,
+      "shortfall_yd": 290
      }
     }
    ]

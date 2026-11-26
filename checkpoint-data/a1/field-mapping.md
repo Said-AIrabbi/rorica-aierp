@@ -18,3 +18,5 @@
 | lines[].qty＋uom | items[].yard、meter | YDS 原樣；MTR ÷ 0.9144 換碼；公尺＝碼 × 0.9144 |
 | lines[].unit_price | items[].unitPrice | 原樣帶入 |
 | lines[].packing | items[].packingMethod | ROLL→捲支、FIXED 50M ROLL→定碼ROLL可接疋、FOLD→板捲、TUBE ROLL→原疋捲 |
+| lines[].line_no | items[].id | 明細編號＝PI 單號-L＋行號 |
+| order_date | quoteValidUntil | 報價有效期＝下單日＋14 天 |

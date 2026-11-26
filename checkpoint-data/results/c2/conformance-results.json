@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-22T07:20:21.998Z",
+ "ran_at": "2026-11-26T08:59:41.367Z",
  "total": 52,
  "passed": 52,
  "pass_rate": 100,
@@ -68,7 +68,7 @@
    "expected": "result.kind=task，含 id、contextId、status",
    "pass": true,
    "evidence": {
-    "id": "task-ca36937c3b3d",
+    "id": "task-4d2d336c28ac",
     "state": "completed"
    }
   },
@@ -264,7 +264,7 @@
    "pass": true,
    "evidence": {
     "code": -32002,
-    "message": "task task-ca36937c3b3d is completed"
+    "message": "task task-4d2d336c28ac is completed"
    }
   },
   {
@@ -366,7 +366,7 @@
    "evidence": {
     "label": "立即重送",
     "task_ids": [
-     "task-38404e2e91c0"
+     "task-aa42ae51bb85"
     ],
     "new_tasks": 1
    }
@@ -381,7 +381,7 @@
    "evidence": {
     "label": "30 秒後重送",
     "task_ids": [
-     "task-e17911f3ca4d"
+     "task-586938501795"
     ],
     "new_tasks": 1
    }
@@ -396,7 +396,7 @@
    "evidence": {
     "label": "任務完成後重送",
     "task_ids": [
-     "task-373992900577"
+     "task-ecba3852cc1e"
     ],
     "new_tasks": 1
    }
@@ -411,7 +411,7 @@
    "evidence": {
     "label": "不同連線重送",
     "task_ids": [
-     "task-c2ba3162d9a2"
+     "task-94530bc2359c"
     ],
     "new_tasks": 1
    }
@@ -426,7 +426,7 @@
    "evidence": {
     "label": "並行重送 2 次",
     "task_ids": [
-     "task-f08e1f81cae7"
+     "task-f56d6767094d"
     ],
     "new_tasks": 1
    }

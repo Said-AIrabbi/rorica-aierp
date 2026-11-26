@@ -74,3 +74,18 @@ PO-26196,PI-20261120-128,3,7636,奶油白,144,252,可配貨,已配貨,T5100094-0
 PO-26196,PI-20261120-128,4,7765,深卡其,236,776,可配貨,已配貨,T5100115-05 T5100115-07 T5100115-01,303.59999999999997,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
 PO-26203,PI-20261120-129,1,3389,天空藍,348,772,可配貨,已配貨,T5100072-11 T5100072-10 T5100072-06 T5100072-01,336.5,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
 PO-26210,PI-20261120-130,1,N415,香檳金,816,603,庫存不足,庫存不足,,0,reports_shortage:ok,PASS
+PO-26217,PI-20261120-131,1,3736,鵝黃,240,376,可配貨,已配貨,T5100024-04 T5100024-03 T5100024-02,271,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26224,PI-20261120-132,1,4287,香檳金,312,834,可配貨,已配貨,T5100026-10 T5100026-04 T5100026-11,327,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26231,PI-20261120-133,1,3809,寶石藍,447,763,可配貨,已配貨,T5100051-01 T5100050-06 T5100050-08 T5100050-01 T5100051-03,470,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26238,PI-20261120-134,1,3176-M2,象牙白,136,436,可配貨,已配貨,T5100068-01 T5100067-07,152,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26245,PI-20261120-135,1,7688,酒紅,937,704,庫存不足,庫存不足,,0,reports_shortage:ok,PASS
+PO-26252,PI-20261120-136,1,3811R,薄荷綠,132,336,可配貨,已配貨,T5100011-05 T5100011-06,200,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26259,PI-20261120-137,1,3005,正黑,169,326,可配貨,已配貨,T5100104-02 T5100104-03 T5100104-01,231,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26266,PI-20261120-138,1,QA39,丁香紫,330,791,可配貨,已配貨,T5100109-01 T5100109-03 T5100109-09 T5100109-08,418,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26273,PI-20261120-139,1,7754,香檳金,187,889,可配貨,已配貨,T5100016-05 T5100016-03,220,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26280,PI-20261120-140,1,WT-7012,奶油白,981,849.9,庫存不足,庫存不足,,0,reports_shortage:ok,PASS
+PO-26287,PI-20261120-141,1,WH-2137,霧灰,283,479,可配貨,已配貨,T5100014-02 T5100014-07 T5100014-04 T5100014-05,296,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26294,PI-20261120-142,1,WT-7007,香檳金,126,424,可配貨,已配貨,T5100057-03 T5100057-01,214,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26301,PI-20261120-143,1,4181,香檳金,277,568,可配貨,已配貨,T5100021-05 T5100021-04 T5100021-03,321,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26308,PI-20261120-144,1,4172,霧灰,369,655,可配貨,已配貨,T5100090-07 T5100090-10 T5100090-05 T5100090-04,377,has_result:ok same_product_colour_free:ok no_duplicate:ok covers_qty:ok no_extra_roll:ok,PASS
+PO-26315,PI-20261120-145,1,90086,正黑,830,539.9,庫存不足,庫存不足,,0,reports_shortage:ok,PASS

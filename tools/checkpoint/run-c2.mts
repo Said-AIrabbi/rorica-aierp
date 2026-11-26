@@ -259,7 +259,7 @@ async function e2e() {
   const failed = rows.filter((r) => !r.pass)
   const byRoute = Object.fromEntries(['in_stock', 'print', 'dye'].map((k) => { const x = rows.filter((r) => r.route === k); return [k, { total: x.length, passed: x.filter((r) => r.pass).length, rate: pct(x.filter((r) => r.pass).length, x.length) }] }))
   // 10 份追溯：各路線至少 3 份
-  const pickCtx = [...rows.filter((r) => r.route === 'in_stock').slice(0, 4), ...rows.filter((r) => r.route === 'print').slice(0, 3), ...rows.filter((r) => r.route === 'dye').slice(0, 3)].map((r) => r.contextId)
+  const pickCtx = [...rows.filter((r) => r.route === 'in_stock').slice(0, 6), ...rows.filter((r) => r.route === 'print').slice(0, 3), ...rows.filter((r) => r.route === 'dye').slice(0, 3)].map((r) => r.contextId)
   for (const ctx of pickCtx) writeOut(`c2/traces/${ctx}.json`, { contextId: ctx, exported_at: new Date().toISOString(), events: s.a2a.trace(ctx) })
   const summary = { ran_at: ranAt, total: rows.length, passed, success_rate: pct(passed, rows.length), by_route: byRoute, failed: failed.length, failed_with_error_code: failed.filter((r) => r.error_code != null).length, traces_exported: pickCtx.length, threshold: 90, isolation: '每筆訂單以期初庫存獨立執行' }
   writeOut('c2/e2e-results.json', { ...summary, orders: rows })
